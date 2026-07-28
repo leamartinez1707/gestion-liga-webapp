@@ -18,31 +18,66 @@ create table profiles (
 -- -----------------------------------------------------------------------------
 -- Tournaments
 -- -----------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------
+-- Series (e.g., Serie 1, Serie 2, +30, F8)
+-- A league can have multiple series, each with its own divisions.
+-- -----------------------------------------------------------------------------
+create table series (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  slug text not null unique,
+  description text,
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Divisions (e.g., Div A, Div B, Div C within a series)
+-- -----------------------------------------------------------------------------
+create table divisions (
+  id uuid default gen_random_uuid() primary key,
+  series_id uuid references series on delete cascade,
+  name text not null,
+  display_order integer default 0,
+  created_at timestamptz default now()
+);
+create index idx_divisions_series on divisions(series_id);
+
+-- -----------------------------------------------------------------------------
+-- Tournaments (belongs to a division within a series)
+-- -----------------------------------------------------------------------------
 create table tournaments (
   id uuid default gen_random_uuid() primary key,
   name text not null,
-  category text not null,
+  category text,             -- display name (e.g., "Primera División")
+  series_id uuid references series,
+  division_id uuid references divisions,
   season text not null,
   format text not null check (format in ('league', 'elimination', 'groups')),
   start_date date,
   end_date date,
   created_at timestamptz default now()
 );
+create index idx_tournaments_series on tournaments(series_id);
+create index idx_tournaments_division on tournaments(division_id);
 
 -- -----------------------------------------------------------------------------
--- Teams
+-- Teams (belongs to a series/division and optionally to a tournament)
 -- -----------------------------------------------------------------------------
 create table teams (
   id uuid default gen_random_uuid() primary key,
   name text not null,
   short_name text not null,
   shield_url text,
-  category text not null,
+  category text,             -- display category (e.g., "Primera División")
+  series_id uuid references series,
+  division_id uuid references divisions,
   coach text,
   assistant_coach text,
   tournament_id uuid references tournaments on delete cascade,
   created_at timestamptz default now()
 );
+create index idx_teams_series on teams(series_id);
+create index idx_teams_division on teams(division_id);
 
 -- -----------------------------------------------------------------------------
 -- Players

@@ -1,9 +1,37 @@
+export interface Series {
+  id: string
+  name: string
+  slug: string
+  description?: string
+}
+
+export interface Division {
+  id: string
+  seriesId: string
+  name: string
+  displayOrder: number
+}
+
+export interface Tournament {
+  id: string
+  name: string
+  category?: string        // display category (e.g., "Primera División")
+  seriesId?: string
+  divisionId?: string
+  season: string
+  format: "league" | "elimination" | "groups"
+  startDate?: string
+  endDate?: string
+}
+
 export interface Team {
   id: string
   name: string
   shortName: string
   shield: string
-  category: string
+  category?: string        // display category (e.g., "Primera División")
+  seriesId?: string
+  divisionId?: string
   coach: string
   assistantCoach?: string
   tournamentId?: string
@@ -52,16 +80,6 @@ export interface NewsArticle {
   date: string
   category: string
   published?: boolean
-}
-
-export interface Tournament {
-  id: string
-  name: string
-  category: string
-  season: string
-  format: "league" | "elimination" | "groups"
-  startDate?: string
-  endDate?: string
 }
 
 export interface LeagueInfo {

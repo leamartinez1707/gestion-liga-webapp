@@ -98,7 +98,7 @@ export function FixturePanel({
             return (
               <div
                 key={match.id}
-                className="rounded-lg border border-border bg-background p-3"
+                className="bg-background p-3"
               >
                 {/* Venue + Date */}
                 <div className="text-center text-[10px] text-muted-foreground mb-3">

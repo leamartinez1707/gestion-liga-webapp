@@ -96,24 +96,27 @@ export default function HomePage() {
       {/* ========== HEADER ========== */}
       <div className="bg-gradient-to-b from-primary to-primary/95">
         <div className="w-full px-4 md:px-6 py-4 md:py-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+          {/* Top bar: league name + CTA + season */}
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h1 className="text-lg md:text-xl font-bold text-primary-foreground">
+              <h1 className="text-sm md:text-base font-bold text-primary-foreground tracking-tight">
                 {leagueInfo.name}
               </h1>
-              <p className="text-xs md:text-sm text-primary-foreground/70">
-                {currentSeries?.name} — {leagueInfo.currentSeason}
+              <p className="text-[11px] md:text-xs text-primary-foreground/60">
+                {currentSeries?.name} · {leagueInfo.currentSeason}
               </p>
             </div>
             <Button
               size="sm"
-              className="bg-white/90 text-primary hover:bg-white self-start text-xs"
+              className="bg-white/90 text-primary hover:bg-white text-xs h-8 px-3"
               render={<Link href={leagueInfo.ctaHref} />}
             >
               {leagueInfo.ctaText}
               <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
           </div>
+
+          {/* SERIES — main attraction */}
           <SeriesSelector
             series={seriesOptions}
             selectedSeries={selectedSeries}
@@ -121,6 +124,29 @@ export default function HomePage() {
             onSeriesChange={handleSeriesChange}
             onDivisionChange={setSelectedDivision}
           />
+        </div>
+
+        {/* NAV BAR — carries series/division context */}
+        <div className="border-t border-white/10">
+          <div className="w-full px-4 md:px-6">
+            <nav className="flex gap-0 -mb-px">
+              {[
+                { href: "/", label: "Inicio" },
+                { href: "/equipos", label: "Equipos" },
+                { href: "/partidos", label: "Partidos" },
+                { href: "/actualidad", label: "Actualidad" },
+                { href: "/institucional", label: "Institucional" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-4 py-2.5 text-xs font-medium text-primary-foreground/70 hover:text-white border-b-2 border-transparent hover:border-white/50 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
       </div>
 

@@ -34,36 +34,39 @@ export function SeriesSelector({
 
   return (
     <div className="space-y-3">
-      {/* Series tabs */}
-      <div className="flex flex-wrap gap-1">
-        {series.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => onSeriesChange(s.id)}
-            className={cn(
-              "px-4 py-1.5 rounded text-sm font-medium transition-colors",
-              selectedSeries === s.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted-bg text-muted-foreground hover:text-foreground hover:bg-border"
-            )}
-          >
-            {s.name}
-          </button>
-        ))}
+      {/* Series tabs — big and prominent */}
+      <div className="flex flex-wrap gap-1.5">
+        {series.map((s) => {
+          const isActive = selectedSeries === s.id
+          return (
+            <button
+              key={s.id}
+              onClick={() => onSeriesChange(s.id)}
+              className={cn(
+                "px-5 py-2 rounded-lg text-sm font-bold transition-all",
+                isActive
+                  ? "bg-white text-primary shadow-sm"
+                  : "bg-white/10 text-primary-foreground/80 hover:bg-white/20 hover:text-white"
+              )}
+            >
+              {s.name}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Division tabs */}
-      {divisions.length > 1 && (
-        <div className="flex flex-wrap gap-1">
+      {/* Division tabs — pills */}
+      {divisions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
           {divisions.map((d) => (
             <button
               key={d.id}
               onClick={() => onDivisionChange(d.id)}
               className={cn(
-                "px-3 py-0.5 rounded text-xs font-medium transition-colors",
+                "px-3 py-1 rounded text-xs font-medium transition-colors",
                 selectedDivision === d.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-white/25 text-white"
+                  : "text-primary-foreground/60 hover:text-primary-foreground/90 hover:bg-white/10"
               )}
             >
               {d.name}

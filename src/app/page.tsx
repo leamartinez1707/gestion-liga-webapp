@@ -13,7 +13,7 @@ import { calculateStandings } from "@/lib/db/standings"
 import { SeriesSelector } from "@/components/series-selector"
 import { StandingsSidebar } from "@/components/standings-sidebar"
 import { LeftSidebar } from "@/components/left-sidebar"
-import { FeaturedBanner } from "@/components/featured-banner"
+import { MainCarousel } from "@/components/main-carousel"
 import { ScrollableBanners } from "@/components/scrollable-banners"
 import { FixturePanel } from "@/components/fixture-panel"
 import { Button } from "@/components/ui/button"
@@ -41,16 +41,6 @@ function formatDateShort(dateStr: string): string {
   })
 }
 
-function groupByCategory(articles: typeof newsArticles) {
-  const groups: Record<string, typeof newsArticles> = {}
-  articles.forEach((a) => {
-    const cat = a.category ?? "General"
-    if (!groups[cat]) groups[cat] = []
-    groups[cat].push(a)
-  })
-  return groups
-}
-
 export default function HomePage() {
   const [selectedSeries, setSelectedSeries] = useState(seriesOptions[0]?.id ?? "")
   const [selectedDivision, setSelectedDivision] = useState("")
@@ -71,6 +61,7 @@ export default function HomePage() {
     }
   }, [selectedSeries, selectedDivision, currentSeries])
 
+  // Map series slug to category filter
   const categoryFilter =
     currentSeries?.slug === "serie-1" ? "Primera División"
     : currentSeries?.slug === "serie-2" ? "Segunda División"
@@ -99,9 +90,6 @@ export default function HomePage() {
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
 
   const sortedNews = [...newsArticles].sort((a, b) => b.date.localeCompare(a.date))
-  const featuredArticle = sortedNews[0]
-  const remainingNews = sortedNews.slice(1)
-  const newsByCategory = groupByCategory(remainingNews)
 
   return (
     <div>
@@ -151,26 +139,25 @@ export default function HomePage() {
 
           {/* ===== CENTER: BANNERS ===== */}
           <div className="space-y-6 min-w-0">
-            {/* Featured banner carousel */}
+            {/* Main carousel — slideshow */}
             {sortedNews.length > 0 && (
-              <ScrollableBanners
+              <MainCarousel
                 articles={sortedNews.slice(0, 5)}
                 matches={finishedMatches}
                 teams={teams}
                 getTeamName={getTeamName}
                 formatDate={formatDate}
-                size="large"
               />
             )}
 
-            {/* Portadas by series */}
-            {Object.entries(newsByCategory).map(([category, articles]) => (
-              <div key={category}>
+            {/* Portadas por serie: one carousel row per series */}
+            {seriesOptions.map((serie) => (
+              <div key={serie.id}>
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  {category}
+                  {serie.name}
                 </h2>
                 <ScrollableBanners
-                  articles={articles.slice(0, 6)}
+                  articles={sortedNews.slice(0, 6)}
                   matches={finishedMatches}
                   teams={teams}
                   getTeamName={getTeamName}

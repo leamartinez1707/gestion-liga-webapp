@@ -36,22 +36,18 @@ export function StandingsSidebar({ standings, className }: StandingsSidebarProps
               </span>
 
               {/* Team name */}
-              <span className="flex-1 font-medium text-foreground min-w-0 leading-tight">
+              <span className="flex-1 font-bold text-foreground min-w-0 leading-tight">
                 {s.teamName}
               </span>
-
+              <div className="flex items-center gap-x-2">
               {/* Points */}
-              <span className="font-bold text-sm tabular-nums text-foreground w-8 text-center">
-                {s.points} PTS
+              <span className="font-bold text-base tabular-nums text-foreground text-center">
+                {s.points}
               </span>
+      <span className="text-[8px] text-center text-gray-600 font-semibold">PTS</span>
+              </div>
             </div>
           ))}
-        </div>
-      )}
-      {/* "Pts" label */}
-      {standings.length > 0 && (
-        <div className="text-[10px] text-muted-foreground/60 text-right mt-1 pr-2">
-          Pts
         </div>
       )}
     </div>

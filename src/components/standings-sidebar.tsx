@@ -9,12 +9,12 @@ interface StandingsSidebarProps {
 export function StandingsSidebar({ standings, className }: StandingsSidebarProps) {
   return (
     <div className={cn("", className)}>
-      <h3 className="text-sm font-semibold text-foreground mb-3">Tabla de Posiciones</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-3">Posiciones</h3>
       {standings.length === 0 ? (
         <p className="text-xs text-muted-foreground">Sin datos todavía.</p>
       ) : (
-        <div className="space-y-0.5">
-          {standings.slice(0, 8).map((s, i) => (
+        <div className="space-y-1">
+          {standings.slice(0, 10).map((s, i) => (
             <div
               key={s.teamId}
               className={cn(
@@ -22,40 +22,36 @@ export function StandingsSidebar({ standings, className }: StandingsSidebarProps
                 i < 3 ? "bg-primary-light" : "hover:bg-muted-bg"
               )}
             >
+              {/* Position badge */}
               <span
                 className={cn(
-                  "w-5 text-center font-bold tabular-nums shrink-0",
-                  i === 0 && "text-amber-500",
-                  i === 1 && "text-gray-400",
-                  i === 2 && "text-amber-700"
+                  "w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0",
+                  i === 0 && "bg-amber-400 text-white",
+                  i === 1 && "bg-gray-300 text-gray-600",
+                  i === 2 && "bg-amber-700 text-white",
+                  i >= 3 && "bg-muted-bg text-muted-foreground"
                 )}
               >
                 {i + 1}
               </span>
-              <span className="flex-1 truncate font-medium text-foreground">
+
+              {/* Team name */}
+              <span className="flex-1 font-medium text-foreground min-w-0 leading-tight">
                 {s.teamName}
               </span>
-              <div className="flex items-center gap-2 text-muted-foreground shrink-0">
-                <span className="tabular-nums w-4 text-center">{s.played}</span>
-                <span className="tabular-nums w-4 text-center">{s.won}</span>
-                <span className="tabular-nums w-4 text-center">{s.drawn}</span>
-                <span className="tabular-nums w-4 text-center">{s.lost}</span>
-                <span className="tabular-nums w-5 text-center font-bold text-foreground">
-                  {s.points}
-                </span>
-              </div>
+
+              {/* Points */}
+              <span className="font-bold text-sm tabular-nums text-foreground w-8 text-center">
+                {s.points} PTS
+              </span>
             </div>
           ))}
         </div>
       )}
-      {/* Column headers */}
+      {/* "Pts" label */}
       {standings.length > 0 && (
-        <div className="flex items-center justify-end gap-2 px-2 pt-2 text-[10px] text-muted-foreground/60 uppercase tracking-wider">
-          <span className="w-4 text-center">PJ</span>
-          <span className="w-4 text-center">G</span>
-          <span className="w-4 text-center">E</span>
-          <span className="w-4 text-center">P</span>
-          <span className="w-5 text-center">Pts</span>
+        <div className="text-[10px] text-muted-foreground/60 text-right mt-1 pr-2">
+          Pts
         </div>
       )}
     </div>

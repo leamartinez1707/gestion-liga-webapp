@@ -6,6 +6,7 @@ export interface Team {
   category: string
   coach: string
   assistantCoach?: string
+  tournamentId?: string
 }
 
 export interface Player {
@@ -47,6 +48,8 @@ export interface Tournament {
   category: string
   season: string
   format: "league" | "elimination" | "groups"
+  startDate?: string
+  endDate?: string
 }
 
 export interface LeagueInfo {

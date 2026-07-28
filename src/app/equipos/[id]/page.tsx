@@ -42,6 +42,7 @@ export default async function EquipoDetailPage({
 
   return (
     <div className="container mx-auto px-4 py-16 md:py-20">
+      <div className="bg-background border border-border rounded-lg p-6 md:p-8">
       {/* Back link */}
       <Button variant="ghost" size="sm" className="mb-8" render={<Link href="/equipos" />}>
         <ArrowLeft className="mr-1 h-4 w-4" />
@@ -116,6 +117,7 @@ export default async function EquipoDetailPage({
           </div>
         )}
       </section>
+      </div>{/* bg-background wrapper */}
     </div>
   )
 }

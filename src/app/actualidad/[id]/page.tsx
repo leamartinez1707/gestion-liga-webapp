@@ -29,7 +29,8 @@ export default async function ArticuloPage({
   }
 
   return (
-    <article className="container mx-auto px-4 py-16 md:py-20 max-w-3xl">
+    <div className="container mx-auto px-4 py-16 md:py-20">
+      <article className="bg-background border border-border rounded-lg p-6 md:p-8 max-w-3xl mx-auto">
       {/* Back link */}
       <Button variant="ghost" size="sm" className="mb-8" render={<Link href="/actualidad" />}>
         <ArrowLeft className="mr-1 h-4 w-4" />
@@ -64,5 +65,6 @@ export default async function ArticuloPage({
         </Button>
       </div>
     </article>
+    </div>
   )
 }

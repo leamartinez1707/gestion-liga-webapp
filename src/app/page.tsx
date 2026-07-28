@@ -36,7 +36,8 @@ export default function HomePage() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="bg-primary py-16 md:py-24">
-        <div className="container mx-auto px-4">
+
+            <div className="container mx-auto px-4">
           <div className="max-w-2xl">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-primary-foreground/90">
               {leagueInfo.currentSeason}
@@ -70,7 +71,7 @@ export default function HomePage() {
       </section>
 
       {/* Upcoming matches */}
-      <section className="py-16 md:py-20">
+      <section className="bg-background py-16 md:py-20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-foreground">Próximos Partidos</h2>
@@ -114,7 +115,7 @@ export default function HomePage() {
       </section>
 
       {/* Latest news */}
-      <section className="py-16 md:py-20 bg-muted-bg">
+      <section className="bg-background py-16 md:py-20 border-y border-border">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-foreground">Últimas Noticias</h2>
@@ -162,7 +163,7 @@ export default function HomePage() {
       </section>
 
       {/* Quick links */}
-      <section className="py-16 md:py-20">
+      <section className="bg-background py-16 md:py-20 border-t border-border">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold text-center mb-10">Secciones</h2>
           <div className="grid gap-4 md:grid-cols-4">

@@ -1,6 +1,21 @@
 import type { Team } from "@/lib/types"
 import { createClient } from "@/lib/supabase/server"
 
+export async function getTeamsByTournament(tournamentId: string): Promise<Team[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await (supabase.from("teams") as any)
+      .select("*")
+      .eq("tournament_id", tournamentId)
+      .order("name", { ascending: true })
+    if (!data) return []
+    return data.map(mapRow)
+  } catch {
+    const { teams } = await import("@/lib/data/teams")
+    return teams.filter((t) => t.tournamentId === tournamentId)
+  }
+}
+
 export async function getTeams(): Promise<Team[]> {
   try {
     const supabase = await createClient()

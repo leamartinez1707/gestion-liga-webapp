@@ -30,6 +30,17 @@ export interface Match {
   status: "scheduled" | "ongoing" | "finished"
   matchday: number
   tournamentId: string
+  venue?: string
+}
+
+export interface Sanction {
+  id: string
+  playerId: string
+  matchId?: string
+  cardType: "yellow" | "red"
+  matchDate: string
+  matchesSuspended: number
+  expiresAfterMatch?: number
 }
 
 export interface NewsArticle {
@@ -40,6 +51,7 @@ export interface NewsArticle {
   image: string
   date: string
   category: string
+  published?: boolean
 }
 
 export interface Tournament {

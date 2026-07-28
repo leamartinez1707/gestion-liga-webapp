@@ -1,10 +1,12 @@
-import { Plus, Pencil, Trash2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Calendar } from "lucide-react"
 
 import { getTournaments } from "@/lib/db/tournaments"
+import { getTeamsByTournament } from "@/lib/db/teams"
 import {
   createTournamentAction,
   updateTournamentAction,
   deleteTournamentAction,
+  generateFixtureAction,
 } from "@/lib/actions/admin"
 import {
   Table,
@@ -16,6 +18,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { TournamentDialog } from "./dialog"
+import { FixtureDialog } from "./fixture-dialog"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 
 const formatLabels: Record<string, string> = {
@@ -26,6 +29,15 @@ const formatLabels: Record<string, string> = {
 
 export default async function TorneosPage() {
   const tournaments = await getTournaments()
+
+  // Fetch teams grouped by tournament for fixture generation
+  const allTeams = await Promise.all(
+    tournaments.map(async (t) => {
+      const teams = await getTeamsByTournament(t.id)
+      return { tournamentId: t.id, teams }
+    })
+  )
+  const teamsByTournament = new Map(allTeams.map((t) => [t.tournamentId, t.teams]))
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,7 +68,7 @@ export default async function TorneosPage() {
               <TableHead>Categoría</TableHead>
               <TableHead>Temporada</TableHead>
               <TableHead>Formato</TableHead>
-              <TableHead className="w-24 text-right">Acciones</TableHead>
+              <TableHead className="w-32 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -86,6 +98,22 @@ export default async function TorneosPage() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <FixtureDialog
+                      action={generateFixtureAction}
+                      tournamentId={t.id}
+                      tournamentName={t.name}
+                      teams={teamsByTournament.get(t.id) ?? []}
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        aria-label="Generar fixture"
+                      >
+                        <Calendar className="h-3.5 w-3.5" />
+                        Fixture
+                      </Button>
+                    </FixtureDialog>
                     <TournamentDialog
                       action={updateTournamentAction.bind(null, t.id)}
                       tournament={t}

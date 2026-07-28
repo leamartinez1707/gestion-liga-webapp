@@ -18,7 +18,24 @@ import {
   updatePlayer,
   deletePlayer,
 } from "@/lib/db/players"
-import type { Player } from "@/lib/types"
+import {
+  createMatch,
+  updateMatch,
+  deleteMatch,
+} from "@/lib/db/matches"
+import {
+  createSanction,
+  deleteSanction,
+} from "@/lib/db/sanctions"
+import {
+  createArticle,
+  updateArticle,
+  deleteArticle,
+  publishArticle,
+  unpublishArticle,
+} from "@/lib/db/news"
+import { bulkCreateMatches } from "@/lib/db/fixture-actions"
+import type { Player, Match } from "@/lib/types"
 
 // ---------------------------------------------------------------------------
 // Tournament actions
@@ -217,4 +234,258 @@ export async function deletePlayerAction(
   if (result.error) return { error: result.error }
   revalidatePath("/admin/jugadores")
   return {}
+}
+
+// ---------------------------------------------------------------------------
+// Match actions
+// ---------------------------------------------------------------------------
+
+export async function createMatchAction(
+  _prev: unknown,
+  formData: FormData
+) {
+  const tournamentId = formData.get("tournamentId") as string
+  const homeTeamId = formData.get("homeTeamId") as string
+  const awayTeamId = formData.get("awayTeamId") as string
+  const date = formData.get("date") as string
+  const time = formData.get("time") as string
+  const matchday = formData.get("matchday") as string
+  const venue = formData.get("venue") as string
+
+  if (!tournamentId) return { error: "El torneo es obligatorio." }
+  if (!homeTeamId) return { error: "El equipo local es obligatorio." }
+  if (!awayTeamId) return { error: "El equipo visitante es obligatorio." }
+  if (!date) return { error: "La fecha es obligatoria." }
+  if (!time) return { error: "El horario es obligatorio." }
+  if (!matchday) return { error: "La jornada es obligatoria." }
+  if (homeTeamId === awayTeamId)
+    return { error: "El equipo local y visitante no pueden ser el mismo." }
+
+  const result = await createMatch({
+    tournamentId,
+    homeTeamId,
+    awayTeamId,
+    date,
+    time,
+    matchday: parseInt(matchday, 10),
+    venue: venue || undefined,
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/partidos")
+  return { success: true as const }
+}
+
+export async function updateMatchAction(
+  id: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const homeScore = formData.get("homeScore") as string
+  const awayScore = formData.get("awayScore") as string
+  const status = formData.get("status") as string
+  const date = formData.get("date") as string
+  const time = formData.get("time") as string
+  const matchday = formData.get("matchday") as string
+  const venue = formData.get("venue") as string
+
+  const payload: Partial<{
+    homeScore: number | null
+    awayScore: number | null
+    status: Match["status"]
+    date: string
+    time: string
+    matchday: number
+    venue: string | null
+  }> = {}
+
+  if (homeScore !== null && homeScore !== undefined && homeScore !== "") {
+    payload.homeScore = parseInt(homeScore, 10)
+  }
+  if (awayScore !== null && awayScore !== undefined && awayScore !== "") {
+    payload.awayScore = parseInt(awayScore, 10)
+  }
+  if (status) payload.status = status as Match["status"]
+  if (date) payload.date = date
+  if (time) payload.time = time
+  if (matchday) payload.matchday = parseInt(matchday, 10)
+  payload.venue = venue || null
+
+  const result = await updateMatch(id, payload)
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/partidos")
+  return { success: true as const }
+}
+
+export async function deleteMatchAction(
+  id: string
+): Promise<{ error?: string }> {
+  const result = await deleteMatch(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/partidos")
+  return {}
+}
+
+// ---------------------------------------------------------------------------
+// Fixture actions
+// ---------------------------------------------------------------------------
+
+export async function generateFixtureAction(
+  _prev: unknown,
+  formData: FormData
+) {
+  const tournamentId = formData.get("tournamentId") as string
+  const teamIdsJson = formData.get("teamIds") as string
+
+  if (!tournamentId) return { error: "Falta el ID del torneo." }
+  if (!teamIdsJson) return { error: "Faltan los IDs de los equipos." }
+
+  let teamIds: string[]
+  try {
+    teamIds = JSON.parse(teamIdsJson)
+  } catch {
+    return { error: "Formato inválido de IDs de equipos." }
+  }
+
+  if (teamIds.length < 2) return { error: "Se necesitan al menos 2 equipos." }
+
+  const result = await bulkCreateMatches(tournamentId, teamIds)
+  if (result.error) return { error: result.error }
+
+  revalidatePath("/admin/partidos")
+  revalidatePath("/admin/torneos")
+  return { success: true as const }
+}
+
+// ---------------------------------------------------------------------------
+// Sanction actions
+// ---------------------------------------------------------------------------
+
+export async function createSanctionAction(
+  _prev: unknown,
+  formData: FormData
+) {
+  const playerId = formData.get("playerId") as string
+  const matchId = formData.get("matchId") as string | null
+  const cardType = formData.get("cardType") as string
+  const matchDate = formData.get("matchDate") as string
+  const matchesSuspended = formData.get("matchesSuspended") as string
+
+  if (!playerId) return { error: "El jugador es obligatorio." }
+  if (!cardType) return { error: "El tipo de tarjeta es obligatorio." }
+  if (!matchDate) return { error: "La fecha del partido es obligatoria." }
+
+  const result = await createSanction({
+    playerId,
+    matchId: matchId || undefined,
+    cardType: cardType as "yellow" | "red",
+    matchDate,
+    matchesSuspended: matchesSuspended ? parseInt(matchesSuspended, 10) : cardType === "red" ? 1 : 0,
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/sanciones")
+  return { success: true as const }
+}
+
+export async function deleteSanctionAction(
+  id: string
+): Promise<{ error?: string }> {
+  const result = await deleteSanction(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/sanciones")
+  return {}
+}
+
+// ---------------------------------------------------------------------------
+// News actions
+// ---------------------------------------------------------------------------
+
+export async function createArticleAction(
+  _prev: unknown,
+  formData: FormData
+) {
+  const title = formData.get("title") as string
+  const excerpt = formData.get("excerpt") as string
+  const content = formData.get("content") as string
+  const category = formData.get("category") as string
+  const published = formData.get("published") as string
+
+  if (!title?.trim()) return { error: "El título es obligatorio." }
+
+  const result = await createArticle({
+    title: title.trim(),
+    excerpt: excerpt?.trim() || null,
+    content: content?.trim() || null,
+    category: category?.trim() || null,
+    published: published === "true",
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/noticias")
+  return { success: true as const }
+}
+
+export async function updateArticleAction(
+  id: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const title = formData.get("title") as string
+  const excerpt = formData.get("excerpt") as string
+  const content = formData.get("content") as string
+  const category = formData.get("category") as string
+  const published = formData.get("published") as string
+
+  const result = await updateArticle(id, {
+    title: title?.trim() || undefined,
+    excerpt: excerpt?.trim() || null,
+    content: content?.trim() || null,
+    category: category?.trim() || null,
+    published: published === "true",
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/noticias")
+  return { success: true as const }
+}
+
+export async function deleteArticleAction(
+  id: string
+): Promise<{ error?: string }> {
+  const result = await deleteArticle(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/noticias")
+  return {}
+}
+
+export async function publishArticleAction(id: string) {
+  const result = await publishArticle(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/noticias")
+  return { success: true as const }
+}
+
+export async function unpublishArticleAction(id: string) {
+  const result = await unpublishArticle(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/noticias")
+  return { success: true as const }
+}
+
+/** Form action wrapper for publish — accepts FormData, returns void */
+export async function publishArticleFormAction(formData: FormData) {
+  const id = formData.get("id") as string
+  if (!id) return
+  await publishArticle(id)
+  revalidatePath("/admin/noticias")
+}
+
+/** Form action wrapper for unpublish — accepts FormData, returns void */
+export async function unpublishArticleFormAction(formData: FormData) {
+  const id = formData.get("id") as string
+  if (!id) return
+  await unpublishArticle(id)
+  revalidatePath("/admin/noticias")
 }

@@ -51,18 +51,18 @@ export function FeaturedBanner({
 
           {/* Match result */}
           {match && (
-            <div className="mt-2 md:mt-3 flex items-center gap-3 text-white">
-              <span className="text-xs md:text-sm font-medium truncate max-w-[80px] md:max-w-[120px]">
+            <div className="mt-2 md:mt-3 flex items-center gap-2 md:gap-3 text-white flex-wrap">
+              <span className="text-xs md:text-sm font-medium leading-snug">
                 {getTeamName(match.homeTeamId)}
               </span>
-              <span className="text-base md:text-xl font-bold tabular-nums">
+              <span className="text-base md:text-xl font-bold tabular-nums shrink-0">
                 {match.homeScore ?? "-"}
               </span>
-              <span className="text-xs text-white/60">vs</span>
-              <span className="text-base md:text-xl font-bold tabular-nums">
+              <span className="text-xs text-white/60 shrink-0">vs</span>
+              <span className="text-base md:text-xl font-bold tabular-nums shrink-0">
                 {match.awayScore ?? "-"}
               </span>
-              <span className="text-xs md:text-sm font-medium truncate max-w-[80px] md:max-w-[120px]">
+              <span className="text-xs md:text-sm font-medium leading-snug">
                 {getTeamName(match.awayTeamId)}
               </span>
             </div>

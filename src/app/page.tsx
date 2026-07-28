@@ -104,7 +104,7 @@ export default function HomePage() {
     <div>
       {/* Header with series selector */}
       <div className="bg-primary">
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-5">
+        <div className="w-full px-4 md:px-6 py-5">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
             <div>
               <h1 className="text-xl font-bold text-primary-foreground md:text-2xl">
@@ -134,7 +134,7 @@ export default function HomePage() {
       </div>
 
       {/* 3-column layout */}
-      <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-6">
+      <div className="w-full px-4 md:px-6 py-6">
         <div className="grid gap-6 lg:grid-cols-[220px_1fr_320px]">
           {/* ========== LEFT SIDEBAR ========== */}
           <div className="hidden lg:block">

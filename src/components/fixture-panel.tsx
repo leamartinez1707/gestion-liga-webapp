@@ -94,8 +94,8 @@ export function FixturePanel({
                 {/* Match content */}
                 <div className="flex items-center gap-2">
                   {/* Home team */}
-                  <div className="flex-1 flex items-center gap-1.5 min-w-0 justify-end">
-                    <span className="font-medium truncate text-right">{getTeamName(match.homeTeamId)}</span>
+                  <div className="flex-1 flex items-center gap-1.5 justify-end">
+                    <span className="font-medium text-right text-xs leading-snug">{getTeamName(match.homeTeamId)}</span>
                     <div className="w-5 h-5 rounded-full bg-primary-light shrink-0 flex items-center justify-center text-[8px] text-primary font-bold">
                       {homeTeam?.shortName?.[0] ?? "?"}
                     </div>
@@ -117,11 +117,11 @@ export function FixturePanel({
                     )}
                   </div>
                   {/* Away team */}
-                  <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                  <div className="flex-1 flex items-center gap-1.5">
                     <div className="w-5 h-5 rounded-full bg-primary-light shrink-0 flex items-center justify-center text-[8px] text-primary font-bold">
                       {awayTeam?.shortName?.[0] ?? "?"}
                     </div>
-                    <span className="font-medium truncate">{getTeamName(match.awayTeamId)}</span>
+                    <span className="font-medium text-xs leading-snug">{getTeamName(match.awayTeamId)}</span>
                   </div>
                 </div>
               </div>

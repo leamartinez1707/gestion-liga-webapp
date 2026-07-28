@@ -53,7 +53,7 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
               <TableRow
                 key={s.teamId}
                 className={cn(
-                  isTop3 && "bg-primary/[0.03]"
+                  isTop3 && "bg-primary-light"
                 )}
               >
                 <TableCell className="text-center font-medium tabular-nums">
@@ -89,7 +89,7 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
                   className={cn(
                     "text-center tabular-nums",
                     s.goalDifference > 0
-                      ? "text-green-600"
+                      ? "text-success"
                       : s.goalDifference < 0
                         ? "text-destructive"
                         : "text-muted-foreground"

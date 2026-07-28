@@ -81,7 +81,7 @@ export default function HomePage() {
           {upcomingMatches.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {upcomingMatches.map((match) => (
-                <Card key={match.id} className="hover:shadow-md transition-shadow border-border">
+                <Card key={match.id} className="border-border transition-all hover:shadow-md">
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-medium text-muted-foreground">
@@ -125,15 +125,9 @@ export default function HomePage() {
           {latestNews.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-3">
               {latestNews.map((article) => (
-                <Card key={article.id} className="hover:shadow-md transition-shadow border-border overflow-hidden">
-                  <div className="aspect-[16/9] bg-primary-light flex items-center justify-center text-muted-foreground text-sm">
-                    {article.image ? (
-                      <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary-light flex items-center justify-center">
-                        <span className="text-xs text-muted-foreground">📷 {article.title}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Sin imagen</span>
-                    )}
+                <Card key={article.id} className="border-border transition-all hover:shadow-md overflow-hidden">
+                  <div className="aspect-[16/9] bg-primary-light flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground">Sin imagen</span>
                   </div>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2 mb-2">

@@ -18,48 +18,48 @@ function getInitials(name: string): string {
 
 export default function EquiposPage() {
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold mb-2">Equipos</h1>
-      <p className="text-muted-foreground mb-10">
+    <div className="container mx-auto px-4 py-16 md:py-20">
+      <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Equipos</h1>
+      <p className="mt-3 text-muted-foreground max-w-lg">
         Conocé todos los clubes que compiten en la Liga Metropolitana de Futsal.
       </p>
 
-      {categories.map((category) => {
-        const categoryTeams = teams.filter((t) => t.category === category)
-        if (categoryTeams.length === 0) return null
+      <div className="mt-12 space-y-14">
+        {categories.map((category) => {
+          const categoryTeams = teams.filter((t) => t.category === category)
+          if (categoryTeams.length === 0) return null
 
-        return (
-          <section key={category} className="mb-12">
-            <div className="flex items-center gap-2 mb-6">
-              <Badge variant="secondary" className="text-sm px-3 py-1">
-                {category}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {categoryTeams.length} {categoryTeams.length === 1 ? "equipo" : "equipos"}
-              </span>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {categoryTeams.map((team) => (
-                <Link key={team.id} href={`/equipos/${team.id}`}>
-                  <Card className="h-full hover:shadow-md transition-shadow hover:border-primary/50">
-                    <CardHeader className="items-center text-center pb-2">
-                      <Avatar className="h-16 w-16">
-                        <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                          {getInitials(team.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <CardTitle className="text-base mt-2">{team.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center text-sm text-muted-foreground">
-                      <p>DT: {team.coach}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )
-      })}
+          return (
+            <section key={category}>
+              <div className="flex items-baseline gap-3 mb-6">
+                <h2 className="text-xl font-bold">{category}</h2>
+                <span className="text-sm text-muted-foreground">
+                  {categoryTeams.length} {categoryTeams.length === 1 ? "equipo" : "equipos"}
+                </span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {categoryTeams.map((team) => (
+                  <Link key={team.id} href={`/equipos/${team.id}`}>
+                    <Card className="h-full border-border transition-all hover:shadow-md hover:border-primary/30">
+                      <CardHeader className="items-center text-center pb-3">
+                        <Avatar className="h-16 w-16">
+                          <AvatarFallback className="bg-primary-light text-primary font-semibold text-lg">
+                            {getInitials(team.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <CardTitle className="text-sm mt-2 leading-snug">{team.name}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-center text-xs text-muted-foreground pb-5">
+                        DT: {team.coach}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )
+        })}
+      </div>
     </div>
   )
 }

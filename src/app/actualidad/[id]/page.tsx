@@ -29,7 +29,7 @@ export default async function ArticuloPage({
   }
 
   return (
-    <article className="container mx-auto px-4 py-12 max-w-3xl">
+    <article className="container mx-auto px-4 py-16 md:py-20 max-w-3xl">
       {/* Back link */}
       <Button variant="ghost" size="sm" className="mb-8" render={<Link href="/actualidad" />}>
         <ArrowLeft className="mr-1 h-4 w-4" />
@@ -37,36 +37,27 @@ export default async function ArticuloPage({
       </Button>
 
       {/* Article header */}
-      <header className="mb-8">
+      <header className="mb-10">
         <div className="flex items-center gap-3 mb-4">
-          <Badge variant="secondary">{article.category}</Badge>
+          <Badge variant="secondary" className="text-xs font-medium">{article.category}</Badge>
           <time className="text-sm text-muted-foreground">
             {formatDate(article.date)}
           </time>
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold leading-tight mb-4">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
           {article.title}
         </h1>
       </header>
 
-      {/* Image placeholder */}
-      <div className="aspect-video rounded-xl bg-muted mb-10 overflow-hidden">
-        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-muted-foreground text-sm">
-          Imagen del artículo
-        </div>
-      </div>
-
       {/* Article body */}
-      <div className="prose prose-sm md:prose-base max-w-none">
+      <div className="text-base leading-relaxed text-foreground/90 space-y-5">
         {article.content.split("\n\n").map((paragraph, index) => (
-          <p key={index} className="mb-4 leading-relaxed text-foreground/90">
-            {paragraph}
-          </p>
+          <p key={index}>{paragraph}</p>
         ))}
       </div>
 
       {/* Bottom navigation */}
-      <div className="mt-12 pt-6 border-t border-border">
+      <div className="mt-14 pt-6 border-t border-border">
         <Button variant="outline" size="sm" render={<Link href="/actualidad" />}>
           <ArrowLeft className="mr-1 h-4 w-4" />
           Más artículos

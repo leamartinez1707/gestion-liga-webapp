@@ -86,7 +86,7 @@ export default function PartidosPage() {
                     <Badge variant="secondary" className="text-xs">
                       Fecha {match.matchday}
                     </Badge>
-                    <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
+                    <Badge variant="outline" className="text-xs">
                       Finalizado
                     </Badge>
                   </div>

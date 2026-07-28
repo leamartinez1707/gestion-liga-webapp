@@ -1,0 +1,58 @@
+export interface Team {
+  id: string
+  name: string
+  shortName: string
+  shield: string
+  category: string
+  coach: string
+  assistantCoach?: string
+}
+
+export interface Player {
+  id: string
+  name: string
+  number: number
+  position: "arquero" | "defensa" | "mediocampista" | "delantero"
+  photo?: string
+  teamId: string
+  active: boolean
+}
+
+export interface Match {
+  id: string
+  homeTeamId: string
+  awayTeamId: string
+  date: string
+  time: string
+  homeScore?: number
+  awayScore?: number
+  status: "scheduled" | "ongoing" | "finished"
+  matchday: number
+  tournamentId: string
+}
+
+export interface NewsArticle {
+  id: string
+  title: string
+  excerpt: string
+  content: string
+  image: string
+  date: string
+  category: string
+}
+
+export interface Tournament {
+  id: string
+  name: string
+  category: string
+  season: string
+  format: "league" | "elimination" | "groups"
+}
+
+export interface LeagueInfo {
+  name: string
+  description: string
+  currentSeason: string
+  ctaText: string
+  ctaHref: string
+}

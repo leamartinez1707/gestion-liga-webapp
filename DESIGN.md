@@ -1,145 +1,160 @@
 ---
 version: alpha
-name: Substack
-description: "A light interface extracted from Substack accented with #0000ee, with a 8px spacing system and a system-ui type stack."
-sourceUrl: "https://substack.com"
-
+name: Cancha
+description: "Un diseño deportivo, limpio y directo para una liga de futsal amateur. Inspirado en la cancha, los colores del juego y la seriedad de una liga que se toma el deporte en serio sin perder la calidez del club de barrio."
 colors:
-  primary: "#0000ee"
+  primary: "#1a6b3c"
   on-primary: "#ffffff"
-  border: "#313131"
-  text: "#313131"
-  text-muted: "#0000ee"
-
+  primary-light: "#e8f5e9"
+  surface: "#ffffff"
+  foreground: "#1a1a2e"
+  muted: "#6b7280"
+  muted-bg: "#f3f4f6"
+  border: "#e5e7eb"
+  accent: "#f59e0b"
+  accent-soft: "#fef3c7"
+  destructive: "#dc2626"
+  destructive-soft: "#fef2f2"
+  success: "#16a34a"
+  success-soft: "#f0fdf4"
 typography:
   display:
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji"
-    fontSize: 40px
-    fontWeight: 600
-    lineHeight: 1.25
+    fontFamily: "'Inter Variable', system-ui, -apple-system, sans-serif"
+    fontSize: 36px
+    fontWeight: 700
+    lineHeight: 1.15
+    letterSpacing: -0.02em
   heading:
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji"
-    fontSize: 24px
+    fontFamily: "'Inter Variable', system-ui, -apple-system, sans-serif"
+    fontSize: 22px
     fontWeight: 600
     lineHeight: 1.25
+    letterSpacing: -0.01em
   body:
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji"
-    fontSize: 12px
+    fontFamily: "system-ui, -apple-system, sans-serif"
+    fontSize: 15px
+    fontWeight: 400
+    lineHeight: 1.6
+  small:
+    fontFamily: "system-ui, -apple-system, sans-serif"
+    fontSize: 13px
     fontWeight: 400
     lineHeight: 1.5
   mono:
-    fontFamily: "monospace"
-    fontSize: 12px
+    fontFamily: "ui-monospace, SFMono-Regular, monospace"
+    fontSize: 13px
     fontWeight: 400
     lineHeight: 1.5
-
 spacing:
-  base: 8px
-  scale: [8, 16, 32, 128, 160]
-
+  base: 4px
+  scale: [4, 8, 16, 24, 32, 48, 64, 96]
 radius:
-  sm: 50px
-
+  sm: 6px
+  md: 8px
+  lg: 12px
+  full: 9999px
 motion:
-  duration-fast: 1200ms
-  duration-base: 1200ms
-  duration-slow: 1200ms
-  easing: "ease"
+  duration-fast: 150ms
+  duration-base: 200ms
+  duration-slow: 300ms
+  easing: "ease-out"
+shadows:
+  sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)"
+  md: "0 4px 6px -1px rgb(0 0 0 / 0.08)"
+  lg: "0 10px 15px -3px rgb(0 0 0 / 0.08)"
 ---
 
 ## Rationale
 
-Substack's design system reflects a deliberately minimal, content-first platform. The heavy reliance on a system font stack (no custom typefaces) and a restrained color palette—anchored by a vibrant electric blue (#0000ee) against near-black text (#313131)—signals efficiency and legibility over ornamentation. The site is measured during a security verification flow, which explains the sparse UI; however, the tokens reveal a product built for writers and readers, not visual spectacle. The uniform motion timing (all 1200ms) and rounded corners at 50px suggest a modern, approachable interface that doesn't distract from the core purpose: publishing and reading newsletters. This is intentional design subtraction.
+Cancha es un sistema de diseño para una liga de futsal amateur. El nombre evoca la cancha de juego: el rectángulo verde, las líneas blancas, la red. Todo es funcional, nada es decorativo por serlo.
 
-The typography hierarchy is modest—a 40px display weight (600) for primary headings, stepping down to 24px for section heads and 12px for body text. This compressed range works because the system font is highly legible and ubiquitous; there's no need for variation. The line-height of 1.25 for display and headings is tight, trusting the reader's familiarity with sans-serif rendering, while body text relaxes to 1.5 for breathing room. Spacing uses a predictable base-8 increment (8, 16, 32, 128, 160px), making layout mechanical and composable. The overall effect is utilitarian: nothing precious, everything scannable.
+El verde primary (#1a6b3c) no es un verde genérico "naturaleza" — es el verde de una cancha de futsal bien mantenida. El blanco de las líneas de la cancha es el surface blanco. El amarillo ámbar (#f59e0b) es el color del árbitro, del balón clásico, del "pitazo" que arranca el partido.
 
-Color strategy centers on functional contrast rather than aesthetic richness. The primary blue is used sparingly—likely for links and interactive elements—while the muted text color oddly reuses that same blue (#0000ee), suggesting a deliberate visual language where the brand color doubles as secondary text emphasis. Borders and primary text both use the dark neutral #313131, creating a two-tone palette that works in light mode without requiring complex theming. This economy of color keeps the product lightweight and accessible.
+No hay glassmorphism, no hay gradientes abstractos, no hay tipografía decorativa. Esto es una página de liga: se ve la tabla de posiciones, los resultados, los equipos. Lo que importa es el contenido, no el contenedor.
 
 ## 1. Visual Theme & Atmosphere
 
-The aesthetic is austere and purposeful. A light color mode with dark text on white backgrounds creates maximum legibility; there are no decorative shadows or layered depth cues. The 50px border radius on the `sm` token is generous but applied sparingly (likely to form controls or cards), adding subtle warmth without compromising the serious, professional tone appropriate for a publishing platform. The absence of defined breakpoints in the token set suggests either a mobile-first, fluid layout or a platform that assumes a narrow, vertical reading format (consistent with newsletter/writing product behavior).
+Limpio, deportivo, institucional. El sitio de una liga seria pero de barrio: da confianza, se ve legítimo, no parece un template de startup. 
+
+El fondo es blanco (no crema). Las cards tienen sombras sutiles y borders suaves. El verde aparece en headers, botones principales, y acentos — nunca abusa de él. Los equipos tienen sus escudos como protagonistas visuales.
 
 ## 2. Color System
 
-**Primary:** Electric blue (#0000ee) — a bold, web-safe color traditionally associated with hyperlinks. Used as the brand color and likely for interactive states, buttons, or primary CTAs.
-
-**On-Primary:** White (#ffffff) — the only accent color defined, reserved for text or icons appearing over the primary blue.
-
-**Text:** Dark neutral (#313131) — nearly black, used for body copy and headings to ensure 7:1+ contrast against the white background.
-
-**Text-Muted:** Blue (#0000ee) — reuses the primary color, suggesting secondary emphasis (breadcrumbs, metadata, or de-emphasized links) rather than true muting. This conflation implies a limited color budget.
-
-**Border:** Matches text (#313131) — borders use the same dark neutral, creating visual unity and reducing the token count. No separate outline or divider colors.
-
-The palette is binary and intentional: light backgrounds, dark text, and blue for interactivity. No grays, no accent colors, no semantic reds or greens. This constraint forces clarity and prevents designer indecision.
+**Primary:** Verde cancha (#1a6b3c) — el color principal. Botones, headers, links, acentos fuertes.
+**Primary Light:** Verde muy claro (#e8f5e9) — fondos de secciones destacadas, badges.
+**Surface:** Blanco (#ffffff) — fondo principal, cards.
+**Foreground:** Casi negro azulado (#1a1a2e) — texto principal. Más suave que el negro puro.
+**Muted:** Gris (#6b7280) — texto secundario, metadata.
+**Muted-bg:** Gris claro (#f3f4f6) — fondos alternados.
+**Border:** Gris suave (#e5e7eb) — borders de cards, inputs, tablas.
+**Accent:** Amarillo ámbar (#f59e0b) — badges de "próximamente", highlights, warnings.
+**Destructive:** Rojo (#dc2626) — errores, tarjetas rojas, sanciones.
+**Success:** Verde éxito (#16a34a) — confirmaciones, "finalizado".
 
 ## 3. Typography
 
-**Display (40px, 600 weight, 1.25 line-height):** Used for page titles or hero content. The tight leading pairs well with the large size, keeping lines compact and scannable.
+**Display (36px, 700, -0.02em):** Títulos de página, hero. Usa Inter Variable (Google Font) para un look deportivo moderno pero serio. Tight tracking para impacto.
 
-**Heading (24px, 600 weight, 1.25 line-height):** Section-level typography. Matches display in weight and line-height but at half the size, creating a clear (if not large) visual separation from body.
+**Heading (22px, 600, -0.01em):** Títulos de sección. Inter. Suficiente peso para jerarquía sin gritar.
 
-**Body (12px, 400 weight, 1.5 line-height):** Reading text. At 12px (small by modern standards but typical for web), the 1.5 line-height is essential for legibility. The system font stack prioritizes rendering efficiency over character.
+**Body (15px, 400):** Texto de lectura. system-ui para velocidad. Inter cae bien como fallback visual.
 
-**Mono (12px, 400 weight, 1.5 line-height):** Code or pre-formatted text, matching body size and leading but in a monospace family for technical distinction.
+**Small (13px):** Metadatos, fechas, scores secundarios. Claro y legible.
 
-All fonts use an identical system stack (`system-ui, -apple-system, …`), which delegates rendering to the OS. This eliminates font loading delays and ensures consistent fallback behavior across devices. No custom webfont overhead—ideal for a fast, lightweight publishing platform.
+**Mono (13px):** Código o datos técnicos si aparecen.
 
 ## 4. Components & Patterns
 
-Given the measured tokens, the design system likely includes:
-
-- **Buttons & Links:** Primary blue background with white text; hover/focus state changes likely via opacity or a darker shade of blue.
-- **Input Fields & Form Controls:** Rounded at 50px (sm radius), bordered in #313131, with a transparent or white fill.
-- **Cards or Modals:** Subtle 50px radius on corners; borders in #313131 to define edges without shadow.
-- **Dividers & Rules:** 1px lines in #313131, matching the border token.
-- **Loading or Interactive States:** Uniform 1200ms motion (easing: ease) applied to all transitions, creating a consistent, predictable feel—neither snappy nor sluggish.
-
-No layered shadow system is defined, suggesting flat or minimal elevation; interactions rely on color change and animation rather than depth.
+- **Botones primarios:** Verde cancha, white text, hover ligeramente más oscuro.
+- **Botones outline:** Border verde, text verde, sin relleno.
+- **Cards:** White surface, border sutil, shadow sm en reposo y md en hover. Border radius md (8px).
+- **Tablas:** Clean, header con muted-bg, rows con border-bottom, hover sutil. Sin stripes.
+- **Badges:** Small, radius full, variants: default (muted-bg), success (green), warning (amber), destructive (red).
+- **Inputs/Forms:** Border sutil, focus ring verde, radius md.
+- **Navigation:** Links con hover underline o active indicator. Header con sombra sutil.
+- **Tabla de posiciones:** Highlight top 3 con badge, row del equipo actual con primary-light bg.
 
 ## 5. Spacing & Layout
 
-The spacing scale (8, 16, 32, 128, 160px) is powers-of-2 dominant (8, 16, 32 are base increments), with two outlier sizes (128, 160) likely reserved for large vertical rhythms or hero spacing. All spacing derives from an 8px base, making the system mathematically clean and easy to implement.
+Sistema de 4px base:
+- **4px:** gaps mínimos entre elementos relacionados
+- **8px:** padding interno de elementos pequeños
+- **16px:** padding de cards, gap entre elementos
+- **24px:** padding de secciones, gap entre cards
+- **32px:** espaciado entre secciones grandes
+- **48-64px:** espaciado de hero, secciones principales
+- **96px:** espaciado de secciones muy separadas
 
-Layout likely uses a vertical rhythm where margins and padding stack in multiples of 8 or 16px. The absence of defined breakpoints suggests either:
-1. A single-column responsive design (common for reading-focused apps),
-2. Breakpoints handled in component code rather than design tokens, or
-3. A mobile-first approach where layout flexes fluidly.
-
-Given Substack's newsletter format, a single-column, responsive layout is most probable. Gutters and horizontal padding likely use 16 or 32px; vertical spacing between sections uses 32 or 128px.
+Layout: container centrado con max-width de 1200px. Padding lateral de 16px en mobile, 24px en desktop.
 
 ## 6. Motion & Interaction
 
-All motion durations are uniform: 1200ms (1.2 seconds). This is relatively slow, suggesting a deliberate, measured interaction style—perhaps for fade-ins, slide-ups, or loading states. The easing is linear (`ease`), implying a gentle acceleration and deceleration rather than sharp snapping.
+Transiciones rápidas y decididas:
+- **150ms:** hover states, color transitions
+- **200ms:** default interactions, card hover
+- **300ms:** modals, sheets, page transitions
+- **Easing:** ease-out para entrada natural
 
-A 1200ms duration for standard interactions (not a slow reveal) indicates either:
-- Security or verification flows (fitting the page context: "Performing security verification"),
-- A preference for calm, non-jarring UX, or
-- A conservative motion budget to avoid distraction from content.
+Sin movimiento decorativo. Todo motion sirve a la interacción: hover que confirma que es clickeable, card que se eleva al pasar el mouse, sheet que desliza con propósito.
 
-This uniform timing is simple to implement and memorable to users, even if not optimized for every interaction type.
+## 7. Accessibility
 
-## Accessibility
+- Contrast ratio mínimo 4.5:1 para texto normal, 3:1 para texto grande
+- Focus visible en todos los interactive elements (ring verde de 2px)
+- Targets táctiles mínimos de 44x44px
+- Soportar prefers-reduced-motion
+- No usar color como único indicador de estado
 
-### Contrast Ratios
+## 8. Anti-Patterns (AI Slop a evitar)
 
-**Primary text on white background (#313131 on #ffffff):**
-- Luminance of #313131 ≈ 0.05
-- Luminance of #ffffff = 1.0
-- Contrast ratio ≈ **19.7:1**
-- **WCAG AAA** (7:1 minimum required) — exceeds the highest standard.
-
-**Primary blue on white (#0000ee on #ffffff):**
-- Luminance of #0000ee ≈ 0.03
-- Contrast ratio ≈ **31.4:1**
-- **WCAG AAA** — excellent for links and interactive text.
-
-**Blue text on white (if used for muted content):**
-- Same as above, **31.4:1**, which is unusually high for de-emphasized text and may reduce perceived hierarchy. Consider a gray fallback for true muting.
-
-### Minimum Requirements
-
-- **Touch target:** Not explicitly defined in tokens, but standard UI practice requires 44×44px minimum for buttons and interactive controls. The 50px border radius suggests buttons will be at least 40–48px tall, meeting this threshold.
-- **Focus indicator:** Not specified in tokens but essential; recommend a 2px solid blue outline (#0000ee) with a 2px offset from element edges. The bright primary color ensures visibility against both light and dark backgrounds.
-- **Motion & vestibular:** The 1200ms duration is generous and should not trigger motion sickness; however, provide a `prefers-reduced-motion: reduce` media query to disable or shorten animations for users with vestibular sensitivity.
-- **Color alone:** The blue-for-links convention is standard, but ensure links are also underlined or otherwise marked (not color alone) to accommodate color-blind users.
+- ❌ Fondos crema/beige
+- ❌ Tipografía serif itálica para displays
+- ❌ Glassmorphism / blur effects sin propósito
+- ❌ Cards dentro de cards
+- ❌ Side-tabs, chip con borde lateral
+- ❌ Gradientes abstractos
+- ❌ Iconos genéricos que no aportan información
+- ❌ Sombras exageradas
+- ❌ Números de sección (01, 02, 03) decorativos
+- ❌ "Modern teams", "Operating system", "Everything in one place" y otras frases de template startup
+- ❌ Puntos pulsantes o indicadores de "cargando" falsos

@@ -76,7 +76,7 @@ export function AdminDesktopSidebar({ userEmail }: { userEmail?: string }) {
   return (
     <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-border">
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
-        <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+        <div className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
           LM
         </div>
         <span className="text-sm font-semibold text-foreground">Admin</span>

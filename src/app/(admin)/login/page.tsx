@@ -32,7 +32,7 @@ function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="h-10 rounded-[50px] border border-border bg-background px-4 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+          className="h-10 rounded-md border border-input bg-background px-4 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
           placeholder="tu@email.com"
         />
       </div>
@@ -50,7 +50,7 @@ function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="h-10 rounded-[50px] border border-border bg-background px-4 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+          className="h-10 rounded-md border border-input bg-background px-4 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
           placeholder="••••••••"
         />
       </div>
@@ -59,7 +59,7 @@ function LoginForm() {
         <p className="text-sm text-destructive">{state.error}</p>
       )}
 
-      <Button type="submit" disabled={pending} className="w-full rounded-[50px] h-10">
+      <Button type="submit" disabled={pending} className="w-full rounded-md h-10">
         {pending ? "Ingresando…" : "Ingresar"}
       </Button>
     </form>

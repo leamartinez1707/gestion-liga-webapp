@@ -13,10 +13,10 @@ export function Header() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+    <header className="sticky top-0 z-50 w-full bg-primary text-primary-foreground shadow-sm">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded bg-white/20 text-sm font-bold">
             LM
           </span>
           <span className="hidden sm:inline">Liga Metropolitana</span>
@@ -32,10 +32,10 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "px-3 py-1.5 rounded text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    ? "bg-white/20 text-white"
+                    : "text-primary-foreground/80 hover:text-white hover:bg-white/10"
                 )}
               >
                 {link.label}
@@ -46,12 +46,12 @@ export function Header() {
 
         {/* Mobile hamburger */}
         <Sheet>
-          <SheetTrigger className="md:hidden" render={<Button variant="ghost" size="icon" aria-label="Abrir menú" />}>
+          <SheetTrigger className="md:hidden" render={<Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/10" aria-label="Abrir menú" />}>
             <Menu className="h-5 w-5" />
           </SheetTrigger>
-          <SheetContent side="left">
+          <SheetContent side="left" className="bg-primary text-primary-foreground border-primary/20">
             <SheetTitle className="sr-only">Navegación</SheetTitle>
-            <div className="flex flex-col gap-2 mt-8">
+            <div className="flex flex-col gap-1 mt-8">
               {navLinks.map((link) => {
                 const isActive =
                   link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
@@ -60,10 +60,10 @@ export function Header() {
                     key={link.href}
                     href={link.href}
                     className={cn(
-                      "px-3 py-2 rounded-md text-base font-medium transition-colors",
+                      "px-3 py-2 rounded text-base font-medium transition-colors",
                       isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        ? "bg-white/20 text-white"
+                        : "text-primary-foreground/80 hover:text-white hover:bg-white/10"
                     )}
                   >
                     {link.label}

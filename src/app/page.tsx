@@ -35,24 +35,33 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-20 md:py-28">
-        <div className="container mx-auto px-4 text-center md:text-left">
-          <div className="max-w-2xl mx-auto md:mx-0">
-            <Badge className="mb-4 text-xs" variant="secondary">
+      <section className="bg-primary py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-primary-foreground/90">
               {leagueInfo.currentSeason}
-            </Badge>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-4">
+            </span>
+            <h1 className="mt-4 text-4xl font-bold tracking-tight text-primary-foreground md:text-5xl">
               {leagueInfo.name}
             </h1>
-            <p className="text-lg text-muted-foreground mb-8 max-w-lg">
+            <p className="mt-3 text-lg text-primary-foreground/80 max-w-lg">
               {leagueInfo.description}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-              <Button size="lg" render={<Link href={leagueInfo.ctaHref} />}>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Button
+                size="lg"
+                className="bg-white text-primary hover:bg-white/90"
+                render={<Link href={leagueInfo.ctaHref} />}
+              >
                 {leagueInfo.ctaText}
-                <ArrowRight className="ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button variant="outline" size="lg" render={<Link href="/equipos" />}>
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-white/30 text-primary-foreground hover:bg-white/10"
+                render={<Link href="/equipos" />}
+              >
                 Ver Equipos
               </Button>
             </div>
@@ -61,103 +70,107 @@ export default function HomePage() {
       </section>
 
       {/* Upcoming matches */}
-      <section className="py-16">
+      <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              <h2 className="text-2xl font-bold">Próximos Partidos</h2>
-            </div>
+            <h2 className="text-2xl font-bold text-foreground">Próximos Partidos</h2>
             <Button variant="ghost" size="sm" render={<Link href="/partidos" />}>
               Ver todos <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {upcomingMatches.map((match) => (
-              <Card key={match.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-xs">
-                      Fecha {match.matchday}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {match.time} hs
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-sm text-right flex-1">
-                      {getTeamName(match.homeTeamId)}
-                    </span>
-                    <span className="text-xs font-bold text-muted-foreground px-2">vs</span>
-                    <span className="font-medium text-sm flex-1">
-                      {getTeamName(match.awayTeamId)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    {formatDate(match.date)}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {upcomingMatches.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {upcomingMatches.map((match) => (
+                <Card key={match.id} className="hover:shadow-md transition-shadow border-border">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Fecha {match.matchday}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {match.time} hs
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-right flex-1 leading-tight">
+                        {getTeamName(match.homeTeamId)}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground px-2">vs</span>
+                      <span className="text-sm font-semibold flex-1 leading-tight">
+                        {getTeamName(match.awayTeamId)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center mt-3">
+                      {formatDate(match.date)}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-12">No hay partidos programados aún.</p>
+          )}
         </div>
       </section>
 
       {/* Latest news */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-16 md:py-20 bg-muted-bg">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2">
-              <Newspaper className="h-5 w-5 text-primary" />
-              <h2 className="text-2xl font-bold">Últimas Noticias</h2>
-            </div>
+            <h2 className="text-2xl font-bold text-foreground">Últimas Noticias</h2>
             <Button variant="ghost" size="sm" render={<Link href="/actualidad" />}>
               Ver todas <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {latestNews.map((article) => (
-              <Card key={article.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="aspect-video rounded-lg bg-muted mb-3 overflow-hidden">
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-muted-foreground text-xs">
-                      Imagen
+          {latestNews.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-3">
+              {latestNews.map((article) => (
+                <Card key={article.id} className="hover:shadow-md transition-shadow border-border overflow-hidden">
+                  <div className="aspect-[16/9] bg-primary-light flex items-center justify-center text-muted-foreground text-sm">
+                    {article.image ? (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary-light flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">📷 {article.title}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin imagen</span>
+                    )}
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="text-xs font-medium">
+                        {article.category}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(article.date)}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {article.category}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(article.date)}
-                    </span>
-                  </div>
-                  <CardTitle className="text-lg leading-snug">
-                    <Link href={`/actualidad/${article.id}`} className="hover:text-primary transition-colors">
-                      {article.title}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    {article.excerpt}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="link" size="sm" className="px-0" render={<Link href={`/actualidad/${article.id}`} />}>
-                    Leer más <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardTitle className="text-base leading-snug">
+                      <Link href={`/actualidad/${article.id}`} className="hover:text-primary transition-colors">
+                        {article.title}
+                      </Link>
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-sm">
+                      {article.excerpt}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="link" size="sm" className="px-0 h-auto text-sm font-medium" render={<Link href={`/actualidad/${article.id}`} />}>
+                      Leer más <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-12">No hay noticias aún.</p>
+          )}
         </div>
       </section>
 
       {/* Quick links */}
-      <section className="py-16">
+      <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center mb-8">Secciones</h2>
+          <h2 className="text-2xl font-bold text-center mb-10">Secciones</h2>
           <div className="grid gap-4 md:grid-cols-4">
             {[
               { href: "/equipos", label: "Equipos", desc: "Conocé los clubes y sus planteles" },
@@ -166,10 +179,10 @@ export default function HomePage() {
               { href: "/institucional", label: "Institucional", desc: "Información de la liga" },
             ].map((section) => (
               <Link key={section.href} href={section.href}>
-                <Card className="h-full hover:shadow-md transition-shadow hover:border-primary/50">
+                <Card className="h-full border-border transition-all hover:shadow-md hover:border-primary/30">
                   <CardHeader>
                     <CardTitle className="text-lg">{section.label}</CardTitle>
-                    <CardDescription>{section.desc}</CardDescription>
+                    <CardDescription className="text-sm">{section.desc}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <span className="text-sm text-primary font-medium">

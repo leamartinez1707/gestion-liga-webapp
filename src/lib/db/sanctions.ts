@@ -1,5 +1,33 @@
-import type { Sanction } from "@/lib/types"
+import type { Sanction, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+
+export async function getSanctionsPaginated(
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<SanctionWithDetails>> {
+  try {
+    const supabase = createReadOnlyClient()
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    const { data, error, count } = await supabase
+      .from("sanctions")
+      .select(`*, player:player_id(name, team_id), match:match_id(home_team_id, away_team_id, home_score, away_score, matchday)`, { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to)
+
+    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    return {
+      data: (data ?? []).map(mapRowWithDetails),
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit),
+      error: null,
+    }
+  } catch {
+    return { data: [], total: 0, page, totalPages: 0, error: "No se pudo conectar con la base de datos." }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Sanction types for the data layer (snake_case from DB mapped to camelCase)

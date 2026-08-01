@@ -1,5 +1,33 @@
-import type { NewsArticle } from "@/lib/types"
+import type { NewsArticle, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+
+export async function getArticlesPaginated(
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<ArticleRow>> {
+  try {
+    const supabase = createReadOnlyClient()
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    const { data, error, count } = await supabase
+      .from("news_articles")
+      .select("*", { count: "exact" })
+      .order("date", { ascending: false })
+      .range(from, to)
+
+    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    return {
+      data: (data ?? []).map(mapRow),
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit),
+      error: null,
+    }
+  } catch {
+    return { data: [], total: 0, page, totalPages: 0, error: "No se pudo conectar con la base de datos." }
+  }
+}
 
 export interface ArticleRow {
   id: string

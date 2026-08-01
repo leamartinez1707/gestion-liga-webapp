@@ -90,3 +90,11 @@ export interface LeagueInfo {
   ctaText: string
   ctaHref: string
 }
+
+export interface PaginatedResult<T> {
+  data: T[]
+  total: number
+  page: number
+  totalPages: number
+  error: string | null
+}

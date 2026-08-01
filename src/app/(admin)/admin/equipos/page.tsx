@@ -1,7 +1,8 @@
+import { Suspense } from "react"
 import { Plus, Pencil, Trash2, Users } from "lucide-react"
 import Link from "next/link"
 
-import { getTeams } from "@/lib/db/teams"
+import { getTeamsPaginated } from "@/lib/db/teams"
 import { createTeamAction, deleteTeamAction } from "@/lib/actions/admin"
 import {
   Table,
@@ -14,9 +15,19 @@ import {
 import { Button } from "@/components/ui/button"
 import { TeamDialog } from "./dialog"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
+import { Pagination } from "@/components/ui/pagination"
 
-export default async function EquiposPage() {
-  const { data: teams, error } = await getTeams()
+const LIMIT = 10
+
+interface Props {
+  searchParams: Promise<{ page?: string }>
+}
+
+export default async function EquiposPage({ searchParams }: Props) {
+  const params = await searchParams
+  const page = Math.max(1, parseInt(params.page ?? "1") || 1)
+
+  const { data: teams, error, totalPages } = await getTeamsPaginated(page, LIMIT)
 
   if (error) {
     return (
@@ -26,92 +37,57 @@ export default async function EquiposPage() {
     )
   }
 
-  const teamsList = teams ?? []
-  const categories = [...new Set(teamsList.map((t) => t.category))]
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Equipos
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Gestioná los equipos de la liga
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Equipos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Gestioná los equipos de la liga</p>
         </div>
         <TeamDialog action={createTeamAction}>
           <Button className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Nuevo Equipo
+            <Plus className="h-4 w-4" /> Nuevo Equipo
           </Button>
         </TeamDialog>
       </div>
 
-      {/* Table */}
       <div className="rounded-xl border border-border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
               <TableHead>Categoría</TableHead>
-              <TableHead>Director Técnico</TableHead>
-              <TableHead className="text-center">Jugadores</TableHead>
-              <TableHead className="w-24 text-right">Acciones</TableHead>
+              <TableHead>DT</TableHead>
+              <TableHead className="w-28 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {teamsList.length === 0 && (
+            {teams.length === 0 && (
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-8 text-center text-sm text-muted-foreground"
-                >
-                  No hay equipos todavía. Creá el primero.
+                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  No hay equipos. Creá el primero.
                 </TableCell>
               </TableRow>
             )}
-            {teamsList.map((team) => (
+            {teams.map((team) => (
               <TableRow key={team.id}>
-                <TableCell>
-                  <Link
-                    href={`/admin/equipos/${team.id}`}
-                    className="font-medium text-foreground hover:text-primary hover:underline"
-                  >
-                    {team.name}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                    {team.category}
-                  </span>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {team.coach || "—"}
-                </TableCell>
-                <TableCell className="text-center text-muted-foreground">
-                  <span className="inline-flex items-center justify-center gap-1 text-sm">
-                    <Users className="h-3.5 w-3.5" />
-                  </span>
-                </TableCell>
+                <TableCell className="font-medium">{team.name}</TableCell>
+                <TableCell className="text-muted-foreground">{team.category}</TableCell>
+                <TableCell className="text-muted-foreground">{team.coach || "—"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Link href={`/admin/equipos/${team.id}`}>
+                      <Button variant="ghost" size="icon-sm" aria-label="Ver plantel">
+                        <Users className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <TeamDialog action={createTeamAction} team={team}>
                       <Button variant="ghost" size="icon-sm" aria-label="Editar">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                    </Link>
-                    <DeleteConfirmDialog
-                      itemName={team.name}
-                      onConfirm={deleteTeamAction.bind(null, team.id)}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Eliminar"
-                        className="text-destructive hover:text-destructive"
-                      >
+                    </TeamDialog>
+                    <DeleteConfirmDialog itemName={team.name} onConfirm={deleteTeamAction.bind(null, team.id)}>
+                      <Button variant="ghost" size="icon-sm" className="text-destructive" aria-label="Eliminar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </DeleteConfirmDialog>
@@ -122,6 +98,10 @@ export default async function EquiposPage() {
           </TableBody>
         </Table>
       </div>
+
+      <Suspense>
+        <Pagination page={page} totalPages={totalPages} />
+      </Suspense>
     </div>
   )
 }

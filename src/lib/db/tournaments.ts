@@ -1,5 +1,33 @@
-import type { Tournament } from "@/lib/types"
+import type { Tournament, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+
+export async function getTournamentsPaginated(
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<Tournament>> {
+  try {
+    const supabase = createReadOnlyClient()
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    const { data, error, count } = await supabase
+      .from("tournaments")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to)
+
+    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    return {
+      data: (data ?? []).map(mapRow),
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit),
+      error: null,
+    }
+  } catch {
+    return { data: [], total: 0, page, totalPages: 0, error: "No se pudo conectar con la base de datos." }
+  }
+}
 
 export async function getTournaments(): Promise<{ data: Tournament[] | null; error: string | null }> {
   try {

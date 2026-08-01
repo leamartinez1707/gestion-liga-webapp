@@ -1,5 +1,34 @@
-import type { Match } from "@/lib/types"
+import type { Match, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+
+export async function getMatchesPaginated(
+  page = 1,
+  limit = 10
+): Promise<PaginatedResult<MatchWithTeams>> {
+  try {
+    const supabase = createReadOnlyClient()
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    const { data, error, count } = await supabase
+      .from("matches")
+      .select(`*, home_team:home_team_id(name), away_team:away_team_id(name)`, { count: "exact" })
+      .order("date", { ascending: true })
+      .order("time", { ascending: true })
+      .range(from, to)
+
+    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    return {
+      data: (data ?? []).map(mapRowWithTeams),
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit),
+      error: null,
+    }
+  } catch {
+    return { data: [], total: 0, page, totalPages: 0, error: "No se pudo conectar con la base de datos." }
+  }
+}
 
 export interface MatchWithTeams extends Match {
   homeTeamName: string

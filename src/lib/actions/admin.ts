@@ -17,6 +17,10 @@ import {
   deleteDivision,
 } from "@/lib/db/series"
 import {
+  assignDelegate,
+  revokeDelegate,
+} from "@/lib/db/delegates"
+import {
   createTeam,
   updateTeam,
   deleteTeam,
@@ -628,4 +632,49 @@ export async function deleteDivisionAction(
   if (result.error) return { error: result.error }
   revalidatePath(`/admin/series/${seriesId}`)
   return {}
+}
+
+// ---------------------------------------------------------------------------
+// Delegate actions
+// ---------------------------------------------------------------------------
+
+export async function assignDelegateAction(
+  teamId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const email = formData.get("email") as string
+  if (!email?.trim()) return { error: "El email es obligatorio." }
+
+  const result = await assignDelegate(teamId, email.trim())
+  if (result.error) return { error: result.error }
+  revalidatePath(`/admin/equipos/${teamId}`)
+  return { success: true as const }
+}
+
+/** Form-compatible wrapper for assignDelegate */
+export async function assignDelegateFormAction(formData: FormData): Promise<void> {
+  const teamId = formData.get("teamId") as string
+  const email = formData.get("email") as string
+  if (!email?.trim()) throw new Error("El email es obligatorio.")
+
+  const result = await assignDelegate(teamId, email.trim())
+  if (result.error) throw new Error(result.error)
+  revalidatePath(`/admin/equipos/${teamId}`)
+}
+
+export async function revokeDelegateAction(teamId: string) {
+  "use server"
+  const result = await revokeDelegate(teamId)
+  if (result.error) return { error: result.error }
+  revalidatePath(`/admin/equipos/${teamId}`)
+  return { success: true as const }
+}
+
+/** Form-compatible wrapper for revokeDelegate */
+export async function revokeDelegateFormAction(formData: FormData): Promise<void> {
+  const teamId = formData.get("teamId") as string
+  const result = await revokeDelegate(teamId)
+  if (result.error) throw new Error(result.error)
+  revalidatePath(`/admin/equipos/${teamId}`)
 }

@@ -40,6 +40,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Protected delegate routes → redirect to login
+  if (!user && request.nextUrl.pathname.startsWith("/delegado")) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    return NextResponse.redirect(url)
+  }
+
   // Already authenticated → redirect away from login to admin
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone()
@@ -52,11 +59,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths under /admin and the /login page.
-     * Static assets and auth API are excluded.
-     */
     "/admin/:path*",
+    "/delegado/:path*",
     "/login",
   ],
 }

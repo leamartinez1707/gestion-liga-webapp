@@ -4,7 +4,13 @@ import Link from "next/link"
 
 import { getTeam } from "@/lib/db/teams"
 import { getPlayersByTeam } from "@/lib/db/players"
-import { updateTeamAction, deletePlayerAction } from "@/lib/actions/admin"
+import { getDelegateByTeam } from "@/lib/db/delegates"
+import {
+  updateTeamAction,
+  deletePlayerAction,
+  assignDelegateFormAction,
+  revokeDelegateFormAction,
+} from "@/lib/actions/admin"
 import { Button } from "@/components/ui/button"
 import { TeamEditForm } from "./edit-form"
 import { AddPlayerInline } from "./add-player"
@@ -46,6 +52,8 @@ export default async function EquipoDetailPage({
   const { data: players, error: playersError } = await getPlayersByTeam(id)
   const playersList = players ?? []
 
+  const { data: delegate } = await getDelegateByTeam(id)
+
   return (
     <div className="flex flex-col gap-6">
       {/* Back link */}
@@ -61,6 +69,37 @@ export default async function EquipoDetailPage({
       <div className="rounded-xl border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Información del equipo</h2>
         <TeamEditForm team={team} action={updateTeamAction.bind(null, id)} />
+      </div>
+
+      {/* Delegate management */}
+      <div className="rounded-xl border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4">Delegado del equipo</h2>
+        {delegate ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{delegate.email}</span>
+              <Badge variant="outline" className="text-xs">Delegado</Badge>
+            </div>
+            <form action={revokeDelegateFormAction}>
+              <input type="hidden" name="teamId" value={id} />
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive text-xs">
+                Revocar acceso
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <form action={assignDelegateFormAction} className="flex gap-2">
+            <input type="hidden" name="teamId" value={id} />
+            <input
+              type="email"
+              name="email"
+              placeholder="Email del delegado"
+              required
+              className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+            />
+            <Button type="submit" size="sm">Asignar</Button>
+          </form>
+        )}
       </div>
 
       {/* Squad management */}

@@ -9,6 +9,14 @@ import {
   deleteTournament,
 } from "@/lib/db/tournaments"
 import {
+  createSeries,
+  updateSeries,
+  deleteSeries,
+  createDivision,
+  updateDivision,
+  deleteDivision,
+} from "@/lib/db/series"
+import {
   createTeam,
   updateTeam,
   deleteTeam,
@@ -35,6 +43,7 @@ import {
   unpublishArticle,
 } from "@/lib/db/news"
 import { bulkCreateMatches } from "@/lib/db/fixture-actions"
+import { uploadOptionalImage } from "@/lib/actions/upload"
 import type { Player, Match } from "@/lib/types"
 
 // ---------------------------------------------------------------------------
@@ -124,6 +133,9 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
   if (!shortName?.trim()) return { error: "El nombre corto es obligatorio." }
   if (!category?.trim()) return { error: "La categoría es obligatoria." }
 
+  const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
+  if (uploadError) return { error: uploadError }
+
   const result = await createTeam({
     name: name.trim(),
     shortName: shortName.trim(),
@@ -131,6 +143,7 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
     coach: coach?.trim() || undefined,
     assistantCoach: assistantCoach?.trim() || undefined,
     tournamentId: tournamentId || undefined,
+    shieldUrl,
   })
 
   if (result.error) return { error: result.error }
@@ -152,6 +165,9 @@ export async function updateTeamAction(
 
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
 
+  const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
+  if (uploadError) return { error: uploadError }
+
   const result = await updateTeam(id, {
     name: name.trim(),
     shortName: shortName?.trim() || undefined,
@@ -159,6 +175,7 @@ export async function updateTeamAction(
     coach: coach?.trim() || null,
     assistantCoach: assistantCoach?.trim() || null,
     tournamentId: tournamentId || null,
+    shieldUrl: shieldUrl ?? undefined,
   })
 
   if (result.error) return { error: result.error }
@@ -189,11 +206,15 @@ export async function createPlayerAction(_prev: unknown, formData: FormData) {
   if (!name?.trim()) return { error: "El nombre del jugador es obligatorio." }
   if (!teamId) return { error: "El equipo es obligatorio." }
 
+  const { url: photoUrl, error: uploadError } = await uploadOptionalImage(formData, "photo", "players")
+  if (uploadError) return { error: uploadError }
+
   const result = await createPlayer({
     name: name.trim(),
     number: number ? parseInt(number, 10) : 0,
     position: (position as Player["position"]) ?? "delantero",
     teamId,
+    photo: photoUrl ?? undefined,
   })
 
   if (result.error) return { error: result.error }
@@ -214,12 +235,16 @@ export async function updatePlayerAction(
 
   if (!name?.trim()) return { error: "El nombre del jugador es obligatorio." }
 
+  const { url: photoUrl, error: uploadError } = await uploadOptionalImage(formData, "photo", "players")
+  if (uploadError) return { error: uploadError }
+
   const result = await updatePlayer(id, {
     name: name.trim(),
     number: number ? parseInt(number, 10) : undefined,
     position: (position as Player["position"]) || undefined,
     teamId: teamId || undefined,
     active: active === "true",
+    photo: photoUrl ?? null,
   })
 
   if (result.error) return { error: result.error }
@@ -410,15 +435,21 @@ export async function createArticleAction(
   const excerpt = formData.get("excerpt") as string
   const content = formData.get("content") as string
   const category = formData.get("category") as string
+  const seriesId = formData.get("seriesId") as string
   const published = formData.get("published") as string
 
   if (!title?.trim()) return { error: "El título es obligatorio." }
+
+  const { url: imageUrl, error: uploadError } = await uploadOptionalImage(formData, "image", "news")
+  if (uploadError) return { error: uploadError }
 
   const result = await createArticle({
     title: title.trim(),
     excerpt: excerpt?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
+    seriesId: seriesId || null,
+    imageUrl,
     published: published === "true",
   })
 
@@ -436,13 +467,19 @@ export async function updateArticleAction(
   const excerpt = formData.get("excerpt") as string
   const content = formData.get("content") as string
   const category = formData.get("category") as string
+  const seriesId = formData.get("seriesId") as string
   const published = formData.get("published") as string
+
+  const { url: imageUrl, error: uploadError } = await uploadOptionalImage(formData, "image", "news")
+  if (uploadError) return { error: uploadError }
 
   const result = await updateArticle(id, {
     title: title?.trim() || undefined,
     excerpt: excerpt?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
+    seriesId: seriesId || null,
+    imageUrl: imageUrl ?? undefined,
     published: published === "true",
   })
 
@@ -488,4 +525,107 @@ export async function unpublishArticleFormAction(formData: FormData) {
   if (!id) return
   await unpublishArticle(id)
   revalidatePath("/admin/noticias")
+}
+
+// ---------------------------------------------------------------------------
+// Series actions
+// ---------------------------------------------------------------------------
+
+export async function createSeriesAction(
+  _prev: unknown,
+  formData: FormData
+) {
+  const name = formData.get("name") as string
+  const description = formData.get("description") as string
+
+  if (!name?.trim()) return { error: "El nombre de la serie es obligatorio." }
+
+  const result = await createSeries({
+    name: name.trim(),
+    description: description?.trim() || undefined,
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/series")
+  return { success: true as const }
+}
+
+export async function updateSeriesAction(
+  id: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const name = formData.get("name") as string
+  const description = formData.get("description") as string
+
+  const result = await updateSeries(id, {
+    name: name?.trim() || undefined,
+    description: description?.trim() || null,
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/series")
+  revalidatePath(`/admin/series/${id}`)
+  return { success: true as const }
+}
+
+export async function deleteSeriesAction(
+  id: string
+): Promise<{ error?: string }> {
+  const result = await deleteSeries(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/series")
+  return {}
+}
+
+// ---------------------------------------------------------------------------
+// Division actions
+// ---------------------------------------------------------------------------
+
+export async function createDivisionAction(
+  seriesId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const name = formData.get("name") as string
+
+  if (!name?.trim()) return { error: "El nombre de la división es obligatorio." }
+
+  const result = await createDivision({
+    seriesId,
+    name: name.trim(),
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath(`/admin/series/${seriesId}`)
+  return { success: true as const }
+}
+
+export async function updateDivisionAction(
+  id: string,
+  seriesId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const name = formData.get("name") as string
+  const displayOrder = formData.get("displayOrder") as string
+
+  const result = await updateDivision(id, {
+    name: name?.trim() || undefined,
+    displayOrder: displayOrder ? parseInt(displayOrder) : undefined,
+  })
+
+  if (result.error) return { error: result.error }
+  revalidatePath(`/admin/series/${seriesId}`)
+  return { success: true as const }
+}
+
+export async function deleteDivisionAction(
+  id: string,
+  seriesId: string
+): Promise<{ error?: string }> {
+  const result = await deleteDivision(id)
+  if (result.error) return { error: result.error }
+  revalidatePath(`/admin/series/${seriesId}`)
+  return {}
 }

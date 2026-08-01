@@ -137,6 +137,7 @@ create table news_articles (
   pdf_url text,
   author text,
   category text,
+  series_id uuid references series,
   published boolean default false,
   date date default current_date,
   created_at timestamptz default now()
@@ -152,3 +153,4 @@ create index idx_matches_date on matches(date);
 create index idx_sanctions_player on sanctions(player_id);
 create index idx_sanctions_match on sanctions(match_id);
 create index idx_news_published on news_articles(published);
+create index idx_news_series on news_articles(series_id);

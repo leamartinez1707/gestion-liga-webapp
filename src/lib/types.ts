@@ -79,6 +79,7 @@ export interface NewsArticle {
   image: string
   date: string
   category: string
+  seriesId?: string
   published?: boolean
 }
 

@@ -12,6 +12,16 @@ export interface Database {
         Insert: Omit<Profile, "created_at">
         Update: Partial<Omit<Profile, "id">>
       }
+      series: {
+        Row: Series
+        Insert: Omit<Series, "id" | "created_at">
+        Update: Partial<Omit<Series, "id">>
+      }
+      divisions: {
+        Row: Division
+        Insert: Omit<Division, "id" | "created_at">
+        Update: Partial<Omit<Division, "id">>
+      }
       tournaments: {
         Row: Tournament
         Insert: Omit<Tournament, "id" | "created_at">
@@ -58,10 +68,28 @@ export interface Profile {
   created_at: string
 }
 
+export interface Series {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  created_at: string
+}
+
+export interface Division {
+  id: string
+  series_id: string
+  name: string
+  display_order: number
+  created_at: string
+}
+
 export interface Tournament {
   id: string
   name: string
   category: string
+  series_id: string | null
+  division_id: string | null
   season: string
   format: "league" | "elimination" | "groups"
   start_date: string | null
@@ -75,6 +103,8 @@ export interface Team {
   short_name: string
   shield_url: string | null
   category: string
+  series_id: string | null
+  division_id: string | null
   coach: string | null
   assistant_coach: string | null
   tournament_id: string | null
@@ -127,6 +157,7 @@ export interface NewsArticle {
   pdf_url: string | null
   author: string | null
   category: string | null
+  series_id: string | null
   published: boolean
   date: string
   created_at: string

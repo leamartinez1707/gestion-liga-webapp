@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "supabase-storage": {
+      "source": "nice-wolf-studio/claude-code-supabase-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-storage/SKILL.md",
+      "computedHash": "bd5b285e519b5a324220ece0a8ecc9d0a143091763e4013767a9d06443b9ec3c"
+    }
+  }
+}

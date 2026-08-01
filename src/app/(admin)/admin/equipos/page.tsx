@@ -16,10 +16,18 @@ import { TeamDialog } from "./dialog"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 
 export default async function EquiposPage() {
-  const teams = await getTeams()
+  const { data: teams, error } = await getTeams()
 
-  // Compute unique categories for filter display
-  const categories = [...new Set(teams.map((t) => t.category))]
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{error}</p>
+      </div>
+    )
+  }
+
+  const teamsList = teams ?? []
+  const categories = [...new Set(teamsList.map((t) => t.category))]
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,7 +62,7 @@ export default async function EquiposPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {teams.length === 0 && (
+            {teamsList.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -64,7 +72,7 @@ export default async function EquiposPage() {
                 </TableCell>
               </TableRow>
             )}
-            {teams.map((team) => (
+            {teamsList.map((team) => (
               <TableRow key={team.id}>
                 <TableCell>
                   <Link

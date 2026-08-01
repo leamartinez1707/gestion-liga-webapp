@@ -1,9 +1,9 @@
 import { LayoutDashboard, Trophy, Users, Calendar, Newspaper } from "lucide-react"
 
-import { teams } from "@/lib/data/teams"
-import { tournaments } from "@/lib/data/tournaments"
-import { matches } from "@/lib/data/matches"
-import { newsArticles } from "@/lib/data/news"
+import { getTeams } from "@/lib/db/teams"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getMatches } from "@/lib/db/matches"
+import { getArticles } from "@/lib/db/news"
 import {
   Card,
   CardContent,
@@ -12,40 +12,39 @@ import {
 } from "@/components/ui/card"
 
 // ---------------------------------------------------------------------------
-// Stats for the dashboard (sourced from mock data — real DB queries come in
-// PR 2/3 once DAL modules are wired).
+// Dashboard Page — fetches real counts from Supabase
 // ---------------------------------------------------------------------------
-const stats = [
-  {
-    title: "Equipos",
-    value: teams.length,
-    icon: Users,
-    description: "equipos registrados",
-  },
-  {
-    title: "Torneos activos",
-    value: tournaments.length,
-    icon: Trophy,
-    description: "torneos en curso",
-  },
-  {
-    title: "Próximos partidos",
-    value: matches.filter((m) => m.status === "scheduled").length,
-    icon: Calendar,
-    description: "partidos programados",
-  },
-  {
-    title: "Noticias publicadas",
-    value: newsArticles.length,
-    icon: Newspaper,
-    description: "artículos publicados",
-  },
-]
+export default async function AdminDashboard() {
+  const [{ data: teams }, { data: tournaments }, { data: matches }, { data: articles }] =
+    await Promise.all([getTeams(), getTournaments(), getMatches(), getArticles()])
 
-// ---------------------------------------------------------------------------
-// Dashboard Page
-// ---------------------------------------------------------------------------
-export default function AdminDashboard() {
+  const stats = [
+    {
+      title: "Equipos",
+      value: teams?.length ?? "—",
+      icon: Users,
+      description: "equipos registrados",
+    },
+    {
+      title: "Torneos",
+      value: tournaments?.length ?? "—",
+      icon: Trophy,
+      description: "torneos creados",
+    },
+    {
+      title: "Partidos jugados",
+      value: matches?.filter((m) => m.status === "finished").length ?? "—",
+      icon: Calendar,
+      description: "partidos finalizados",
+    },
+    {
+      title: "Noticias",
+      value: articles?.filter((a) => a.published).length ?? "—",
+      icon: Newspaper,
+      description: "artículos publicados",
+    },
+  ]
+
   return (
     <div className="flex flex-col gap-6">
       <div>

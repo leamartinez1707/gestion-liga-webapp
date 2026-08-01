@@ -32,10 +32,19 @@ export default async function EquipoDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const team = await getTeam(id)
+
+  const { data: team, error: teamError } = await getTeam(id)
+  if (teamError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{teamError}</p>
+      </div>
+    )
+  }
   if (!team) notFound()
 
-  const players = await getPlayersByTeam(id)
+  const { data: players, error: playersError } = await getPlayersByTeam(id)
+  const playersList = players ?? []
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,7 +69,7 @@ export default async function EquipoDetailPage({
           <div>
             <h2 className="text-lg font-semibold">Plantel</h2>
             <p className="text-sm text-muted-foreground">
-              {players.length} jugador{players.length !== 1 ? "es" : ""}
+              {playersList.length} jugador{playersList.length !== 1 ? "es" : ""}
             </p>
           </div>
         </div>
@@ -82,7 +91,7 @@ export default async function EquipoDetailPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {players.length === 0 && (
+            {playersList.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -92,7 +101,7 @@ export default async function EquipoDetailPage({
                 </TableCell>
               </TableRow>
             )}
-            {players.map((player) => (
+            {playersList.map((player) => (
               <TableRow key={player.id}>
                 <TableCell className="text-center text-muted-foreground">
                   {player.number || "—"}

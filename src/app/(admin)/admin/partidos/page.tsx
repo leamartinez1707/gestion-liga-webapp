@@ -34,12 +34,24 @@ export default async function PartidosPage(props: {
   const searchParams = await props.searchParams
   const tournamentFilter = searchParams?.tournament
 
-  const allMatches = await getMatches(tournamentFilter)
-  const tournaments = await getTournaments()
-  const teams = await getTeams()
+  const { data: allMatches, error: matchesError } = await getMatches(tournamentFilter)
+  const { data: tournaments } = await getTournaments()
+  const { data: teams } = await getTeams()
 
-  const teamMap = new Map(teams.map((t) => [t.id, { name: t.name, shortName: t.shortName }]))
-  const tournamentMap = new Map(tournaments.map((t) => [t.id, t.name]))
+  if (matchesError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{matchesError}</p>
+      </div>
+    )
+  }
+
+  const matchesList = allMatches ?? []
+  const tournamentsList = tournaments ?? []
+  const teamsList = teams ?? []
+
+  const teamMap = new Map(teamsList.map((t) => [t.id, { name: t.name, shortName: t.shortName }]))
+  const tournamentMap = new Map(tournamentsList.map((t) => [t.id, t.name]))
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,7 +65,7 @@ export default async function PartidosPage(props: {
             Gestioná los partidos de la liga
           </p>
         </div>
-        <MatchDialog action={createMatchAction} tournaments={tournaments} teams={teams}>
+        <MatchDialog action={createMatchAction} tournaments={tournamentsList} teams={teamsList}>
           <Button className="gap-1.5">
             <Plus className="h-4 w-4" />
             Nuevo Partido
@@ -62,7 +74,7 @@ export default async function PartidosPage(props: {
       </div>
 
       {/* Filter */}
-      <MatchFilter tournaments={tournaments} currentTournament={tournamentFilter} />
+      <MatchFilter tournaments={tournamentsList} currentTournament={tournamentFilter} />
 
       {/* Table */}
       <div className="rounded-xl border border-border">
@@ -79,7 +91,7 @@ export default async function PartidosPage(props: {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allMatches.length === 0 && (
+            {matchesList.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={7}
@@ -89,7 +101,7 @@ export default async function PartidosPage(props: {
                 </TableCell>
               </TableRow>
             )}
-            {allMatches.map((m) => {
+            {matchesList.map((m) => {
               const st = statusLabels[m.status] ?? statusLabels.scheduled
               const localName = teamMap.get(m.homeTeamId)?.shortName ?? m.homeTeamName
               const awayName = teamMap.get(m.awayTeamId)?.shortName ?? m.awayTeamName
@@ -136,8 +148,8 @@ export default async function PartidosPage(props: {
                       <MatchDialog
                         action={updateMatchAction.bind(null, m.id)}
                         match={m}
-                        tournaments={tournaments}
-                        teams={teams}
+                        tournaments={tournamentsList}
+                        teams={teamsList}
                       >
                         <Button variant="ghost" size="icon-sm" aria-label="Editar">
                           <Pencil className="h-4 w-4" />

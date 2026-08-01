@@ -34,14 +34,25 @@ export default async function JugadoresPage(props: {
   const searchParams = await props.searchParams
   const teamFilter = searchParams?.team
 
-  const allPlayers = await getPlayers()
-  const teams = await getTeams()
+  const { data: allPlayers, error: playersError } = await getPlayers()
+  const { data: teams, error: teamsError } = await getTeams()
+
+  if (playersError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{playersError}</p>
+      </div>
+    )
+  }
+
+  const playersList = allPlayers ?? []
+  const teamsList = teams ?? []
 
   const filtered = teamFilter
-    ? allPlayers.filter((p) => p.teamId === teamFilter)
-    : allPlayers
+    ? playersList.filter((p) => p.teamId === teamFilter)
+    : playersList
 
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]))
+  const teamMap = new Map(teamsList.map((t) => [t.id, t.name]))
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +66,7 @@ export default async function JugadoresPage(props: {
             Gestioná los jugadores de la liga
           </p>
         </div>
-        <PlayerDialog action={createPlayerAction} teams={teams}>
+        <PlayerDialog action={createPlayerAction} teams={teamsList}>
           <Button className="gap-1.5">
             <Plus className="h-4 w-4" />
             Nuevo Jugador
@@ -64,7 +75,7 @@ export default async function JugadoresPage(props: {
       </div>
 
       {/* Filter */}
-      <PlayerTeamFilter teams={teams} currentTeam={teamFilter} />
+      <PlayerTeamFilter teams={teamsList} currentTeam={teamFilter} />
 
       {/* Table */}
       <div className="rounded-xl border border-border">
@@ -115,7 +126,7 @@ export default async function JugadoresPage(props: {
                     <PlayerDialog
                       action={updatePlayerAction.bind(null, player.id)}
                       player={player}
-                      teams={teams}
+                      teams={teamsList}
                     >
                       <Button
                         variant="ghost"

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
 import type { ArticleRow } from "@/lib/db/news"
+import type { Series } from "@/lib/types"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 
 const categories = [
@@ -48,15 +50,18 @@ interface ArticleDialogProps {
     formData: FormData
   ) => Promise<{ error?: string; success?: boolean }>
   article?: ArticleRow
+  series: Series[]
 }
 
 export function ArticleDialog({
   children,
   action,
   article,
+  series,
 }: ArticleDialogProps) {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState(article?.category ?? "Partidos")
+  const [seriesId, setSeriesId] = useState(article?.seriesId ?? "")
   const [published, setPublished] = useState(article?.published ?? false)
   const [state, formAction] = useActionState(action, undefined)
 
@@ -87,6 +92,31 @@ export function ArticleDialog({
               placeholder="Título de la noticia"
               required
             />
+          </div>
+
+          {/* Series */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Serie</Label>
+            <Select
+              value={seriesId}
+              onValueChange={(v) => v && setSeriesId(v)}
+              name="seriesId"
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todas las series" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="null">Todas las series</SelectItem>
+                {series.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              La noticia aparecerá destacada en esta serie
+            </p>
           </div>
 
           {/* Category */}
@@ -134,18 +164,10 @@ export function ArticleDialog({
             />
           </div>
 
-          {/* Image upload placeholder */}
+          {/* Image upload */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="image">Imagen (URL)</Label>
-            <Input
-              id="image"
-              name="image"
-              defaultValue={article?.imageUrl ?? ""}
-              placeholder="https://ejemplo.com/imagen.jpg"
-            />
-            <p className="text-xs text-muted-foreground">
-              Próximamente: carga de imágenes a Supabase Storage
-            </p>
+            <Label>Imagen</Label>
+            <ImageUpload name="image" currentUrl={article?.imageUrl} />
           </div>
 
           {/* Published toggle */}

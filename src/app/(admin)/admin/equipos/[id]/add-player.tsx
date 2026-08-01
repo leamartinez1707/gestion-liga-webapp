@@ -2,7 +2,7 @@
 
 import { useActionState } from "react"
 import { useFormStatus } from "react-dom"
-import { Plus } from "lucide-react"
+import { Plus, Camera } from "lucide-react"
 
 import { createPlayerAction } from "@/lib/actions/admin"
 import { Button } from "@/components/ui/button"
@@ -87,6 +87,21 @@ export function AddPlayerInline({ teamId }: AddPlayerInlineProps) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Photo (compact) */}
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="photo" className="text-xs cursor-pointer">
+          <Camera className="h-3.5 w-3.5 inline mr-0.5" />
+          Foto
+        </Label>
+        <Input
+          id="photo"
+          name="photo"
+          type="file"
+          accept="image/png, image/jpeg, image/webp"
+          className="h-8 w-24 text-[10px] file:text-[10px]"
+        />
       </div>
 
       <SubmitButton />

@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -52,6 +53,12 @@ export function TeamDialog({ children, action, team }: TeamDialogProps) {
         </DialogHeader>
 
         <form action={formAction} className="flex flex-col gap-4">
+          {/* Shield */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Escudo</Label>
+            <ImageUpload name="shield" currentUrl={team?.shield} />
+          </div>
+
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nombre</Label>

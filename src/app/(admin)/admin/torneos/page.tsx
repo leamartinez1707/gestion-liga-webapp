@@ -28,13 +28,23 @@ const formatLabels: Record<string, string> = {
 }
 
 export default async function TorneosPage() {
-  const tournaments = await getTournaments()
+  const { data: tournaments, error } = await getTournaments()
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{error}</p>
+      </div>
+    )
+  }
+
+  const tournamentsList = tournaments ?? []
 
   // Fetch teams grouped by tournament for fixture generation
   const allTeams = await Promise.all(
-    tournaments.map(async (t) => {
-      const teams = await getTeamsByTournament(t.id)
-      return { tournamentId: t.id, teams }
+    tournamentsList.map(async (t) => {
+      const result = await getTeamsByTournament(t.id)
+      return { tournamentId: t.id, teams: result.data ?? [] }
     })
   )
   const teamsByTournament = new Map(allTeams.map((t) => [t.tournamentId, t.teams]))
@@ -72,7 +82,7 @@ export default async function TorneosPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tournaments.length === 0 && (
+            {tournamentsList.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -82,7 +92,7 @@ export default async function TorneosPage() {
                 </TableCell>
               </TableRow>
             )}
-            {tournaments.map((t) => (
+            {tournamentsList.map((t) => (
               <TableRow key={t.id}>
                 <TableCell className="font-medium">{t.name}</TableCell>
                 <TableCell className="text-muted-foreground">

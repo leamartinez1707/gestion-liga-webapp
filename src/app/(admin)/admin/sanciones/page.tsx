@@ -32,15 +32,27 @@ export default async function SancionesPage(props: {
   const searchParams = await props.searchParams
   const statusFilter = searchParams?.status
 
-  const sanctions = await getSanctions()
-  const players = await getPlayers()
-  const teams = await getTeams()
+  const { data: sanctions, error: sanctionsError } = await getSanctions()
+  const { data: players } = await getPlayers()
+  const { data: teams } = await getTeams()
 
-  const teamMap = new Map(teams.map((t) => [t.id, t.name]))
-  const playerTeamMap = new Map(players.map((p) => [p.id, p.teamId]))
+  if (sanctionsError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{sanctionsError}</p>
+      </div>
+    )
+  }
+
+  const sanctionsList = sanctions ?? []
+  const playersList = players ?? []
+  const teamsList = teams ?? []
+
+  const teamMap = new Map(teamsList.map((t) => [t.id, t.name]))
+  const playerTeamMap = new Map(playersList.map((p) => [p.id, p.teamId]))
 
   // Enrich sanctions with team info
-  const enriched = sanctions.map((s) => ({
+  const enriched = sanctionsList.map((s) => ({
     ...s,
     teamName: teamMap.get(playerTeamMap.get(s.playerId) ?? "") ?? "—",
   }))
@@ -52,7 +64,7 @@ export default async function SancionesPage(props: {
       ? enriched.filter((s) => !s.expiresAfterMatch || s.expiresAfterMatch <= 0)
       : enriched
 
-  const showCreateButton = players.length > 0
+  const showCreateButton = playersList.length > 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,8 +81,8 @@ export default async function SancionesPage(props: {
         {showCreateButton && (
           <SanctionDialog
             action={createSanctionAction}
-            players={players}
-            teams={teams}
+            players={playersList}
+            teams={teamsList}
           >
             <Button className="gap-1.5">
               <Plus className="h-4 w-4" />

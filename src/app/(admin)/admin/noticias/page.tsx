@@ -1,6 +1,7 @@
 import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react"
 
 import { getArticles } from "@/lib/db/news"
+import { getSeries } from "@/lib/db/series"
 import {
   createArticleAction,
   updateArticleAction,
@@ -22,7 +23,22 @@ import { ArticleDialog } from "./dialog"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 
 export default async function NoticiasPage() {
-  const articles = await getArticles()
+  const [{ data: articles, error }, { data: seriesList }] = await Promise.all([
+    getArticles(),
+    getSeries(),
+  ])
+
+  const series = seriesList ?? []
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <p className="text-destructive text-sm font-medium">{error}</p>
+      </div>
+    )
+  }
+
+  const articlesList = articles ?? []
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +52,7 @@ export default async function NoticiasPage() {
             Gestioná las noticias de la liga
           </p>
         </div>
-        <ArticleDialog action={createArticleAction}>
+        <ArticleDialog action={createArticleAction} series={series}>
           <Button className="gap-1.5">
             <Plus className="h-4 w-4" />
             Nueva Noticia
@@ -50,6 +66,7 @@ export default async function NoticiasPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Título</TableHead>
+              <TableHead>Serie</TableHead>
               <TableHead>Categoría</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead className="w-24 text-center">Estado</TableHead>
@@ -57,17 +74,17 @@ export default async function NoticiasPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {articles.length === 0 && (
+            {articlesList.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   No hay noticias todavía. Creá la primera.
                 </TableCell>
               </TableRow>
             )}
-            {articles.map((a) => (
+            {articlesList.map((a) => (
               <TableRow key={a.id}>
                 <TableCell className="max-w-xs">
                   <p className="truncate font-medium">{a.title}</p>
@@ -76,6 +93,11 @@ export default async function NoticiasPage() {
                       {a.excerpt}
                     </p>
                   )}
+                </TableCell>
+                <TableCell>
+                  <span className="text-xs text-muted-foreground">
+                    {series.find((s) => s.id === a.seriesId)?.name ?? "General"}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
@@ -127,6 +149,7 @@ export default async function NoticiasPage() {
                     <ArticleDialog
                       action={updateArticleAction.bind(null, a.id)}
                       article={a}
+                      series={series}
                     >
                       <Button variant="ghost" size="icon-sm" aria-label="Editar">
                         <Pencil className="h-4 w-4" />

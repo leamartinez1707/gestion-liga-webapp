@@ -1,5 +1,5 @@
 import type { NewsArticle } from "@/lib/types"
-import { createClient } from "@/lib/supabase/server"
+import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
 export interface ArticleRow {
   id: string
@@ -8,55 +8,41 @@ export interface ArticleRow {
   content: string | null
   imageUrl: string | null
   category: string | null
+  seriesId: string | null
   published: boolean
   date: string
 }
 
-export async function getArticles(): Promise<ArticleRow[]> {
+export async function getArticles(seriesId?: string): Promise<{ data: ArticleRow[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("news_articles") as any)
+    const supabase = createReadOnlyClient()
+    let query = supabase
+      .from("news_articles")
       .select("*")
       .order("date", { ascending: false })
-    if (!data) return []
-    return data.map(mapRow)
+    if (seriesId) {
+      query = query.eq("series_id", seriesId)
+    }
+    const { data, error } = await query
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRow), error: null }
   } catch {
-    const { newsArticles } = await import("@/lib/data/news")
-    return newsArticles.map((a) => ({
-      id: a.id,
-      title: a.title,
-      excerpt: a.excerpt,
-      content: a.content,
-      imageUrl: a.image,
-      category: a.category,
-      published: a.published ?? false,
-      date: a.date,
-    }))
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
-export async function getArticle(id: string): Promise<ArticleRow | null> {
+export async function getArticle(id: string): Promise<{ data: ArticleRow | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("news_articles") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("news_articles")
       .select("*")
       .eq("id", id)
       .single()
-    return data ? mapRow(data) : null
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapRow(data) : null, error: null }
   } catch {
-    const { newsArticles } = await import("@/lib/data/news")
-    const article = newsArticles.find((a) => a.id === id)
-    if (!article) return null
-    return {
-      id: article.id,
-      title: article.title,
-      excerpt: article.excerpt,
-      content: article.content,
-      imageUrl: article.image,
-      category: article.category,
-      published: article.published ?? false,
-      date: article.date,
-    }
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
@@ -67,6 +53,7 @@ export async function createArticle(
     content?: string | null
     imageUrl?: string | null
     category?: string | null
+    seriesId?: string | null
     published?: boolean
   }
 ): Promise<{ error?: string; id?: string }> {
@@ -79,6 +66,7 @@ export async function createArticle(
         content: data.content ?? null,
         image_url: data.imageUrl ?? null,
         category: data.category ?? null,
+        series_id: data.seriesId ?? null,
         published: data.published ?? false,
         date: new Date().toISOString().split("T")[0],
       })
@@ -88,9 +76,7 @@ export async function createArticle(
     if (error) return { error: error.message }
     return { id: inserted?.id }
   } catch {
-    return {
-      error: "No se pudo crear la noticia. Verificá que Supabase esté configurado.",
-    }
+    return { error: "No se pudo crear la noticia. Verificá que Supabase esté configurado." }
   }
 }
 
@@ -102,6 +88,7 @@ export async function updateArticle(
     content: string | null
     imageUrl: string | null
     category: string | null
+    seriesId: string | null
     published: boolean
   }>
 ): Promise<{ error?: string }> {
@@ -113,6 +100,7 @@ export async function updateArticle(
     if (data.content !== undefined) payload.content = data.content
     if (data.imageUrl !== undefined) payload.image_url = data.imageUrl
     if (data.category !== undefined) payload.category = data.category
+    if (data.seriesId !== undefined) payload.series_id = data.seriesId
     if (data.published !== undefined) payload.published = data.published
 
     const { error } = await (supabase.from("news_articles") as any)
@@ -160,6 +148,7 @@ function mapRow(row: Record<string, unknown>): ArticleRow {
     content: (row.content as string) ?? null,
     imageUrl: (row.image_url as string) ?? null,
     category: (row.category as string) ?? null,
+    seriesId: (row.series_id as string) ?? null,
     published: (row.published as boolean) ?? false,
     date: (row.date as string) ?? "",
   }

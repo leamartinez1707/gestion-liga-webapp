@@ -1,7 +1,5 @@
 import type { Sanction } from "@/lib/types"
-import { createClient } from "@/lib/supabase/server"
-import { getMatchesByMatchday } from "@/lib/db/matches"
-import { getPlayersByTeam } from "@/lib/db/players"
+import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
 // ---------------------------------------------------------------------------
 // Sanction types for the data layer (snake_case from DB mapped to camelCase)
@@ -95,27 +93,29 @@ export async function processMatchSanctions(
 // CRUD operations
 // ---------------------------------------------------------------------------
 
-export async function getSanctions(): Promise<SanctionWithDetails[]> {
+export async function getSanctions(): Promise<{ data: SanctionWithDetails[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("sanctions") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("sanctions")
       .select(`
         *,
         player:player_id (name, team_id),
         match:match_id (home_team_id, away_team_id, home_score, away_score, matchday)
       `)
       .order("created_at", { ascending: false })
-    if (!data) return []
-    return data.map(mapRowWithDetails)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRowWithDetails), error: null }
   } catch {
-    return []
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
-export async function getSanction(id: string): Promise<SanctionWithDetails | null> {
+export async function getSanction(id: string): Promise<{ data: SanctionWithDetails | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("sanctions") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("sanctions")
       .select(`
         *,
         player:player_id (name, team_id),
@@ -123,9 +123,10 @@ export async function getSanction(id: string): Promise<SanctionWithDetails | nul
       `)
       .eq("id", id)
       .single()
-    return data ? mapRowWithDetails(data) : null
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapRowWithDetails(data) : null, error: null }
   } catch {
-    return null
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
@@ -151,9 +152,7 @@ export async function createSanction(
     if (error) return { error: error.message }
     return { id: inserted?.id }
   } catch {
-    return {
-      error: "No se pudo crear la sanción. Verificá que Supabase esté configurado.",
-    }
+    return { error: "No se pudo crear la sanción. Verificá que Supabase esté configurado." }
   }
 }
 

@@ -1,31 +1,32 @@
 import type { Tournament } from "@/lib/types"
-import { createClient } from "@/lib/supabase/server"
+import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
-export async function getTournaments(): Promise<Tournament[]> {
+export async function getTournaments(): Promise<{ data: Tournament[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("tournaments") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("tournaments")
       .select("*")
       .order("created_at", { ascending: false })
-    if (!data) return []
-    return data.map(mapRow)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRow), error: null }
   } catch {
-    const { tournaments } = await import("@/lib/data/tournaments")
-    return tournaments
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
-export async function getTournament(id: string): Promise<Tournament | null> {
+export async function getTournament(id: string): Promise<{ data: Tournament | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("tournaments") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("tournaments")
       .select("*")
       .eq("id", id)
       .single()
-    return data ? mapRow(data) : null
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapRow(data) : null, error: null }
   } catch {
-    const { tournaments } = await import("@/lib/data/tournaments")
-    return tournaments.find((t) => t.id === id) ?? null
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
@@ -52,9 +53,7 @@ export async function createTournament(
     if (error) return { error: error.message }
     return { id: inserted?.id }
   } catch {
-    return {
-      error: "No se pudo crear el torneo. Verificá que Supabase esté configurado.",
-    }
+    return { error: "No se pudo crear el torneo. Verificá que Supabase esté configurado." }
   }
 }
 
@@ -106,7 +105,9 @@ function mapRow(row: Record<string, unknown>): Tournament {
   return {
     id: row.id as string,
     name: row.name as string,
-    category: row.category as string,
+    category: (row.category as string) ?? "",
+    seriesId: (row.series_id as string) ?? undefined,
+    divisionId: (row.division_id as string) ?? undefined,
     season: row.season as string,
     format: row.format as Tournament["format"],
     startDate: (row.start_date as string) ?? undefined,

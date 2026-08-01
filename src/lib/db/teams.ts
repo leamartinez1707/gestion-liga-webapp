@@ -1,46 +1,47 @@
 import type { Team } from "@/lib/types"
-import { createClient } from "@/lib/supabase/server"
+import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
-export async function getTeamsByTournament(tournamentId: string): Promise<Team[]> {
+export async function getTeamsByTournament(tournamentId: string): Promise<{ data: Team[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("teams") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("teams")
       .select("*")
       .eq("tournament_id", tournamentId)
       .order("name", { ascending: true })
-    if (!data) return []
-    return data.map(mapRow)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRow), error: null }
   } catch {
-    const { teams } = await import("@/lib/data/teams")
-    return teams.filter((t) => t.tournamentId === tournamentId)
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
-export async function getTeams(): Promise<Team[]> {
+export async function getTeams(): Promise<{ data: Team[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("teams") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("teams")
       .select("*")
       .order("created_at", { ascending: false })
-    if (!data) return []
-    return data.map(mapRow)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRow), error: null }
   } catch {
-    const { teams } = await import("@/lib/data/teams")
-    return teams
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
-export async function getTeam(id: string): Promise<Team | null> {
+export async function getTeam(id: string): Promise<{ data: Team | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("teams") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("teams")
       .select("*")
       .eq("id", id)
       .single()
-    return data ? mapRow(data) : null
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapRow(data) : null, error: null }
   } catch {
-    const { teams } = await import("@/lib/data/teams")
-    return teams.find((t) => t.id === id) ?? null
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
@@ -49,6 +50,7 @@ export async function createTeam(
     coach?: string
     assistantCoach?: string
     tournamentId?: string
+    shieldUrl?: string | null
   }
 ): Promise<{ error?: string; id?: string }> {
   try {
@@ -61,6 +63,7 @@ export async function createTeam(
         coach: data.coach ?? null,
         assistant_coach: data.assistantCoach ?? null,
         tournament_id: data.tournamentId ?? null,
+        shield_url: data.shieldUrl ?? null,
       })
       .select()
       .single()
@@ -68,9 +71,7 @@ export async function createTeam(
     if (error) return { error: error.message }
     return { id: inserted?.id }
   } catch {
-    return {
-      error: "No se pudo crear el equipo. Verificá que Supabase esté configurado.",
-    }
+    return { error: "No se pudo crear el equipo. Verificá que Supabase esté configurado." }
   }
 }
 
@@ -83,6 +84,7 @@ export async function updateTeam(
     coach: string | null
     assistantCoach: string | null
     tournamentId: string | null
+    shieldUrl: string | null
   }>
 ): Promise<{ error?: string }> {
   try {
@@ -96,6 +98,8 @@ export async function updateTeam(
       payload.assistant_coach = data.assistantCoach
     if (data.tournamentId !== undefined)
       payload.tournament_id = data.tournamentId
+    if (data.shieldUrl !== undefined)
+      payload.shield_url = data.shieldUrl
 
     const { error } = await (supabase.from("teams") as any)
       .update(payload)
@@ -128,7 +132,9 @@ function mapRow(row: Record<string, unknown>): Team {
     name: row.name as string,
     shortName: row.short_name as string,
     shield: (row.shield_url as string) ?? "/placeholder.svg",
-    category: row.category as string,
+    category: (row.category as string) ?? "",
+    seriesId: (row.series_id as string) ?? undefined,
+    divisionId: (row.division_id as string) ?? undefined,
     coach: (row.coach as string) ?? "",
     assistantCoach: (row.assistant_coach as string) ?? undefined,
     tournamentId: (row.tournament_id as string) ?? undefined,

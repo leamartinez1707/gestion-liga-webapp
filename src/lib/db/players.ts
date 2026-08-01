@@ -1,50 +1,51 @@
 import type { Player } from "@/lib/types"
-import { createClient } from "@/lib/supabase/server"
+import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
-export async function getPlayers(): Promise<Player[]> {
+export async function getPlayers(): Promise<{ data: Player[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("players") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("players")
       .select("*")
       .order("created_at", { ascending: false })
-    if (!data) return []
-    return data.map(mapRow)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRow), error: null }
   } catch {
-    const { players } = await import("@/lib/data/players")
-    return players
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
 export async function getPlayersByTeam(
   teamId: string
-): Promise<Player[]> {
+): Promise<{ data: Player[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("players") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("players")
       .select("*")
       .eq("team_id", teamId)
       .order("number", { ascending: true })
-    if (!data) return []
-    return data.map(mapRow)
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRow), error: null }
   } catch {
-    const { players } = await import("@/lib/data/players")
-    return players.filter((p) => p.teamId === teamId)
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
 export async function getPlayer(
   id: string
-): Promise<Player | null> {
+): Promise<{ data: Player | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("players") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("players")
       .select("*")
       .eq("id", id)
       .single()
-    return data ? mapRow(data) : null
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapRow(data) : null, error: null }
   } catch {
-    const { players } = await import("@/lib/data/players")
-    return players.find((p) => p.id === id) ?? null
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
@@ -71,9 +72,7 @@ export async function createPlayer(
     if (error) return { error: error.message }
     return { id: inserted?.id }
   } catch {
-    return {
-      error: "No se pudo crear el jugador. Verificá que Supabase esté configurado.",
-    }
+    return { error: "No se pudo crear el jugador. Verificá que Supabase esté configurado." }
   }
 }
 

@@ -1,10 +1,24 @@
 import { createServerClient } from "@supabase/ssr"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 import type { Database } from "./types"
 
 /**
- * Creates a Supabase client for use in Server Components and Route Handlers.
- * Uses the anon key and reads cookies from next/headers for session management.
+ * Read-only Supabase client for Server Components (pages, layouts).
+ * Uses the anon key WITHOUT cookie writing — safe for public data reads.
+ * Do NOT use this for authenticated mutations.
+ */
+export function createReadOnlyClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+
+/**
+ * Creates a Supabase client with full cookie management.
+ * ONLY use in Server Actions or Route Handlers — NOT in Server Components.
+ * Required for: login, logout, session refresh.
  */
 export async function createClient() {
   const cookieStore = await cookies()
@@ -29,8 +43,8 @@ export async function createClient() {
 
 /**
  * Creates a Supabase admin client using the service_role key.
- * Used for admin operations that bypass RLS (e.g. creating profiles,
- * listing all users). NEVER expose this client to the browser.
+ * Used for admin operations that bypass RLS. ONLY in Server Actions.
+ * NEVER expose this client to the browser.
  */
 export async function createAdminClient() {
   const cookieStore = await cookies()

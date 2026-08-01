@@ -1,5 +1,5 @@
 import type { Match } from "@/lib/types"
-import { createClient } from "@/lib/supabase/server"
+import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
 export interface MatchWithTeams extends Match {
   homeTeamName: string
@@ -8,10 +8,10 @@ export interface MatchWithTeams extends Match {
 
 export async function getMatches(
   tournamentId?: string
-): Promise<MatchWithTeams[]> {
+): Promise<{ data: MatchWithTeams[] | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    let query = (supabase.from("matches") as any).select(`
+    const supabase = createReadOnlyClient()
+    let query = supabase.from("matches").select(`
         *,
         home_team:home_team_id (name),
         away_team:away_team_id (name)
@@ -21,31 +21,19 @@ export async function getMatches(
       query = query.eq("tournament_id", tournamentId)
     }
 
-    const { data } = await query.order("date", { ascending: true }).order("time", { ascending: true })
-    if (!data) return []
-    return data.map(mapRowWithTeams)
+    const { data, error } = await query.order("date", { ascending: true }).order("time", { ascending: true })
+    if (error) return { data: null, error: error.message }
+    return { data: (data ?? []).map(mapRowWithTeams), error: null }
   } catch {
-    const { matches } = await import("@/lib/data/matches")
-    const { teams } = await import("@/lib/data/teams")
-    const teamMap = new Map(teams.map((t) => [t.id, t.name]))
-
-    let filtered = matches
-    if (tournamentId) {
-      filtered = matches.filter((m) => m.tournamentId === tournamentId)
-    }
-
-    return filtered.map((m) => ({
-      ...m,
-      homeTeamName: teamMap.get(m.homeTeamId) ?? "Unknown",
-      awayTeamName: teamMap.get(m.awayTeamId) ?? "Unknown",
-    }))
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
-export async function getMatch(id: string): Promise<MatchWithTeams | null> {
+export async function getMatch(id: string): Promise<{ data: MatchWithTeams | null; error: string | null }> {
   try {
-    const supabase = await createClient()
-    const { data } = await (supabase.from("matches") as any)
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase
+      .from("matches")
       .select(`
         *,
         home_team:home_team_id (name),
@@ -53,18 +41,10 @@ export async function getMatch(id: string): Promise<MatchWithTeams | null> {
       `)
       .eq("id", id)
       .single()
-    return data ? mapRowWithTeams(data) : null
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapRowWithTeams(data) : null, error: null }
   } catch {
-    const { matches } = await import("@/lib/data/matches")
-    const { teams } = await import("@/lib/data/teams")
-    const teamMap = new Map(teams.map((t) => [t.id, t.name]))
-    const m = matches.find((m) => m.id === id)
-    if (!m) return null
-    return {
-      ...m,
-      homeTeamName: teamMap.get(m.homeTeamId) ?? "Unknown",
-      awayTeamName: teamMap.get(m.awayTeamId) ?? "Unknown",
-    }
+    return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
@@ -92,9 +72,7 @@ export async function createMatch(
     if (error) return { error: error.message }
     return { id: inserted?.id }
   } catch {
-    return {
-      error: "No se pudo crear el partido. Verificá que Supabase esté configurado.",
-    }
+    return { error: "No se pudo crear el partido. Verificá que Supabase esté configurado." }
   }
 }
 
@@ -155,12 +133,16 @@ export async function deleteMatch(
 export async function getMatchesByMatchday(
   tournamentId: string,
   matchday: number
-): Promise<MatchWithTeams[]> {
-  const all = await getMatches(tournamentId)
-  return all.filter((m) => m.matchday === matchday)
+): Promise<{ data: MatchWithTeams[] | null; error: string | null }> {
+  const result = await getMatches(tournamentId)
+  if (result.error) return result
+  return { data: (result.data ?? []).filter((m) => m.matchday === matchday), error: null }
 }
 
 function mapRowWithTeams(row: Record<string, unknown>): MatchWithTeams {
+  const homeTeam = row.home_team as Record<string, unknown> | undefined
+  const awayTeam = row.away_team as Record<string, unknown> | undefined
+
   return {
     id: row.id as string,
     homeTeamId: row.home_team_id as string,
@@ -172,7 +154,7 @@ function mapRowWithTeams(row: Record<string, unknown>): MatchWithTeams {
     status: (row.status as Match["status"]) ?? "scheduled",
     matchday: (row.matchday as number) ?? 0,
     tournamentId: (row.tournament_id as string) ?? "",
-    homeTeamName: (row.home_team as Record<string, unknown>)?.name as string ?? "",
-    awayTeamName: (row.away_team as Record<string, unknown>)?.name as string ?? "",
+    homeTeamName: homeTeam?.name as string ?? "",
+    awayTeamName: awayTeam?.name as string ?? "",
   }
 }

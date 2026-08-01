@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { Trophy, Goal, MapPin, ClipboardCheck, FileText, Shield } from "lucide-react"
+import { Trophy, Goal, MapPin, ClipboardCheck, FileText } from "lucide-react"
+import Image from "next/image"
 
 const links = [
   { href: "/partidos", label: "Posiciones", icon: Trophy },
@@ -32,13 +33,16 @@ export function LeftSidebar() {
           Auspiciantes
         </p>
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4, 5].map((i) => (
             <div
-              key={i}
-              className="flex items-center justify-center h-16 rounded-lg border border-dashed border-border bg-muted-bg text-[10px] text-muted-foreground"
+              key={i+1}
+              // className="flex items-center justify-center h-16 rounded-lg border border-dashed border-border bg-muted-bg text-[10px] text-muted-foreground"
             >
-              <Shield className="h-4 w-4 mr-1.5" />
-              Logo {i}
+              <Image src={"/sponsor_ejemplo.jpg"}
+                width={200}
+                height={100}
+                alt={i.toString()}
+              />
             </div>
           ))}
         </div>

@@ -61,7 +61,7 @@ export function FixturePanel({
         <button
           onClick={() => setTab("last")}
           className={cn(
-            "px-3 py-1 rounded text-xs font-medium transition-colors",
+            "p-1 rounded text-xs font-medium transition-colors",
             tab === "last"
               ? "bg-primary text-primary-foreground"
               : "bg-muted-bg text-muted-foreground hover:text-foreground"

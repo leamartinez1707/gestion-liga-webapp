@@ -10,6 +10,7 @@ import {
   Calendar,
   Ban,
   Newspaper,
+  Layers,
   LogOut,
   Menu,
 } from "lucide-react"
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils"
 
 const sidebarLinks = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Series", href: "/admin/series", icon: Layers },
   { label: "Torneos", href: "/admin/torneos", icon: Trophy },
   { label: "Equipos", href: "/admin/equipos", icon: Users },
   { label: "Jugadores", href: "/admin/jugadores", icon: UserRound },

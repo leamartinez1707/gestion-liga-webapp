@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import "@fontsource-variable/inter"
-import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 
 export const metadata: Metadata = {
@@ -18,7 +17,6 @@ export default function RootLayout({
   return (
     <html lang="es" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <Header />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>

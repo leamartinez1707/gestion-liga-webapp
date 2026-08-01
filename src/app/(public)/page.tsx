@@ -3,6 +3,7 @@ import { getSeries, getDivisions } from "@/lib/db/series"
 import { getTeams } from "@/lib/db/teams"
 import { getMatches } from "@/lib/db/matches"
 import { getArticles } from "@/lib/db/news"
+import { getSponsors } from "@/lib/db/sponsors"
 import { leagueInfo } from "@/lib/data/league"
 import type { NewsArticle } from "@/lib/types"
 import type { ArticleRow } from "@/lib/db/news"
@@ -24,13 +25,14 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
 }
 
 export default async function HomePage() {
-  const [seriesResult, divisionsResult, teamsResult, matchesResult, articlesResult] =
+  const [seriesResult, divisionsResult, teamsResult, matchesResult, articlesResult, sponsorsResult] =
     await Promise.all([
       getSeries(),
       getDivisions(),
       getTeams(),
       getMatches(),
       getArticles(),
+      getSponsors(),
     ])
 
   const seriesList = seriesResult.data ?? []
@@ -57,6 +59,7 @@ export default async function HomePage() {
         matches={matches}
         articles={articles}
         leagueInfo={leagueInfo}
+        sponsors={sponsorsResult.data ?? []}
       />
     </Suspense>
   )

@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 
-import type { Match, Team, NewsArticle } from "@/lib/types"
+import type { Match, Team, NewsArticle, Sponsor } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import type { LeagueInfo } from "@/lib/types"
 import type { SeriesOption } from "@/components/series-selector"
@@ -30,6 +30,7 @@ interface HomePageClientProps {
   matches: MatchWithTeams[]
   articles: NewsArticle[]
   leagueInfo: LeagueInfo
+  sponsors: Sponsor[]
 }
 
 function formatDate(dateStr: string): string {
@@ -56,6 +57,7 @@ export function HomePageClient({
   matches,
   articles,
   leagueInfo: _leagueInfo,
+  sponsors,
 }: HomePageClientProps) {
   const searchParams = useSearchParams()
 
@@ -124,11 +126,11 @@ export function HomePageClient({
         {/* ===== LEFT SIDEBAR ===== */}
         <div className="hidden lg:block">
           <div className="sticky top-20">
-            <LeftSidebar />
+            <LeftSidebar sponsors={sponsors} />
           </div>
         </div>
         <div className="lg:hidden">
-          <LeftSidebar />
+          <LeftSidebar sponsors={sponsors} />
         </div>
 
         {/* ===== CENTER: BANNERS ===== */}

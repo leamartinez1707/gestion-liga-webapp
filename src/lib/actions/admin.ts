@@ -21,6 +21,11 @@ import {
   revokeDelegate,
 } from "@/lib/db/delegates"
 import {
+  createSponsor,
+  updateSponsor,
+  deleteSponsor,
+} from "@/lib/db/sponsors"
+import {
   createTeam,
   updateTeam,
   deleteTeam,
@@ -677,4 +682,52 @@ export async function revokeDelegateFormAction(formData: FormData): Promise<void
   const result = await revokeDelegate(teamId)
   if (result.error) throw new Error(result.error)
   revalidatePath(`/admin/equipos/${teamId}`)
+}
+
+// ---------------------------------------------------------------------------
+// Sponsor actions
+// ---------------------------------------------------------------------------
+
+export async function createSponsorAction(_prev: unknown, formData: FormData) {
+  const name = formData.get("name") as string
+  const logoUrl = formData.get("logoUrl") as string
+  const linkUrl = formData.get("linkUrl") as string
+  const displayOrder = formData.get("displayOrder") as string
+
+  if (!name?.trim()) return { error: "El nombre es obligatorio." }
+  if (!logoUrl?.trim()) return { error: "La URL del logo es obligatoria." }
+
+  const result = await createSponsor({
+    name: name.trim(),
+    logoUrl: logoUrl.trim(),
+    linkUrl: linkUrl?.trim() || undefined,
+    displayOrder: displayOrder ? parseInt(displayOrder) : 0,
+  })
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/sponsors")
+  return { success: true as const }
+}
+
+export async function updateSponsorAction(id: string, _prev: unknown, formData: FormData) {
+  const name = formData.get("name") as string
+  const logoUrl = formData.get("logoUrl") as string
+  const linkUrl = formData.get("linkUrl") as string
+  const displayOrder = formData.get("displayOrder") as string
+
+  const result = await updateSponsor(id, {
+    name: name?.trim() || undefined,
+    logoUrl: logoUrl?.trim() || undefined,
+    linkUrl: linkUrl?.trim() || null,
+    displayOrder: displayOrder ? parseInt(displayOrder) : undefined,
+  })
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/sponsors")
+  return { success: true as const }
+}
+
+export async function deleteSponsorAction(id: string): Promise<{ error?: string }> {
+  const result = await deleteSponsor(id)
+  if (result.error) return { error: result.error }
+  revalidatePath("/admin/sponsors")
+  return {}
 }

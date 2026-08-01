@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Trophy, Goal, MapPin, ClipboardCheck, FileText } from "lucide-react"
-import Image from "next/image"
+import type { Sponsor } from "@/lib/types"
 
 const links = [
   { href: "/partidos", label: "Posiciones", icon: Trophy },
@@ -10,10 +10,13 @@ const links = [
   { href: "/institucional#reglamento", label: "Reglamento", icon: FileText },
 ]
 
-export function LeftSidebar() {
+interface Props {
+  sponsors?: Sponsor[]
+}
+
+export function LeftSidebar({ sponsors = [] }: Props) {
   return (
     <aside className="space-y-6">
-      {/* Quick links */}
       <nav className="space-y-0.5">
         {links.map((link) => (
           <Link
@@ -27,26 +30,26 @@ export function LeftSidebar() {
         ))}
       </nav>
 
-      {/* Sponsors */}
-      <div className="space-y-3 pt-4 border-t border-border">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-          Auspiciantes
-        </p>
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i+1}
-              // className="flex items-center justify-center h-16 rounded-lg border border-dashed border-border bg-muted-bg text-[10px] text-muted-foreground"
-            >
-              <Image src={"/sponsor_ejemplo.jpg"}
-                width={200}
-                height={100}
-                alt={i.toString()}
-              />
-            </div>
-          ))}
+      {sponsors.length > 0 && (
+        <div className="space-y-3 pt-4 border-t border-border">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+            Auspiciantes
+          </p>
+          <div className="space-y-2">
+            {sponsors.map((s) => (
+              <div key={s.id}>
+                {s.linkUrl ? (
+                  <a href={s.linkUrl} target="_blank" rel="noopener noreferrer">
+                    <img src={s.logoUrl} alt={s.name} className="w-full h-auto object-contain rounded" />
+                  </a>
+                ) : (
+                  <img src={s.logoUrl} alt={s.name} className="w-full h-auto object-contain rounded" />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   )
 }

@@ -98,3 +98,11 @@ export interface PaginatedResult<T> {
   totalPages: number
   error: string | null
 }
+
+export interface Sponsor {
+  id: string
+  name: string
+  logoUrl: string
+  linkUrl?: string
+  displayOrder: number
+}

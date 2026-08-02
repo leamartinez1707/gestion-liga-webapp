@@ -29,7 +29,7 @@ export function SponsorDialog({ children, action, sponsor }: Props) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
       <DialogContent>
-        <DialogHeader><DialogTitle>{sponsor ? "Editar Sponsor" : "Nuevo Sponsor"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{sponsor ? "Editar Auspiciante" : "Nuevo Auspiciante"}</DialogTitle></DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nombre</Label>

@@ -49,7 +49,7 @@ export default async function AdminDashboard() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Dashboard
+          Panel
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Resumen general de la liga

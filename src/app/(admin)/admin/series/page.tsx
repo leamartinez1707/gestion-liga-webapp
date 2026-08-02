@@ -61,7 +61,7 @@ export default async function SeriesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>Slug</TableHead>
+              <TableHead>Identificador</TableHead>
               <TableHead>Divisiones</TableHead>
               <TableHead className="w-40 text-right">Acciones</TableHead>
             </TableRow>

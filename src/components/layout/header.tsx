@@ -112,7 +112,7 @@ export function Header({ seriesOptions }: HeaderProps) {
               title="Panel de administración"
             >
               <Lock className="h-3.5 w-3.5" />
-              <span>Admin</span>
+              <span>Panel</span>
             </Link>
 
             {/* Mobile hamburger */}

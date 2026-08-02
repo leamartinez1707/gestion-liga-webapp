@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const sidebarLinks = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Panel", href: "/admin", icon: LayoutDashboard },
   { label: "Series", href: "/admin/series", icon: Layers },
   { label: "Torneos", href: "/admin/torneos", icon: Trophy },
   { label: "Equipos", href: "/admin/equipos", icon: Users },
@@ -35,7 +35,7 @@ const sidebarLinks = [
   { label: "Partidos", href: "/admin/partidos", icon: Calendar },
   { label: "Sanciones", href: "/admin/sanciones", icon: Ban },
   { label: "Noticias", href: "/admin/noticias", icon: Newspaper },
-  { label: "Sponsors", href: "/admin/sponsors", icon: HeartHandshake },
+  { label: "Auspiciantes", href: "/admin/sponsors", icon: HeartHandshake },
 ]
 
 // ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ export function AdminMobileSidebar({
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
             LM
           </div>
-          <span className="text-sm font-semibold text-foreground">Admin</span>
+<span className="text-sm font-semibold text-foreground">Panel</span>
         </div>
         <SidebarContent onNavigate={() => {}} />
         <div className="border-t border-border mt-4 pt-4">

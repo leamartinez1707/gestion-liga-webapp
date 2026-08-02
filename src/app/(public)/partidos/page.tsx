@@ -51,7 +51,7 @@ export default async function PartidosPage({ searchParams }: Props) {
   const teamMap = new Map(teamsList.map((t) => [t.id, t]))
 
   function getTeamShortName(teamId: string): string {
-    return teamMap.get(teamId)?.shortName ?? teamId
+    return teamMap.get(teamId)?.shortName ?? "—"
   }
 
   // Filter by series/division if params present

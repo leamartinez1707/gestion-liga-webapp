@@ -36,7 +36,7 @@ export function calculateStandings(
   teamIds.forEach((teamId) => {
     standingsMap.set(teamId, {
       teamId,
-      teamName: teamMap.get(teamId) ?? "Unknown",
+      teamName: teamMap.get(teamId) ?? "Desconocido",
       played: 0,
       won: 0,
       drawn: 0,

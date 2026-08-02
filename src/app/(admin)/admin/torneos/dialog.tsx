@@ -24,7 +24,7 @@ import {
 
 const formats = [
   { value: "league", label: "Liga" },
-  { value: "elimination", label: "Eliminatorias" },
+  { value: "elimination", label: "Eliminatoria" },
   { value: "groups", label: "Grupos" },
 ]
 

@@ -14,14 +14,14 @@ export default async function SponsorsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold">Sponsors</h1><p className="mt-1 text-sm text-muted-foreground">Gestioná los auspiciantes de la liga</p></div>
+        <div><h1 className="text-2xl font-bold">Auspiciantes</h1><p className="mt-1 text-sm text-muted-foreground">Gestioná los auspiciantes de la liga</p></div>
         <SponsorDialog action={createSponsorAction}>
-          <Button className="gap-1.5"><Plus className="h-4 w-4" />Nuevo Sponsor</Button>
+          <Button className="gap-1.5"><Plus className="h-4 w-4" />Nuevo Auspiciante</Button>
         </SponsorDialog>
       </div>
       <div className="rounded-xl border border-border">
         <Table>
-          <TableHeader><TableRow><TableHead>Logo</TableHead><TableHead>Nombre</TableHead><TableHead>Link</TableHead><TableHead>Orden</TableHead><TableHead className="w-24 text-right">Acciones</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Logo</TableHead><TableHead>Nombre</TableHead><TableHead>Enlace</TableHead><TableHead>Orden</TableHead><TableHead className="w-24 text-right">Acciones</TableHead></TableRow></TableHeader>
           <TableBody>
             {list.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No hay sponsors.</TableCell></TableRow>}
             {list.map((s) => (

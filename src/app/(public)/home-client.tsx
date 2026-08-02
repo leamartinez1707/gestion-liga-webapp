@@ -117,7 +117,7 @@ export function HomePageClient({
   const teamMap = new Map(teams.map((t) => [t.id, t]))
 
   function getTeamName(teamId: string): string {
-    return teamMap.get(teamId)?.name ?? teamId
+    return teamMap.get(teamId)?.name ?? "—"
   }
 
   return (

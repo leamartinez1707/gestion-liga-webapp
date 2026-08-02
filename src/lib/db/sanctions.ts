@@ -215,7 +215,7 @@ function mapRowWithDetails(row: Record<string, unknown>): SanctionWithDetails {
     matchDate: (row.match_date as string) ?? null,
     matchesSuspended: (row.matches_suspended as number) ?? 0,
     expiresAfterMatch: (row.expires_after_match as number) ?? null,
-    playerName: (player?.name as string) ?? "Unknown",
+    playerName: (player?.name as string) ?? "Desconocido",
     teamName: "", // Will be filled from teams data
     matchLabel: match
       ? `Fecha ${match.matchday ?? "?"}`

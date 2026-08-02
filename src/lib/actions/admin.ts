@@ -43,6 +43,7 @@ import {
 import {
   createSanction,
   deleteSanction,
+  processMatchSanctions,
 } from "@/lib/db/sanctions"
 import {
   createArticle,
@@ -348,6 +349,14 @@ export async function updateMatchAction(
   const result = await updateMatch(id, payload)
 
   if (result.error) return { error: result.error }
+
+  // Auto-process red cards
+  const redCards = formData.getAll("redCards") as string[]
+  const validRedCards = redCards.filter((p) => p && p !== "none")
+  if (validRedCards.length > 0) {
+    await processMatchSanctions(id, validRedCards)
+  }
+
   revalidatePath("/admin/partidos")
   return { success: true as const }
 }
@@ -682,6 +691,52 @@ export async function revokeDelegateFormAction(formData: FormData): Promise<void
   const result = await revokeDelegate(teamId)
   if (result.error) throw new Error(result.error)
   revalidatePath(`/admin/equipos/${teamId}`)
+}
+
+// ---------------------------------------------------------------------------
+// Matchday suspension
+// ---------------------------------------------------------------------------
+
+export async function suspendMatchdayAction(
+  _prev: unknown,
+  formData: FormData
+) {
+  const matchday = formData.get("matchday") as string
+  const days = formData.get("days") as string
+
+  if (!matchday) return { error: "La fecha es obligatoria." }
+  const matchdayNum = parseInt(matchday, 10)
+  const daysNum = parseInt(days || "7", 10)
+
+  try {
+    const { createClient } = await import("@/lib/supabase/server")
+    const supabase = await createClient()
+
+    // Get all matches from this matchday onward
+    const { data: matches } = await (supabase.from("matches") as any)
+      .select("id, date, matchday")
+      .gte("matchday", matchdayNum)
+      .order("matchday")
+
+    if (!matches?.length) return { error: "No se encontraron partidos para esa fecha." }
+
+    // Shift each match's date
+    for (const m of matches) {
+      if (!m.date) continue
+      const matchdayDiff = (m.matchday as number) - matchdayNum
+      const newDate = new Date(m.date as string)
+      newDate.setDate(newDate.getDate() + daysNum * (matchdayDiff + 1))
+
+      await (supabase.from("matches") as any)
+        .update({ date: newDate.toISOString().split("T")[0] })
+        .eq("id", m.id)
+    }
+
+    revalidatePath("/admin/partidos")
+    return { success: true as const }
+  } catch {
+    return { error: "No se pudo suspender la fecha." }
+  }
 }
 
 // ---------------------------------------------------------------------------

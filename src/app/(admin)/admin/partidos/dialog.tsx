@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
-import type { Match, Team, Tournament } from "@/lib/types"
+import type { Match, Team, Tournament, Player } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import {
   Dialog,
@@ -41,6 +41,7 @@ interface MatchDialogProps {
   match?: MatchWithTeams | Match
   tournaments: Tournament[]
   teams: Team[]
+  players: Player[]
 }
 
 export function MatchDialog({
@@ -49,6 +50,7 @@ export function MatchDialog({
   match,
   tournaments,
   teams,
+  players,
 }: MatchDialogProps) {
   const [open, setOpen] = useState(false)
   const [tournamentId, setTournamentId] = useState(
@@ -261,6 +263,32 @@ export function MatchDialog({
                 </Select>
               </div>
             </>
+          )}
+
+          {/* Red cards — only when editing an existing match */}
+          {isEditing && (
+            <div className="flex flex-col gap-1.5 border-t pt-4">
+              <Label>Tarjetas Rojas</Label>
+              <p className="text-xs text-muted-foreground">
+                Seleccioná los jugadores que recibieron tarjeta roja en este partido
+              </p>
+              <select
+                multiple
+                name="redCards"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
+              >
+                {players
+                  .filter(
+                    (p) => p.teamId === homeTeamId || p.teamId === awayTeamId
+                  )
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (#{p.number}) —{" "}
+                      {teams.find((t) => t.id === p.teamId)?.shortName}
+                    </option>
+                  ))}
+              </select>
+            </div>
           )}
 
           {/* Error */}

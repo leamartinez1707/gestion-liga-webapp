@@ -270,24 +270,60 @@ export function MatchDialog({
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Tarjetas Rojas</Label>
               <p className="text-xs text-muted-foreground">
-                Seleccioná los jugadores que recibieron tarjeta roja en este partido
+                Seleccioná los jugadores que recibieron tarjeta roja
               </p>
               <select
                 multiple
                 name="redCards"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[80px]"
               >
                 {players
-                  .filter(
-                    (p) => p.teamId === homeTeamId || p.teamId === awayTeamId
-                  )
+                  .filter((p) => p.teamId === homeTeamId || p.teamId === awayTeamId)
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} (#{p.number}) —{" "}
-                      {teams.find((t) => t.id === p.teamId)?.shortName}
+                      {p.name} (#{p.number}) — {teams.find((t) => t.id === p.teamId)?.shortName}
                     </option>
                   ))}
               </select>
+            </div>
+          )}
+
+          {/* Goals — only when editing and status is finished */}
+          {isEditing && match && (
+            <div className="flex flex-col gap-1.5 border-t pt-4">
+              <Label>Goles</Label>
+              <p className="text-xs text-muted-foreground">
+                Registrar quiénes hicieron los goles y cuántos
+              </p>
+              <div className="space-y-2">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <select
+                      name="goalPlayer"
+                      defaultValue="none"
+                      className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                    >
+                      <option value="none">— Sin jugador —</option>
+                      {players
+                        .filter((p) => p.teamId === homeTeamId || p.teamId === awayTeamId)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} (#{p.number})
+                          </option>
+                        ))}
+                    </select>
+                    <input
+                      type="number"
+                      name="goalCount"
+                      defaultValue={i === 0 ? 1 : 0}
+                      min={0}
+                      max={10}
+                      className="w-16 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-center"
+                      placeholder="Goles"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

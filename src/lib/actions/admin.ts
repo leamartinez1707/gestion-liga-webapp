@@ -20,6 +20,7 @@ import {
   assignDelegate,
   revokeDelegate,
 } from "@/lib/db/delegates"
+import { saveMatchGoals } from "@/lib/db/goals"
 import {
   createSponsor,
   updateSponsor,
@@ -355,6 +356,21 @@ export async function updateMatchAction(
   const validRedCards = redCards.filter((p) => p && p !== "none")
   if (validRedCards.length > 0) {
     await processMatchSanctions(id, validRedCards)
+  }
+
+  // Save goals
+  const goalPlayers = formData.getAll("goalPlayer") as string[]
+  const goalCounts = formData.getAll("goalCount") as string[]
+  const scorers: { playerId: string; goals: number }[] = []
+  for (let i = 0; i < goalPlayers.length; i++) {
+    const pid = goalPlayers[i]
+    const count = parseInt(goalCounts[i] || "1", 10)
+    if (pid && pid !== "none" && count > 0) {
+      scorers.push({ playerId: pid, goals: count })
+    }
+  }
+  if (scorers.length > 0) {
+    await saveMatchGoals(id, scorers)
   }
 
   revalidatePath("/admin/partidos")

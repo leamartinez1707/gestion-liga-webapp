@@ -1,7 +1,5 @@
 "use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback } from "react"
 import { cn } from "@/lib/utils"
 
 export interface SeriesOption {
@@ -17,12 +15,7 @@ export interface DivisionOption {
 }
 
 function toDivSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
+  return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
 }
 
 interface SeriesSelectorProps {
@@ -33,19 +26,13 @@ interface SeriesSelectorProps {
   onDivisionChange: (divSlug: string) => void
 }
 
-export function SeriesSelector({
-  series,
-  selectedSeries,
-  selectedDivision,
-  onSeriesChange,
-  onDivisionChange,
-}: SeriesSelectorProps) {
+export function SeriesSelector({ series, selectedSeries, selectedDivision, onSeriesChange, onDivisionChange }: SeriesSelectorProps) {
   const currentSeries = series.find((s) => s.slug === selectedSeries || s.id === selectedSeries)
   const divisions = currentSeries?.divisions ?? []
 
   return (
-    <div className="space-y-3">
-      {/* Series tabs — big and prominent */}
+    <div className="space-y-2">
+      {/* Series tabs */}
       <div className="flex flex-wrap gap-1.5">
         {series.map((s) => {
           const isActive = selectedSeries === s.slug || selectedSeries === s.id
@@ -54,10 +41,10 @@ export function SeriesSelector({
               key={s.id}
               onClick={() => onSeriesChange(s.slug)}
               className={cn(
-                "px-5 py-2 rounded-lg text-sm font-bold transition-all",
+                "px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide transition-all border",
                 isActive
-                  ? "bg-white text-primary shadow-sm"
-                  : "bg-white/10 text-primary-foreground/80 hover:bg-white/20 hover:text-white"
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : "bg-white text-muted-foreground border-border hover:border-primary/40 hover:text-primary"
               )}
             >
               {s.name}
@@ -66,9 +53,9 @@ export function SeriesSelector({
         })}
       </div>
 
-      {/* Division tabs — pills */}
+      {/* Division pills */}
       {divisions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {divisions.map((d) => {
             const slug = toDivSlug(d.name)
             const isActive = selectedDivision === slug || selectedDivision === d.id
@@ -77,10 +64,10 @@ export function SeriesSelector({
                 key={d.id}
                 onClick={() => onDivisionChange(slug)}
                 className={cn(
-                  "px-3 py-1 rounded text-xs font-medium transition-colors",
+                  "px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors",
                   isActive
-                    ? "bg-white/25 text-white"
-                    : "text-primary-foreground/60 hover:text-primary-foreground/90 hover:bg-white/10"
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-muted-foreground hover:bg-muted-bg hover:text-foreground"
                 )}
               >
                 {d.name}

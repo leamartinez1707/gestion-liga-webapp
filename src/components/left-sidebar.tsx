@@ -3,11 +3,11 @@ import { Trophy, Goal, MapPin, ClipboardCheck, FileText } from "lucide-react"
 import type { Sponsor } from "@/lib/types"
 
 const links = [
-  { href: "/partidos", label: "Posiciones", icon: Trophy },
-  { href: "/partidos?tab=goleadores", label: "Goleadores", icon: Goal },
-  { href: "/institucional#complejos", label: "Complejos", icon: MapPin },
-  { href: "/institucional#inscripcion", label: "Inscripción", icon: ClipboardCheck },
-  { href: "/institucional#reglamento", label: "Reglamento", icon: FileText },
+  { href: "/", label: "Posiciones", icon: Trophy },
+  { href: "/goleadores", label: "Goleadores", icon: Goal },
+  { href: "/institucional", label: "Complejos", icon: MapPin },
+  { href: "/institucional", label: "Inscripción", icon: ClipboardCheck },
+  { href: "/institucional", label: "Reglamento", icon: FileText },
 ]
 
 interface Props {

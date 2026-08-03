@@ -53,18 +53,18 @@ export function Header({ seriesOptions }: HeaderProps) {
       const params = new URLSearchParams(searchParams.toString())
       params.set("serie", seriesSlug)
       params.delete("div")
-      router.push(`/?${params.toString()}`, { scroll: false })
+      router.push(`${pathname}?${params.toString()}`, { scroll: false })
     },
-    [router, searchParams]
+    [router, searchParams, pathname]
   )
 
   const handleDivisionChange = useCallback(
     (divSlug: string) => {
       const params = new URLSearchParams(searchParams.toString())
       params.set("div", divSlug)
-      router.push(`/?${params.toString()}`, { scroll: false })
+      router.push(`${pathname}?${params.toString()}`, { scroll: false })
     },
-    [router, searchParams]
+    [router, searchParams, pathname]
   )
 
   const isHome = pathname === "/"
@@ -88,10 +88,14 @@ export function Header({ seriesOptions }: HeaderProps) {
               {navLinks.map((link) => {
                 const isActive =
                   link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
+                // Carry series/division context in nav links
+                const navHref = paramSerie
+                  ? `${link.href}?serie=${paramSerie}${paramDiv ? `&div=${paramDiv}` : ""}`
+                  : link.href
                 return (
                   <Link
                     key={link.href}
-                    href={link.href}
+                    href={navHref}
                     className={cn(
                       "px-3 py-1.5 rounded text-sm font-medium transition-colors",
                       isActive
@@ -139,7 +143,7 @@ export function Header({ seriesOptions }: HeaderProps) {
                     {seriesOptions.map((s, i) => (
                       <Link
                         key={s.id}
-                        href={`/?serie=${s.slug}`}
+                        href={`${pathname}?serie=${s.slug}`}
                         className={cn(
                           "rounded-sm bg-linear-to-b px-2.5 py-1 text-xs font-bold uppercase text-white",
                           getGradient(i)
@@ -155,10 +159,13 @@ export function Header({ seriesOptions }: HeaderProps) {
                   {navLinks.map((link) => {
                     const isActive =
                       link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
+                    const navHref = paramSerie
+                      ? `${link.href}?serie=${paramSerie}${paramDiv ? `&div=${paramDiv}` : ""}`
+                      : link.href
                     return (
                       <Link
                         key={link.href}
-                        href={link.href}
+                        href={navHref}
                         className={cn(
                           "px-3 py-2 rounded text-base font-medium transition-colors",
                           isActive

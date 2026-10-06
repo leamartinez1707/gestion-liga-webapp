@@ -7,6 +7,7 @@ import {
   createTournament,
   updateTournament,
   deleteTournament,
+  setTournamentChampion,
 } from "@/lib/db/tournaments"
 import {
   createSeries,
@@ -1066,6 +1067,23 @@ export async function deleteSponsorAction(id: string): Promise<{ error?: string 
 // ---------------------------------------------------------------------------
 // Registration (inscripción) actions
 // ---------------------------------------------------------------------------
+
+/** Champion of the tournament (one of its registered teams), or none. */
+export async function setChampionAction(tournamentId: string, _prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const raw = formData.get("teamId") as string | null
+  const teamId = raw && raw !== "none" ? raw : null
+  if (teamId) {
+    const { data: registrations } = await getRegistrations({ tournamentId })
+    if (!(registrations ?? []).some((r) => r.teamId === teamId)) return { error: "El campeón tiene que ser un equipo inscripto." }
+  }
+  const result = await setTournamentChampion(tournamentId, teamId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
 
 export async function registerTeamAction(
   tournamentId: string,

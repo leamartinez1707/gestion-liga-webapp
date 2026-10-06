@@ -13,6 +13,7 @@ import { getMatches } from "@/lib/db/matches"
 import { getAlbums } from "@/lib/db/gallery"
 import { getSanctions } from "@/lib/db/sanctions"
 import { getTeamSeasonPhotos } from "@/lib/db/team-photos"
+import { getAssistCounts } from "@/lib/db/player-stats"
 import { activeSuspensions } from "@/lib/suspensions"
 import { outcomeFor, percent, teamRecord } from "@/lib/team-stats"
 import { AlbumCard } from "@/components/album-card"
@@ -94,11 +95,26 @@ export default async function EquipoDetailPage({
   if (squad.length === 0 && season === latestSeason) squad = (players ?? []).filter((p) => p.active)
   squad = [...squad].sort((a, b) => (a.number || 999) - (b.number || 999))
 
-  const [{ data: scorers }, { data: albums }] = await Promise.all([
+  const seasonMatchIds = new Set(seasonMatches.map((m) => m.id))
+  const [{ data: scorers }, { data: albums }, assistsByPlayer] = await Promise.all([
     getTopScorers(100, { teamIds: [id], tournamentIds: [...seasonTournamentIds] }),
-    getAlbums({ matchIds: seasonMatches.map((m) => m.id) }),
+    getAlbums({ matchIds: [...seasonMatchIds] }),
+    getAssistCounts([...seasonMatchIds]),
   ])
   const goalsByPlayer = new Map((scorers ?? []).map((s) => [s.playerId, s.goals]))
+  // Cards of the season, per player
+  const seasonCards = new Map<string, { yellow: number; red: number }>()
+  for (const s of sanctions ?? []) {
+    if (!s.matchId || !seasonMatchIds.has(s.matchId) || (s.cardType !== "yellow" && s.cardType !== "red")) continue
+    const c = seasonCards.get(s.playerId) ?? { yellow: 0, red: 0 }
+    c[s.cardType] += 1
+    seasonCards.set(s.playerId, c)
+  }
+
+  // Titles: tournaments the club won
+  const titles = (tournaments ?? [])
+    .filter((t) => t.championTeamId === id)
+    .sort((a, b) => b.season.localeCompare(a.season))
   const suspended = activeSuspensions(sanctions ?? [], matches ?? [])
   const seasonAlbums = (albums ?? []).filter((a) => a.photoCount > 0).slice(0, 8)
 
@@ -116,6 +132,7 @@ export default async function EquipoDetailPage({
   const seasonHref = (s: string) => `/equipos/${id}${scopeQuery(backScope, { temporada: s })}`
 
   const statRows = [
+    { label: "🏆", value: titles.length, tone: "bg-amber-100" },
     { label: "PJ", value: record.played, tone: "bg-primary" },
     { label: "PG", value: record.won, pct: percent(record.won, record.played), tone: "bg-success" },
     { label: "PE", value: record.drawn, pct: percent(record.drawn, record.played), tone: "bg-amber-500" },
@@ -162,10 +179,10 @@ export default async function EquipoDetailPage({
         {/* All-time record */}
         <section>
           <SectionTitle>Estadísticas en la liga</SectionTitle>
-          <div className="grid grid-cols-4 gap-2 md:grid-cols-8 md:gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-9 md:gap-3">
             {statRows.map((s) => (
               <div key={s.label} className="overflow-hidden rounded-xl border border-border bg-card text-center">
-                <p className={cn("py-1 font-display text-sm font-bold uppercase tracking-wider", s.tone, s.tone !== "bg-muted" && "text-white")}>
+                <p className={cn("py-1 font-display text-sm font-bold uppercase tracking-wider", s.tone, s.tone.startsWith("bg-muted") || s.tone.startsWith("bg-amber-100") ? "" : "text-white")}>
                   {s.label}
                 </p>
                 <p className="py-2 font-display text-3xl font-bold tabular-nums leading-none md:text-4xl">{s.value}</p>
@@ -173,6 +190,16 @@ export default async function EquipoDetailPage({
               </div>
             ))}
           </div>
+          {titles.length > 0 && (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {titles.map((t) => (
+                <li key={t.id} className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-900">
+                  <span aria-hidden>🏆</span>
+                  {t.name} · {scopeLabel(seriesOptions, t.seriesId, t.divisionId)}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* Selected season */}
@@ -191,37 +218,53 @@ export default async function EquipoDetailPage({
                 No hay lista de buena fe cargada para {season}.
               </p>
             ) : (
-              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-                {squad.map((player) => {
-                  const goals = goalsByPlayer.get(player.id) ?? 0
-                  const suspendedUntil = season === latestSeason ? suspended.get(player.id)?.untilMatchday : undefined
-                  return (
-                    <li key={player.id}>
-                      <Link href={`/jugadores/${player.id}${keep}`} className="flex items-center gap-3 pr-3 transition hover:bg-muted">
-                        <span className="flex w-12 shrink-0 items-center justify-center self-stretch bg-primary font-display text-xl font-bold text-white tabular-nums">
-                          {player.number > 0 ? player.number : "–"}
-                        </span>
-                        <PhotoAvatar src={player.photo} name={player.name} className="my-2 size-10" fallbackClassName="text-xs" />
-                        <div className="min-w-0 flex-1 py-2">
-                          <p className="truncate font-semibold">{player.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {positionLabels[player.position] ?? player.position}
-                            {suspendedUntil !== undefined && (
-                              <span className="ml-1.5 font-semibold text-destructive">· Suspendido hasta la fecha {suspendedUntil}</span>
-                            )}
-                          </p>
-                        </div>
-                        {goals > 0 && (
-                          <span className="shrink-0 text-right">
-                            <span className="font-display text-xl font-bold tabular-nums">{goals}</span>
-                            <span className="ml-1 text-xs text-muted-foreground">{goals === 1 ? "gol" : "goles"}</span>
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)_repeat(4,2.25rem)] items-center gap-x-1 border-b border-border bg-muted py-2 pr-2 text-center font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground md:grid-cols-[3rem_minmax(0,1fr)_repeat(4,3rem)]">
+                  <span>#</span>
+                  <span className="pl-3 text-left">Jugador</span>
+                  <span title="Goles">⚽</span>
+                  <span title="Asistencias">👟</span>
+                  <span title="Amarillas">🟨</span>
+                  <span title="Rojas">🟥</span>
+                </div>
+                <ul className="divide-y divide-border">
+                  {squad.map((player) => {
+                    const cards = seasonCards.get(player.id)
+                    const suspendedUntil = season === latestSeason ? suspended.get(player.id)?.untilMatchday : undefined
+                    const cell = (n: number) => (
+                      <span className={cn("text-center font-display text-lg font-bold tabular-nums", n === 0 && "text-muted-foreground/50")}>{n}</span>
+                    )
+                    return (
+                      <li key={player.id}>
+                        <Link
+                          href={`/jugadores/${player.id}${keep}`}
+                          className="grid grid-cols-[3rem_minmax(0,1fr)_repeat(4,2.25rem)] items-center gap-x-1 pr-2 transition hover:bg-muted md:grid-cols-[3rem_minmax(0,1fr)_repeat(4,3rem)]"
+                        >
+                          <span className="flex items-center justify-center self-stretch bg-primary font-display text-xl font-bold text-white tabular-nums">
+                            {player.number > 0 ? player.number : "–"}
                           </span>
-                        )}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
+                          <span className="flex min-w-0 items-center gap-2.5 py-2 pl-3">
+                            <PhotoAvatar src={player.photo} name={player.name} className="size-9 shrink-0" fallbackClassName="text-xs" />
+                            <span className="min-w-0">
+                              <span className="block truncate font-semibold">{player.name}</span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {positionLabels[player.position] ?? player.position}
+                                {suspendedUntil !== undefined && (
+                                  <span className="ml-1.5 font-semibold text-destructive">· Suspendido hasta la fecha {suspendedUntil}</span>
+                                )}
+                              </span>
+                            </span>
+                          </span>
+                          {cell(goalsByPlayer.get(player.id) ?? 0)}
+                          {cell(assistsByPlayer.get(player.id) ?? 0)}
+                          {cell(cards?.yellow ?? 0)}
+                          {cell(cards?.red ?? 0)}
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
             )}
           </section>
 
@@ -244,7 +287,12 @@ export default async function EquipoDetailPage({
                           aria-label={outcome === "G" ? "Ganado" : outcome === "P" ? "Perdido" : outcome === "E" ? "Empatado" : "Sin jugar"}
                           className={cn("size-3.5 shrink-0 rounded-sm", outcome ? OUTCOME_STYLE[outcome] : "border border-border")}
                         />
-                        <span className="w-10 shrink-0 text-xs text-muted-foreground" title={tournament?.name}>F{m.matchday}</span>
+                        <span className="w-[4.5rem] shrink-0 leading-tight md:w-24" title={tournament?.name}>
+                          <span className="block text-xs font-medium tabular-nums">
+                            {m.date ? new Date(m.date + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "A confirmar"}
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground">Fecha {m.matchday}</span>
+                        </span>
                         <span className={cn("min-w-0 flex-1 truncate text-right text-sm", m.homeTeamId === id ? "font-bold" : "font-medium")}>
                           {homeTeam?.shortName ?? "—"}
                         </span>

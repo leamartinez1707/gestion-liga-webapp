@@ -21,6 +21,7 @@ import {
   createMatchAction,
   updateMatchAction,
   deleteMatchAction,
+  setChampionAction,
 } from "@/lib/actions/admin"
 import {
   Table,
@@ -38,6 +39,7 @@ import { Badge } from "@/components/ui/badge"
 import { MatchStatusBadge } from "@/components/match-status-badge"
 import { MatchDialog } from "../../partidos/dialog"
 import { RegisterForm } from "./register-form"
+import { ChampionForm } from "./champion-form"
 
 export default async function TorneoInscripcionesPage({
   params,
@@ -96,6 +98,16 @@ export default async function TorneoInscripcionesPage({
       <div>
         <h1 className="text-2xl font-bold">{tournament.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{label}</p>
+      </div>
+
+      <div className="rounded-xl border border-border p-6 flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Campeón</h2>
+        <p className="text-sm text-muted-foreground">Cuando termina el torneo, elegí al campeón: suma una copa en la página del equipo.</p>
+        <ChampionForm
+          teams={rows.map(({ team }) => ({ id: team.id, name: team.name }))}
+          championId={tournament.championTeamId}
+          action={setChampionAction.bind(null, id)}
+        />
       </div>
 
       <div className="rounded-xl border border-border p-6 flex flex-col gap-3">

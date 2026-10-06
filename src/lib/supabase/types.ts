@@ -231,15 +231,15 @@ export type Database = {
       }
       tournaments: {
         Row: {
-          category: string | null; created_at: string | null; division_id: string | null; end_date: string | null
+          category: string | null; champion_team_id: string | null; created_at: string | null; division_id: string | null; end_date: string | null
           format: string; id: string; name: string; season: string; series_id: string | null; start_date: string | null
         }
         Insert: {
-          category?: string | null; created_at?: string | null; division_id?: string | null; end_date?: string | null
+          category?: string | null; champion_team_id?: string | null; created_at?: string | null; division_id?: string | null; end_date?: string | null
           format: string; id?: string; name: string; season: string; series_id?: string | null; start_date?: string | null
         }
         Update: {
-          category?: string | null; created_at?: string | null; division_id?: string | null; end_date?: string | null
+          category?: string | null; champion_team_id?: string | null; created_at?: string | null; division_id?: string | null; end_date?: string | null
           format?: string; id?: string; name?: string; season?: string; series_id?: string | null; start_date?: string | null
         }
         Relationships: [

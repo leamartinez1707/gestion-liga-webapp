@@ -70,10 +70,14 @@ export default async function JugadorPage({
   const seasonOf = (tournamentId?: string) => (tournamentId ? tournamentMap.get(tournamentId)?.season : undefined)
   const season = rows.map((r) => seasonOf(r.match!.tournamentId)).find(Boolean)
   const seasonRows = season ? rows.filter((r) => seasonOf(r.match!.tournamentId) === season) : rows
-  const totals = seasonRows.reduce(
-    (t, r) => ({ goals: t.goals + r.goals, assists: t.assists + r.assists, yellow: t.yellow + r.yellow, red: t.red + r.red }),
-    { goals: 0, assists: 0, yellow: 0, red: 0 }
-  )
+  const sum = (list: typeof rows) =>
+    list.reduce(
+      (t, r) => ({ goals: t.goals + r.goals, assists: t.assists + r.assists, yellow: t.yellow + r.yellow, red: t.red + r.red }),
+      { goals: 0, assists: 0, yellow: 0, red: 0 }
+    )
+  // This season and the whole career in the league
+  const totals = sum(seasonRows)
+  const career = sum(rows)
 
   const suspension = activeSuspensions((sanctions ?? []).filter((s) => s.playerId === id), matches ?? []).get(id)
 
@@ -82,10 +86,10 @@ export default async function JugadorPage({
   const teamHref = `/equipos/${player.teamId}${q}`
 
   const stats = [
-    { label: "Goles", value: totals.goals, icon: "⚽" },
-    { label: "Asistencias", value: totals.assists, icon: "👟" },
-    { label: "Amarillas", value: totals.yellow, icon: "🟨" },
-    { label: "Rojas", value: totals.red, icon: "🟥" },
+    { label: "Goles", value: totals.goals, total: career.goals, icon: "⚽" },
+    { label: "Asistencias", value: totals.assists, total: career.assists, icon: "👟" },
+    { label: "Amarillas", value: totals.yellow, total: career.yellow, icon: "🟨" },
+    { label: "Rojas", value: totals.red, total: career.red, icon: "🟥" },
   ]
 
   return (
@@ -121,9 +125,7 @@ export default async function JugadorPage({
           </div>
         )}
 
-        <SectionTitle action={season && <span className="text-sm text-muted-foreground">Temporada {season}</span>}>
-          Estadísticas
-        </SectionTitle>
+        <SectionTitle>Estadísticas</SectionTitle>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {stats.map((s) => (
             <div key={s.label} className="rounded-xl border border-border bg-card p-4">
@@ -131,7 +133,16 @@ export default async function JugadorPage({
                 <span aria-hidden>{s.icon}</span>
                 {s.label}
               </p>
-              <p className="mt-1 font-display text-5xl font-bold tabular-nums leading-none">{s.value}</p>
+              <div className="mt-2 flex items-end justify-between gap-2">
+                <div>
+                  <p className="font-display text-5xl font-bold tabular-nums leading-none">{s.value}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{season ? `Temporada ${season}` : "Temporada"}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-display text-2xl font-bold tabular-nums leading-none text-muted-foreground">{s.total}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Total</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>

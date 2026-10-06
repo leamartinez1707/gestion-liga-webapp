@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import type { Match, Team } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { MatchStatusBadge } from "@/components/match-status-badge"
@@ -97,9 +98,10 @@ export function FixturePanel({
             const awayTeam = teams.find((t) => t.id === match.awayTeamId)
 
             return (
-              <div
+              <Link
                 key={match.id}
-                className="bg-background p-3"
+                href={`/partidos/${match.id}`}
+                className="block bg-background p-3 transition hover:bg-muted"
               >
                 {/* Venue + Date */}
                 <div className="text-center text-[10px] text-muted-foreground mb-3">
@@ -147,7 +149,7 @@ export function FixturePanel({
                 {match.notes && (
                   <p className="mt-2 text-center text-[10px] text-muted-foreground">{match.notes}</p>
                 )}
-              </div>
+              </Link>
             )
           })}
         </div>

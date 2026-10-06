@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import type { Match, Team } from "@/lib/types"
 import { PhotoAvatar } from "@/components/photo-avatar"
 import { MatchStatusBadge } from "@/components/match-status-badge"
@@ -16,7 +18,7 @@ export function ArticleMatch({ match, home, away }: Props) {
     { team: away, fallback: "Visitante", score: match.awayScore },
   ]
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Link href={`/partidos/${match.id}`} className="block rounded-xl border border-border bg-card p-4 transition hover:border-primary/40 hover:shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>Fecha {match.matchday}{match.venue ? ` · ${match.venue}` : ""}</span>
         <MatchStatusBadge match={match} />
@@ -30,6 +32,6 @@ export function ArticleMatch({ match, home, away }: Props) {
           </li>
         ))}
       </ul>
-    </div>
+    </Link>
   )
 }

@@ -11,7 +11,13 @@ import { AssignDelegateForm } from "./assign-delegate-form"
 import {
   updateTeamAction,
   deletePlayerAction,
+  setTeamSeasonPhotoAction,
+  deleteTeamSeasonPhotoAction,
 } from "@/lib/actions/admin"
+import { getTeamSeasonPhotos } from "@/lib/db/team-photos"
+import { getRegistrations } from "@/lib/db/registrations"
+import { getTournaments } from "@/lib/db/tournaments"
+import { SeasonPhotos } from "./season-photos"
 import { Button } from "@/components/ui/button"
 import { TeamEditForm } from "./edit-form"
 import { AddPlayerInline } from "./add-player"
@@ -53,7 +59,21 @@ export default async function EquipoDetailPage({
   const { data: players, error: playersError } = await getPlayersByTeam(id)
   const playersList = players ?? []
 
-  const delegates = await getTeamDelegates(id)
+  const [delegates, seasonPhotos, { data: registrations }, { data: tournaments }] = await Promise.all([
+    getTeamDelegates(id),
+    getTeamSeasonPhotos(id),
+    getRegistrations({ teamId: id }),
+    getTournaments(),
+  ])
+  // Seasons the team played, plus the current year
+  const registered = new Set((registrations ?? []).map((r) => r.tournamentId))
+  const seasons = [
+    ...new Set([
+      String(new Date().getFullYear()),
+      ...(tournaments ?? []).filter((t) => registered.has(t.id)).map((t) => t.season),
+      ...seasonPhotos.map((p) => p.season),
+    ]),
+  ].sort((a, b) => b.localeCompare(a))
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,6 +131,18 @@ export default async function EquipoDetailPage({
         {delegates.length < 2 && (
           <AssignDelegateForm teamId={id} />
         )}
+      </div>
+
+      {/* Squad photo per season (public team page, by year) */}
+      <div className="rounded-xl border border-border p-6">
+        <h2 className="text-lg font-semibold">Foto del plantel por temporada</h2>
+        <p className="mb-4 text-sm text-muted-foreground">Se muestra en la página pública del equipo, en la pestaña de cada año.</p>
+        <SeasonPhotos
+          photos={seasonPhotos}
+          seasons={seasons}
+          action={setTeamSeasonPhotoAction.bind(null, id)}
+          onDelete={deleteTeamSeasonPhotoAction.bind(null, id)}
+        />
       </div>
 
       {/* Squad management */}

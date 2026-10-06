@@ -154,7 +154,8 @@ export default async function JugadorPage({
                 const outcome = !played || own == null || other == null ? null : own > other ? "G" : own < other ? "P" : "E"
                 const tournament = tournamentMap.get(m.tournamentId)
                 return (
-                  <li key={m.id} className="flex items-center gap-2 px-3 py-3 md:gap-3 md:px-4">
+                  <li key={m.id}>
+                    <Link href={`/partidos/${m.id}`} className="flex items-center gap-2 px-3 py-3 transition hover:bg-muted md:gap-3 md:px-4">
                     <div className="w-[4.5rem] shrink-0 text-xs text-muted-foreground md:w-32">
                       <p className="truncate">{formatDay(m.date)}</p>
                       <p className="truncate">
@@ -190,6 +191,7 @@ export default async function JugadorPage({
                       {yellow > 0 && <span title="Amarilla">🟨{yellow > 1 && <b className="ml-0.5">{yellow}</b>}</span>}
                       {red > 0 && <span title="Roja">🟥</span>}
                     </span>
+                    </Link>
                   </li>
                 )
               })}

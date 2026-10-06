@@ -187,7 +187,7 @@ export default async function PartidosPage({ searchParams }: Props) {
                           {m.time && <span className="font-display text-lg font-bold tabular-nums">{m.time.slice(0, 5)}</span>}
                         </span>
                         <TeamCell team={home} href={teamHref(home)} align="home" />
-                        <div className="flex items-center justify-center gap-1.5">
+                        <Link href={`/partidos/${m.id}`} aria-label="Ver ficha del partido" className="flex items-center justify-center gap-1.5 rounded-md transition hover:opacity-80">
                           {played ? (
                             <>
                               <ScoreBox value={m.homeScore} live={m.status === "ongoing"} />
@@ -198,7 +198,7 @@ export default async function PartidosPage({ searchParams }: Props) {
                               {m.status === "scheduled" ? (m.time ? m.time.slice(0, 5) : "VS") : <MatchStatusBadge match={m} />}
                             </span>
                           )}
-                        </div>
+                        </Link>
                         <TeamCell team={away} href={teamHref(away)} align="away" />
                         <div className="hidden flex-col items-end gap-1 text-right text-xs text-muted-foreground md:flex">
                           <span className="truncate">{m.venue || "A confirmar"}</span>

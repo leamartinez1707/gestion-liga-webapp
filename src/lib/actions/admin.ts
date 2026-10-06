@@ -17,10 +17,7 @@ import {
   deleteDivision,
   getDivision,
 } from "@/lib/db/series"
-import {
-  assignDelegate,
-  revokeDelegate,
-} from "@/lib/db/delegates"
+import { assignDelegate } from "@/lib/db/delegates"
 import { saveMatchGoals } from "@/lib/db/goals"
 import {
   createSponsor,
@@ -68,7 +65,6 @@ import {
 } from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
 import { updateLeagueSettings } from "@/lib/db/settings"
-import { setReferee } from "@/lib/db/referees"
 import { createClient } from "@/lib/supabase/server"
 import {
   createAlbum,
@@ -907,41 +903,6 @@ export async function assignDelegateAction(
   return { success: true as const }
 }
 
-/** Form-compatible wrapper for assignDelegate */
-export async function assignDelegateFormAction(formData: FormData): Promise<void> {
-  const auth = await requireStaff()
-  if (auth.error) throw new Error(auth.error)
-
-  const teamId = formData.get("teamId") as string
-  const email = formData.get("email") as string
-  if (!email?.trim()) throw new Error("El email es obligatorio.")
-
-  const result = await assignDelegate(teamId, email.trim())
-  if (result.error) throw new Error(result.error)
-  revalidateSite()
-}
-
-export async function revokeDelegateAction(teamId: string) {
-  const auth = await requireStaff()
-  if (auth.error) return { error: auth.error }
-
-  const result = await revokeDelegate(teamId)
-  if (result.error) return { error: result.error }
-  revalidateSite()
-  return { success: true as const }
-}
-
-/** Form-compatible wrapper for revokeDelegate */
-export async function revokeDelegateFormAction(formData: FormData): Promise<void> {
-  const auth = await requireStaff()
-  if (auth.error) throw new Error(auth.error)
-
-  const teamId = formData.get("teamId") as string
-  const result = await revokeDelegate(teamId)
-  if (result.error) throw new Error(result.error)
-  revalidateSite()
-}
-
 // ---------------------------------------------------------------------------
 // Matchday suspension
 // ---------------------------------------------------------------------------
@@ -1265,28 +1226,6 @@ export async function updateSettingsAction(_prev: unknown, formData: FormData) {
   if (result.error) return { error: result.error }
   revalidateSite()
   return { success: true as const }
-}
-
-export async function addRefereeAction(_prev: unknown, formData: FormData) {
-  const auth = await requireStaff()
-  if (auth.error) return { error: auth.error }
-
-  const email = (formData.get("email") as string | null)?.trim()
-  if (!email) return { error: "El email es obligatorio." }
-  const result = await setReferee(email, true)
-  if (result.error) return { error: result.error }
-  revalidateSite()
-  return { success: true as const }
-}
-
-export async function removeRefereeAction(email: string): Promise<{ error?: string }> {
-  const auth = await requireStaff()
-  if (auth.error) return { error: auth.error }
-
-  const result = await setReferee(email, false)
-  if (result.error) return { error: result.error }
-  revalidateSite()
-  return {}
 }
 
 /** After adding/removing a yellow by hand: rebuild that player's accumulation. */

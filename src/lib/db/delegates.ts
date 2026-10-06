@@ -55,31 +55,3 @@ export async function assignDelegate(
     return { error: "No se pudo asignar el delegado." }
   }
 }
-
-/** Staff only — enforced by the revoke_delegate RPC (security definer). */
-export async function revokeDelegate(teamId: string): Promise<{ error?: string }> {
-  try {
-    const supabase = await createClient()
-    const { error } = await supabase.rpc("revoke_delegate", { p_team_id: teamId })
-    if (error) return { error: error.message }
-    return {}
-  } catch {
-    return { error: "No se pudo revocar el delegado." }
-  }
-}
-
-export async function getDelegateByTeam(teamId: string): Promise<{ data: { email: string } | null; error: string | null }> {
-  try {
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("team_id", teamId)
-      .maybeSingle()
-
-    if (!data) return { data: null, error: null } // No delegate is not an error
-    return { data: { email: data.email }, error: null }
-  } catch {
-    return { data: null, error: null }
-  }
-}

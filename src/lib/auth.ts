@@ -50,6 +50,14 @@ export async function requireStaff(): Promise<Guard<SessionProfile>> {
   return { profile }
 }
 
+/** Creating or changing administrators: superadmin only. */
+export async function requireSuperadmin(): Promise<Guard<SessionProfile>> {
+  const profile = await getSessionProfile()
+  if (!profile) return { error: "Tenés que iniciar sesión." }
+  if (profile.role !== "superadmin") return { error: "Solo el superadmin puede gestionar administradores." }
+  return { profile }
+}
+
 /** For delegate actions: returns the delegate's own team, never one taken from the form. */
 export async function requireDelegateTeam(): Promise<Guard<SessionProfile & { teamId: string }>> {
   const profile = await getSessionProfile()

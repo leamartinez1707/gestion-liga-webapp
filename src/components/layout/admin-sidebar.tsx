@@ -12,7 +12,7 @@ import {
   Newspaper,
   Images,
   Layers,
-  Flag,
+  UserCog,
   Settings,
   HeartHandshake,
   LogOut,
@@ -40,7 +40,7 @@ const sidebarLinks = [
   { label: "Noticias", href: "/admin/noticias", icon: Newspaper },
   { label: "Galería", href: "/admin/galeria", icon: Images },
   { label: "Auspiciantes", href: "/admin/sponsors", icon: HeartHandshake },
-  { label: "Árbitros", href: "/admin/arbitros", icon: Flag },
+  { label: "Usuarios", href: "/admin/usuarios", icon: UserCog },
   { label: "Configuración", href: "/admin/configuracion", icon: Settings },
 ]
 

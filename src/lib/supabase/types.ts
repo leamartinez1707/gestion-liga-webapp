@@ -247,6 +247,7 @@ export type Database = {
       withdraw_team: { Args: { p_registration_id: string }; Returns: number }
       can_edit_match: { Args: { p_match_id: string }; Returns: boolean }
       set_referee: { Args: { p_email: string; p_is_referee: boolean }; Returns: undefined }
+      unassign_delegate: { Args: { p_profile_id: string }; Returns: undefined }
       recompute_accumulation: { Args: { p_player_id: string; p_tournament_id: string }; Returns: undefined }
       recompute_match: { Args: { p_match_id: string }; Returns: undefined }
       set_match_live_state: { Args: { p_match_id: string; p_status: string; p_period: string | null }; Returns: undefined }

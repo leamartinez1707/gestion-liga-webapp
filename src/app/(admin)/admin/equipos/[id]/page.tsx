@@ -4,12 +4,13 @@ import Link from "next/link"
 
 import { getTeam } from "@/lib/db/teams"
 import { getPlayersByTeam } from "@/lib/db/players"
-import { getDelegateByTeam } from "@/lib/db/delegates"
+import { getTeamDelegates } from "@/lib/db/users"
+import { unassignDelegateAction } from "@/lib/actions/users"
+import { CreateUserDialog } from "../../usuarios/user-dialogs"
+import { AssignDelegateForm } from "./assign-delegate-form"
 import {
   updateTeamAction,
   deletePlayerAction,
-  assignDelegateFormAction,
-  revokeDelegateFormAction,
 } from "@/lib/actions/admin"
 import { Button } from "@/components/ui/button"
 import { TeamEditForm } from "./edit-form"
@@ -52,7 +53,7 @@ export default async function EquipoDetailPage({
   const { data: players, error: playersError } = await getPlayersByTeam(id)
   const playersList = players ?? []
 
-  const { data: delegate } = await getDelegateByTeam(id)
+  const delegates = await getTeamDelegates(id)
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,34 +72,44 @@ export default async function EquipoDetailPage({
         <TeamEditForm team={team} action={updateTeamAction.bind(null, id)} />
       </div>
 
-      {/* Delegate management */}
-      <div className="rounded-xl border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">Delegado del equipo</h2>
-        {delegate ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{delegate.email}</span>
-              <Badge variant="outline" className="text-xs">Delegado</Badge>
-            </div>
-            <form action={revokeDelegateFormAction}>
-              <input type="hidden" name="teamId" value={id} />
-              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive text-xs">
-                Revocar acceso
-              </Button>
-            </form>
+      {/* Delegates (up to 2): they manage the squad and the lista de buena fe */}
+      <div className="rounded-xl border border-border p-6 flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Delegados</h2>
+            <p className="text-sm text-muted-foreground">Hasta 2 por equipo. Gestionan el plantel y la lista de buena fe.</p>
           </div>
+          {delegates.length < 2 && (
+            <CreateUserDialog teams={[{ id: team.id, name: team.name }]} canManageAdmins={false} defaultRole="delegate" defaultTeamId={team.id}>
+              <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Crear delegado</Button>
+            </CreateUserDialog>
+          )}
+        </div>
+
+        {delegates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Este equipo todavía no tiene delegado.</p>
         ) : (
-          <form action={assignDelegateFormAction} className="flex gap-2">
-            <input type="hidden" name="teamId" value={id} />
-            <input
-              type="email"
-              name="email"
-              placeholder="Email del delegado"
-              required
-              className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-            />
-            <Button type="submit" size="sm">Asignar</Button>
-          </form>
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {delegates.map((d) => (
+              <li key={d.id} className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-medium">{d.email}</span>
+                <DeleteConfirmDialog
+                  itemName={d.email}
+                  title="Quitar delegado"
+                  description={`${d.email} deja de gestionar ${team.name}. La cuenta no se borra.`}
+                  confirmLabel="Quitar"
+                  pendingLabel="Quitando…"
+                  onConfirm={unassignDelegateAction.bind(null, d.id)}
+                >
+                  <Button variant="ghost" size="sm" className="text-destructive">Quitar</Button>
+                </DeleteConfirmDialog>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {delegates.length < 2 && (
+          <AssignDelegateForm teamId={id} />
         )}
       </div>
 

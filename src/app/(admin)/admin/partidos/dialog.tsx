@@ -376,7 +376,7 @@ export function MatchDialog({
                 </SelectContent>
               </Select>
               {referees.length === 0 && (
-                <p className="text-xs text-muted-foreground">Agregá árbitros en la sección Árbitros.</p>
+                <p className="text-xs text-muted-foreground">Creá cuentas de árbitro en Usuarios.</p>
               )}
             </div>
           )}

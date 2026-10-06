@@ -1275,8 +1275,16 @@ export async function updateSettingsAction(_prev: unknown, formData: FormData) {
   if (Object.values(settings).some((v) => Number.isNaN(v) || v < 0 || v > 50)) {
     return { error: "Revisá los números: tienen que ser entre 0 y 50." }
   }
+  const guestPlayerMaxMatches = num("guestPlayerMaxMatches")
+  if (Number.isNaN(guestPlayerMaxMatches) || guestPlayerMaxMatches < 0 || guestPlayerMaxMatches > 50) {
+    return { error: "Los partidos por refuerzo tienen que ser entre 0 y 50." }
+  }
 
-  const result = await updateLeagueSettings(settings)
+  const result = await updateLeagueSettings({
+    ...settings,
+    guestPlayersAllowed: formData.get("guestPlayersAllowed") === "on",
+    guestPlayerMaxMatches,
+  })
   if (result.error) return { error: result.error }
   revalidateSite()
   return { success: true as const }

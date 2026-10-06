@@ -49,6 +49,25 @@ export function SettingsForm({ settings }: { settings: LeagueSettings }) {
         </p>
       </fieldset>
 
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
+        <legend className="px-1 text-sm font-semibold">👕 Refuerzos</legend>
+        <label className="flex items-start gap-2.5 text-sm">
+          <input type="checkbox" name="guestPlayersAllowed" defaultChecked={settings.guestPlayersAllowed} className="mt-0.5 size-4 accent-primary" />
+          <span>
+            <span className="font-medium">Permitir refuerzos</span>
+            <span className="block text-xs text-muted-foreground">
+              Jugadores que no están en la lista de buena fe del torneo y se fichan para algunos partidos. Si no se permiten, solo juegan los de la lista.
+            </span>
+          </span>
+        </label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="guestPlayerMaxMatches">Partidos que puede jugar cada refuerzo por torneo</Label>
+          <Input id="guestPlayerMaxMatches" name="guestPlayerMaxMatches" type="number" min={0} max={50}
+            defaultValue={settings.guestPlayerMaxMatches} className="max-w-32" />
+          <p className="text-xs text-muted-foreground">0 = sin límite.</p>
+        </div>
+      </fieldset>
+
       <p className="text-xs text-muted-foreground">
         Los cambios se aplican a las tarjetas que se carguen desde ahora.
       </p>

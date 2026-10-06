@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { Plus, Pencil, Trash2, CalendarX } from "lucide-react"
 import { getMatchdays, getMatchesPaginated } from "@/lib/db/matches"
 import { getSeriesOptions } from "@/lib/db/series"
-import { tournamentOptions } from "@/lib/scope"
+import { seasonScope, seasonSelect, tournamentOptions } from "@/lib/scope"
 import { normalize } from "@/lib/text"
 import { ListFilters, type FilterSelect } from "@/components/admin/list-filters"
 import { getTeamsByIds } from "@/lib/db/teams"
@@ -27,22 +27,14 @@ const LIMIT = 10
 
 interface Props { searchParams: Promise<{ page?: string; q?: string; temporada?: string; torneo?: string; equipo?: string; fecha?: string; estado?: string }> }
 
-/** Current year if some tournament is from it, otherwise the newest season. */
-function defaultSeason(seasons: string[]): string {
-  const year = String(new Date().getFullYear())
-  return seasons.includes(year) ? year : seasons[0] ?? ""
-}
-
 export default async function PartidosPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
 
   // Everything on this page belongs to one season, so the load doesn't grow with the league's history
   const [{ data: allTournaments }, series] = await Promise.all([getTournaments(), getSeriesOptions()])
-  const seasons = [...new Set((allTournaments ?? []).map((t) => t.season))].sort((a, b) => b.localeCompare(a))
-  const currentSeason = defaultSeason(seasons)
-  const season = params.temporada && seasons.includes(params.temporada) ? params.temporada : currentSeason
-  const tournaments = (allTournaments ?? []).filter((t) => t.season === season)
+  const seasonFilter = seasonScope(allTournaments ?? [], params.temporada)
+  const { tournaments } = seasonFilter
   const tournamentIds = tournaments.map((t) => t.id)
   // The list, the filters and the dialogs only see this season's tournaments and the teams entered in them
   const { data: registrations } = await getRegistrations({ tournamentIds })
@@ -74,13 +66,7 @@ export default async function PartidosPage({ searchParams }: Props) {
   // "Fecha" filter: the matchdays of the chosen tournament (only that column is read)
   const matchdays = params.torneo && tournamentIds.includes(params.torneo) ? await getMatchdays(params.torneo) : []
   const filterSelects: FilterSelect[] = [
-    {
-      param: "temporada",
-      allLabel: "Temporada",
-      options: seasons.map((s) => ({ value: s, label: `Temporada ${s}` })),
-      defaultValue: currentSeason,
-      clears: ["torneo", "equipo", "fecha"],
-    },
+    seasonSelect(seasonFilter, ["torneo", "equipo", "fecha"]),
     { param: "torneo", allLabel: "Todos los torneos", options: tournamentOptions(tournaments, series) },
     { param: "equipo", allLabel: "Todos los equipos", options: [...(teams ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ value: t.id, label: t.name })) },
     ...(matchdays.length ? [{ param: "fecha", allLabel: "Todas las fechas", options: matchdays.map((md) => ({ value: String(md), label: `Fecha ${md}` })) }] : []),

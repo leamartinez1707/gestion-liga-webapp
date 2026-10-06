@@ -8,20 +8,20 @@ import { normalize } from "@/lib/text"
 const SANCTION_DETAILS = `
   id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
   player:player_id (name),
-  match:match_id (matchday, tournament_id)
+  match:match_id (matchday, tournament_id, home_team_id, away_team_id)
 `
-// Same columns, but only sanctions whose player passes the filters on `player`
-const SANCTION_DETAILS_BY_PLAYER = `
+
+/**
+ * Same columns; `!inner` on the player and/or the match keeps only the
+ * sanctions whose player/match pass the filters set on `player.*` / `match.*`.
+ */
+function sanctionSelect(inner: { player?: boolean; match?: boolean }) {
+  return `
   id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
-  player:player_id!inner (name),
-  match:match_id (matchday, tournament_id)
-`
-// Same columns, but only sanctions whose match passes the filters on `match`
-const SANCTION_DETAILS_INNER = `
-  id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
-  player:player_id (name),
-  match:match_id!inner (matchday, tournament_id, home_team_id, away_team_id)
-`
+  player:player_id${inner.player ? "!inner" : ""} (name),
+  match:match_id${inner.match ? "!inner" : ""} (matchday, tournament_id, home_team_id, away_team_id)
+` as typeof SANCTION_DETAILS
+}
 
 export interface SanctionFilter {
   playerIds?: string[]
@@ -31,6 +31,8 @@ export interface SanctionFilter {
   q?: string
   /** Current team of the player */
   teamId?: string
+  /** Sanctions from matches of these tournaments (e.g. one season's) */
+  tournamentIds?: string[]
 }
 
 export async function getSanctionsPaginated(
@@ -42,6 +44,7 @@ export async function getSanctionsPaginated(
     // Filtering by an empty set (e.g. a search with no match) finds nothing
     if (filter.ids && filter.ids.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
     if (filter.playerIds && filter.playerIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
+    if (filter.tournamentIds && filter.tournamentIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
     if (filter.teamId !== undefined && !isUuid(filter.teamId)) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
@@ -49,10 +52,10 @@ export async function getSanctionsPaginated(
 
     // Name and team filter on the player in the same query (no list of ids in the URL)
     const term = likeTerm(normalize(filter.q ?? ""))
-    const byPlayer = !!term || !!filter.teamId
     let query = supabase
       .from("sanctions")
-      .select(byPlayer ? SANCTION_DETAILS_BY_PLAYER : SANCTION_DETAILS, { count: "exact" })
+      .select(sanctionSelect({ player: !!term || !!filter.teamId, match: !!filter.tournamentIds }), { count: "exact" })
+    if (filter.tournamentIds) query = query.in("match.tournament_id", filter.tournamentIds)
     if (term) query = query.ilike("player.search_name", term)
     if (filter.teamId) query = query.eq("player.team_id", filter.teamId)
     if (filter.playerIds) query = query.in("player_id", filter.playerIds)
@@ -213,7 +216,7 @@ export async function getSanctions(
     const supabase = createReadOnlyClient()
     const byMatch = !!filter.tournamentIds || !!filter.teamId
     const { data, error } = await fetchAll((from, to) => {
-      let query = supabase.from("sanctions").select(byMatch ? SANCTION_DETAILS_INNER : SANCTION_DETAILS)
+      let query = supabase.from("sanctions").select(sanctionSelect({ match: byMatch }))
       if (filter.playerIds) query = query.in("player_id", filter.playerIds)
       if (filter.matchIds) query = query.in("match_id", filter.matchIds)
       if (filter.suspendingOnly) query = query.gt("matches_suspended", 0)

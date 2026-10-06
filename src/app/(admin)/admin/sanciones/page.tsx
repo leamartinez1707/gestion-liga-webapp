@@ -2,8 +2,11 @@ import { Suspense } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { getSanctions, getSanctionsPaginated } from "@/lib/db/sanctions"
 import { ListFilters } from "@/components/admin/list-filters"
-import { getTeams } from "@/lib/db/teams"
-import { getPlayers } from "@/lib/db/players"
+import { getTeamsByIds } from "@/lib/db/teams"
+import { getPlayersByTeams } from "@/lib/db/players"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
+import { seasonScope, seasonSelect } from "@/lib/scope"
 import { getMatches, getNextMatchdays } from "@/lib/db/matches"
 import { activeSuspensions, sanctionTournamentIds } from "@/lib/suspensions"
 import { createSanctionAction, deleteSanctionAction } from "@/lib/actions/admin"
@@ -16,19 +19,26 @@ import { Pagination } from "@/components/ui/pagination"
 
 const LIMIT = 10
 
-interface Props { searchParams: Promise<{ page?: string; q?: string; equipo?: string; tipo?: string; estado?: string }> }
+interface Props { searchParams: Promise<{ page?: string; q?: string; temporada?: string; equipo?: string; tipo?: string; estado?: string }> }
 
 export default async function SancionesPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: teams }, { data: players }, { data: matches }, { data: suspending }] = await Promise.all([
-    getTeams(),
-    getPlayers(),
+  // Everything on this page belongs to one season: the list, the filters and the dialog
+  const { data: allTournaments } = await getTournaments()
+  const seasonFilter = seasonScope(allTournaments ?? [], params.temporada)
+  const tournamentIds = seasonFilter.tournaments.map((t) => t.id)
+
+  const [{ data: registrations }, { data: matches }, { data: suspending }] = await Promise.all([
+    getRegistrations({ tournamentIds }),
     // A card comes from a match that was played: the dialog only lists those
-    getMatches({ statuses: ["finished", "ongoing"] }),
+    getMatches({ tournamentIds, statuses: ["finished", "ongoing"] }),
     // "Vigentes": only sanctions that suspend can still apply
-    params.estado === "vigentes" ? getSanctions({ suspendingOnly: true }) : Promise.resolve({ data: null }),
+    params.estado === "vigentes" ? getSanctions({ tournamentIds, suspendingOnly: true }) : Promise.resolve({ data: null }),
   ])
+  // Teams entered in the season's tournaments, and their players (for the dialog)
+  const seasonTeamIds = (registrations ?? []).map((r) => r.teamId)
+  const [{ data: teams }, { data: players }] = await Promise.all([getTeamsByIds(seasonTeamIds), getPlayersByTeams(seasonTeamIds)])
 
   // "Vigentes": suspensions that still apply to the next matchday of their tournament
   const vigentes = suspending
@@ -42,6 +52,7 @@ export default async function SancionesPage({ searchParams }: Props) {
     teamId: params.equipo,
     ids: vigentes,
     cardType: params.tipo,
+    tournamentIds,
   })
   const nextMatchdays = await getNextMatchdays(sanctionTournamentIds(sanctions))
   const filtering = !!(params.q || params.equipo || params.tipo || params.estado)
@@ -60,6 +71,7 @@ export default async function SancionesPage({ searchParams }: Props) {
         <ListFilters
           searchPlaceholder="Buscar por jugador"
           selects={[
+            seasonSelect(seasonFilter, ["equipo"]),
             { param: "equipo", allLabel: "Todos los equipos", options: [...(teams ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ value: t.id, label: t.name })) },
             { param: "tipo", allLabel: "Todas las tarjetas", options: [{ value: "yellow", label: "Amarillas" }, { value: "red", label: "Rojas" }, { value: "accumulation", label: "Acumulación" }] },
             { param: "estado", allLabel: "Vigentes y cumplidas", options: [{ value: "vigentes", label: "Solo vigentes" }] },

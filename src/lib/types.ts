@@ -37,6 +37,13 @@ export interface Team {
   tournamentId?: string
 }
 
+/** A team (club) entered in a tournament; the tournament gives series, division and season. */
+export interface Registration {
+  id: string
+  tournamentId: string
+  teamId: string
+}
+
 export interface Player {
   id: string
   name: string

@@ -100,6 +100,25 @@ export type Database = {
           { foreignKeyName: "profiles_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
         ]
       }
+      registration_players: {
+        Row: { created_at: string | null; player_id: string; registration_id: string; tournament_id: string }
+        Insert: { created_at?: string | null; player_id: string; registration_id: string; tournament_id?: string }
+        Update: { created_at?: string | null; player_id?: string; registration_id?: string; tournament_id?: string }
+        Relationships: [
+          { foreignKeyName: "registration_players_player_id_fkey"; columns: ["player_id"]; isOneToOne: false; referencedRelation: "players"; referencedColumns: ["id"] },
+          { foreignKeyName: "registration_players_registration_id_fkey"; columns: ["registration_id"]; isOneToOne: false; referencedRelation: "registrations"; referencedColumns: ["id"] },
+          { foreignKeyName: "registration_players_tournament_id_fkey"; columns: ["tournament_id"]; isOneToOne: false; referencedRelation: "tournaments"; referencedColumns: ["id"] },
+        ]
+      }
+      registrations: {
+        Row: { created_at: string | null; id: string; team_id: string; tournament_id: string }
+        Insert: { created_at?: string | null; id?: string; team_id: string; tournament_id: string }
+        Update: { created_at?: string | null; id?: string; team_id?: string; tournament_id?: string }
+        Relationships: [
+          { foreignKeyName: "registrations_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
+          { foreignKeyName: "registrations_tournament_id_fkey"; columns: ["tournament_id"]; isOneToOne: false; referencedRelation: "tournaments"; referencedColumns: ["id"] },
+        ]
+      }
       sanctions: {
         Row: {
           card_type: string | null; created_at: string | null; expires_after_match: number | null; id: string

@@ -1,7 +1,7 @@
 // Series/division scope shared by the public pages (server and client).
 // Pure module: no DB access, safe to import from client components.
 
-import type { Division, Series, Team, Tournament } from "@/lib/types"
+import type { Division, Registration, Series, Team, Tournament } from "@/lib/types"
 
 export interface DivisionOption {
   id: string
@@ -58,12 +58,15 @@ export function resolveScope(
   return { series, division }
 }
 
-export function teamsInScope(teams: Team[], scope: Scope): Team[] {
-  return teams.filter(
-    (t) =>
-      (!scope.series || t.seriesId === scope.series.id) &&
-      (!scope.division || t.divisionId === scope.division.id)
-  )
+/** Teams entered (registered) in a tournament. */
+export function teamsInTournament(
+  teams: Team[],
+  registrations: Registration[],
+  tournamentId: string | undefined
+): Team[] {
+  if (!tournamentId) return []
+  const ids = new Set(registrations.filter((r) => r.tournamentId === tournamentId).map((r) => r.teamId))
+  return teams.filter((t) => ids.has(t.id))
 }
 
 /** Tournaments of the selected division, newest season first. */
@@ -87,7 +90,7 @@ export function scopeQuery(scope: Scope, extra: Record<string, string> = {}): st
   return qs ? `?${qs}` : ""
 }
 
-/** "Serie 1 · División A" for admin tables; "—" when not assigned. */
+/** "Serie 1 · División A" for labels; "—" when not assigned. */
 export function scopeLabel(options: SeriesOption[], seriesId?: string, divisionId?: string): string {
   const series = options.find((s) => s.id === seriesId)
   if (!series) return "—"

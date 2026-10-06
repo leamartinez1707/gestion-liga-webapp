@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { Plus, Pencil, Trash2, CalendarX } from "lucide-react"
 import { getMatchesPaginated } from "@/lib/db/matches"
 import { getTeams } from "@/lib/db/teams"
+import { getRegistrations } from "@/lib/db/registrations"
 import { getPlayers } from "@/lib/db/players"
 import { getTournaments } from "@/lib/db/tournaments"
 import { createMatchAction, updateMatchAction, deleteMatchAction } from "@/lib/actions/admin"
@@ -21,11 +22,12 @@ interface Props { searchParams: Promise<{ page?: string }> }
 export default async function PartidosPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: matches, error, totalPages }, { data: teams }, { data: tournaments }, { data: players }] = await Promise.all([
+  const [{ data: matches, error, totalPages }, { data: teams }, { data: tournaments }, { data: players }, { data: registrations }] = await Promise.all([
     getMatchesPaginated(page, LIMIT),
     getTeams(),
     getTournaments(),
     getPlayers(),
+    getRegistrations(),
   ])
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
@@ -51,7 +53,7 @@ export default async function PartidosPage({ searchParams }: Props) {
               <TableCell><Badge variant={m.status === "finished" ? "default" : "outline"} className="text-xs">{m.status === "finished" ? "Finalizado" : "Programado"}</Badge></TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  <MatchDialog action={updateMatchAction.bind(null, m.id)} match={m} teams={teams ?? []} tournaments={tournaments ?? []} players={players ?? []}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></MatchDialog>
+                  <MatchDialog action={updateMatchAction.bind(null, m.id)} match={m} teams={teams ?? []} registrations={registrations ?? []} tournaments={tournaments ?? []} players={players ?? []}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></MatchDialog>
                   <DeleteConfirmDialog itemName={`${m.homeTeamName} vs ${m.awayTeamName}`} onConfirm={deleteMatchAction.bind(null, m.id)}><Button variant="ghost" size="icon-sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></DeleteConfirmDialog>
                 </div>
               </TableCell>
@@ -67,7 +69,7 @@ export default async function PartidosPage({ searchParams }: Props) {
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold">Partidos</h1><p className="mt-1 text-sm text-muted-foreground">Gestioná los partidos de la liga</p></div>
         <div className="flex items-center gap-2">
-          <MatchDialog action={createMatchAction} teams={teams ?? []} tournaments={tournaments ?? []} players={players ?? []}>
+          <MatchDialog action={createMatchAction} teams={teams ?? []} registrations={registrations ?? []} tournaments={tournaments ?? []} players={players ?? []}>
             <Button className="gap-1.5"><Plus className="h-4 w-4" />Nuevo Partido</Button>
           </MatchDialog>
           <SuspendMatchdayDialog>

@@ -5,7 +5,6 @@ import Link from "next/link"
 import { getTeam } from "@/lib/db/teams"
 import { getPlayersByTeam } from "@/lib/db/players"
 import { getDelegateByTeam } from "@/lib/db/delegates"
-import { getSeriesOptions } from "@/lib/db/series"
 import {
   updateTeamAction,
   deletePlayerAction,
@@ -53,7 +52,7 @@ export default async function EquipoDetailPage({
   const { data: players, error: playersError } = await getPlayersByTeam(id)
   const playersList = players ?? []
 
-  const [{ data: delegate }, series] = await Promise.all([getDelegateByTeam(id), getSeriesOptions()])
+  const { data: delegate } = await getDelegateByTeam(id)
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,7 +68,7 @@ export default async function EquipoDetailPage({
       {/* Team info form */}
       <div className="rounded-xl border border-border p-6">
         <h2 className="text-lg font-semibold mb-4">Información del equipo</h2>
-        <TeamEditForm team={team} series={series} action={updateTeamAction.bind(null, id)} />
+        <TeamEditForm team={team} action={updateTeamAction.bind(null, id)} />
       </div>
 
       {/* Delegate management */}

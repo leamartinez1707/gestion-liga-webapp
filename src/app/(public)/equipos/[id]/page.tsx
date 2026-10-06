@@ -7,7 +7,8 @@ import { getPlayersByTeam } from "@/lib/db/players"
 import { getTopScorers } from "@/lib/db/goals"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
-import { scopeLabel, scopeQuery, tournamentsInScope } from "@/lib/scope"
+import { getRegistrations } from "@/lib/db/registrations"
+import { resolveScope, scopeLabel, scopeQuery } from "@/lib/scope"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,28 +23,36 @@ const positionLabels: Record<string, string> = {
 
 export default async function EquipoDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ serie?: string; div?: string }>
 }) {
   const { id } = await params
+  const query = await searchParams
 
   const { data: team, error: teamError } = await getTeam(id)
   if (teamError || !team) notFound()
 
-  const [{ data: players }, seriesOptions, { data: tournaments }] = await Promise.all([
+  const [{ data: players }, seriesOptions, { data: tournaments }, { data: registrations }] = await Promise.all([
     getPlayersByTeam(id),
     getSeriesOptions(),
     getTournaments(),
+    getRegistrations({ teamId: id }),
   ])
 
-  // The team's own series/division is the scope for "back" links and its current tournament
-  const series = seriesOptions.find((s) => s.id === team.seriesId) ?? null
-  const scope = { series, division: series?.divisions.find((d) => d.id === team.divisionId) ?? null }
-  const currentTournament = scope.division ? tournamentsInScope(tournaments ?? [], scope)[0] : undefined
+  // A club can play in several series (e.g. F8 and F11): show every tournament
+  // of its latest season, and count goals in those.
+  const registeredIds = new Set((registrations ?? []).map((r) => r.tournamentId))
+  const teamTournaments = (tournaments ?? [])
+    .filter((t) => registeredIds.has(t.id))
+    .sort((a, b) => b.season.localeCompare(a.season))
+  const latestSeason = teamTournaments[0]?.season
+  const currentTournaments = teamTournaments.filter((t) => t.season === latestSeason)
 
   const { data: scorers } = await getTopScorers(100, {
     teamIds: [id],
-    tournamentIds: currentTournament ? [currentTournament.id] : undefined,
+    tournamentIds: currentTournaments.map((t) => t.id),
   })
   const goalsByPlayer = new Map((scorers ?? []).map((s) => [s.playerId, s.goals]))
 
@@ -51,7 +60,16 @@ export default async function EquipoDetailPage({
     .filter((p) => p.active)
     .sort((a, b) => a.number - b.number)
 
-  const backHref = `/equipos${scopeQuery(scope)}`
+  // Back to where the visitor came from, or to the team's first division
+  const first = currentTournaments[0]
+  const backScope = query.serie
+    ? resolveScope(seriesOptions, query.serie, query.div)
+    : resolveScope(
+        seriesOptions,
+        seriesOptions.find((s) => s.id === first?.seriesId)?.slug,
+        seriesOptions.flatMap((s) => s.divisions).find((d) => d.id === first?.divisionId)?.slug
+      )
+  const backHref = `/equipos${scopeQuery(backScope)}`
 
   return (
     <div className="container mx-auto px-4 py-16 md:py-20">
@@ -65,9 +83,13 @@ export default async function EquipoDetailPage({
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-14">
           <PhotoAvatar src={team.shield} name={team.name} className="size-24" fallbackClassName="text-2xl" />
           <div className="text-center md:text-left">
-            <Badge variant="secondary" className="mb-3 text-xs font-medium">
-              {scopeLabel(seriesOptions, team.seriesId, team.divisionId)}
-            </Badge>
+            <div className="mb-3 flex flex-wrap justify-center md:justify-start gap-1.5">
+              {currentTournaments.map((t) => (
+                <Badge key={t.id} variant="secondary" className="text-xs font-medium">
+                  {scopeLabel(seriesOptions, t.seriesId, t.divisionId)}
+                </Badge>
+              ))}
+            </div>
             <h1 className="text-3xl font-bold tracking-tight">{team.name}</h1>
             {team.coach && (
               <p className="text-sm text-muted-foreground mt-2">

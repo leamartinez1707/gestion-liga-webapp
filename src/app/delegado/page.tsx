@@ -1,5 +1,12 @@
 import { getDelegateTeam } from "@/lib/db/delegates"
 import { getPlayersByTeam } from "@/lib/db/players"
+import { getRegistrations, getRosters } from "@/lib/db/registrations"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getSeriesOptions } from "@/lib/db/series"
+import { scopeLabel } from "@/lib/scope"
+import { delegateSetRosterAction } from "@/lib/actions/delegate"
+import { RosterDialog } from "@/components/roster-dialog"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -36,8 +43,21 @@ export default async function DelegadoDashboard() {
     )
   }
 
-  const { data: players } = await getPlayersByTeam(team.id)
+  const [{ data: players }, { data: registrations }, { data: tournaments }, series] = await Promise.all([
+    getPlayersByTeam(team.id),
+    getRegistrations({ teamId: team.id }),
+    getTournaments(),
+    getSeriesOptions(),
+  ])
   const playersList = players ?? []
+  const { data: rosters } = await getRosters((registrations ?? []).map((r) => r.id))
+  const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
+  const entries = (registrations ?? [])
+    .flatMap((registration) => {
+      const tournament = tournamentMap.get(registration.tournamentId)
+      return tournament ? [{ registration, tournament }] : []
+    })
+    .sort((a, b) => b.tournament.season.localeCompare(a.tournament.season))
 
   return (
     <div className="flex flex-col gap-8">
@@ -68,6 +88,45 @@ export default async function DelegadoDashboard() {
               {playersList.length} jugadores
             </Badge>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Tournaments + lista de buena fe */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Torneos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              Tu equipo todavía no está inscripto en ningún torneo. La inscripción la carga la liga.
+            </p>
+          ) : (
+            <div className="divide-y divide-border">
+              {entries.map(({ registration, tournament }) => {
+                const roster = rosters.get(registration.id) ?? []
+                const label = `${scopeLabel(series, tournament.seriesId, tournament.divisionId)} (${tournament.season})`
+                return (
+                  <div key={registration.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{tournament.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {label} · {roster.length} en la lista de buena fe
+                      </p>
+                    </div>
+                    <RosterDialog
+                      title={`${team.name} · ${label}`}
+                      players={playersList}
+                      selectedIds={roster}
+                      action={delegateSetRosterAction.bind(null, registration.id)}
+                    >
+                      <Button size="sm" variant="outline">Lista de buena fe</Button>
+                    </RosterDialog>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

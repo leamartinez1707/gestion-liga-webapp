@@ -3,10 +3,10 @@
 import { useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 
-import type { Team, Tournament, NewsArticle, Sponsor } from "@/lib/types"
+import type { Team, Tournament, Registration, NewsArticle, Sponsor } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import type { LeagueInfo } from "@/lib/types"
-import { resolveScope, teamsInScope, tournamentsInScope, type SeriesOption } from "@/lib/scope"
+import { resolveScope, teamsInTournament, tournamentsInScope, type SeriesOption } from "@/lib/scope"
 import { calculateStandings } from "@/lib/db/standings"
 import { StandingsSidebar } from "@/components/standings-sidebar"
 import { LeftSidebar } from "@/components/left-sidebar"
@@ -19,6 +19,7 @@ interface HomePageClientProps {
   seriesOptions: SeriesOption[]
   teams: Team[]
   tournaments: Tournament[]
+  registrations: Registration[]
   matches: MatchWithTeams[]
   articles: NewsArticle[]
   leagueInfo: LeagueInfo
@@ -47,6 +48,7 @@ export function HomePageClient({
   seriesOptions,
   teams,
   tournaments,
+  registrations,
   matches,
   articles,
   leagueInfo: _leagueInfo,
@@ -61,13 +63,15 @@ export function HomePageClient({
   const selectedSeriesId = scope.series?.id ?? ""
 
   // Standings and fixture belong to one division: its latest tournament
-  const filteredTeams = useMemo(() => teamsInScope(teams, scope), [teams, scope])
   const currentTournament = tournamentsInScope(tournaments, scope)[0]
-  const filteredMatches = useMemo(() => {
-    if (currentTournament) return matches.filter((m) => m.tournamentId === currentTournament.id)
-    const ids = new Set(filteredTeams.map((t) => t.id))
-    return matches.filter((m) => ids.has(m.homeTeamId) && ids.has(m.awayTeamId))
-  }, [matches, currentTournament, filteredTeams])
+  const filteredTeams = useMemo(
+    () => teamsInTournament(teams, registrations, currentTournament?.id),
+    [teams, registrations, currentTournament?.id]
+  )
+  const filteredMatches = useMemo(
+    () => matches.filter((m) => m.tournamentId === currentTournament?.id),
+    [matches, currentTournament?.id]
+  )
 
   const standings = useMemo(
     () => calculateStandings(filteredMatches, filteredTeams),

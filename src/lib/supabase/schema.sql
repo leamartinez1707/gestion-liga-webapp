@@ -66,7 +66,8 @@ create index idx_tournaments_series on tournaments(series_id);
 create index idx_tournaments_division on tournaments(division_id);
 
 -- -----------------------------------------------------------------------------
--- Teams (belongs to a series/division and optionally to a tournament)
+-- Teams (clubs). Series/division/tournament come from registrations; the
+-- series_id, division_id and tournament_id columns are legacy and unused.
 -- -----------------------------------------------------------------------------
 create table teams (
   id uuid default gen_random_uuid() primary key,
@@ -146,6 +147,29 @@ create table news_articles (
   published boolean default false,
   date date default current_date,
   created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Registrations (inscripción de un equipo en un torneo) y lista de buena fe.
+-- Reglas (triggers en supabase/migrations/20261007120000_registrations.sql):
+--   - un equipo no puede estar en dos divisiones de la misma serie en una temporada
+--   - un jugador de la lista tiene que ser del equipo; uno por torneo
+-- -----------------------------------------------------------------------------
+create table registrations (
+  id uuid default gen_random_uuid() primary key,
+  tournament_id uuid not null references tournaments on delete cascade,
+  team_id uuid not null references teams on delete cascade,
+  created_at timestamptz default now(),
+  unique (tournament_id, team_id)
+);
+
+create table registration_players (
+  registration_id uuid not null references registrations on delete cascade,
+  player_id uuid not null references players on delete cascade,
+  tournament_id uuid not null references tournaments on delete cascade,
+  created_at timestamptz default now(),
+  primary key (registration_id, player_id),
+  unique (tournament_id, player_id)
 );
 
 -- -----------------------------------------------------------------------------

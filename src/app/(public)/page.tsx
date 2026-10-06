@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
 import { getTeams } from "@/lib/db/teams"
 import { getMatches } from "@/lib/db/matches"
 import { getArticles } from "@/lib/db/news"
@@ -28,11 +29,12 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
 export const revalidate = 300
 
 export default async function HomePage() {
-  const [seriesOptions, teamsResult, tournamentsResult, matchesResult, articlesResult, sponsorsResult] =
+  const [seriesOptions, teamsResult, tournamentsResult, registrationsResult, matchesResult, articlesResult, sponsorsResult] =
     await Promise.all([
       getSeriesOptions(),
       getTeams(),
       getTournaments(),
+      getRegistrations(),
       getMatches(),
       getArticles(),
       getSponsors(),
@@ -48,6 +50,7 @@ export default async function HomePage() {
         seriesOptions={seriesOptions}
         teams={teams}
         tournaments={tournamentsResult.data ?? []}
+        registrations={registrationsResult.data ?? []}
         matches={matches}
         articles={articles}
         leagueInfo={leagueInfo}

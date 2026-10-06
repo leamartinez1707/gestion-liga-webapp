@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
-import type { Match, Team, Tournament, Player } from "@/lib/types"
+import type { Match, Team, Tournament, Player, Registration } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import {
   Dialog,
@@ -41,6 +41,7 @@ interface MatchDialogProps {
   match?: MatchWithTeams | Match
   tournaments: Tournament[]
   teams: Team[]
+  registrations: Registration[]
   players: Player[]
 }
 
@@ -49,7 +50,8 @@ export function MatchDialog({
   action,
   match,
   tournaments,
-  teams,
+  teams: allTeams,
+  registrations,
   players,
 }: MatchDialogProps) {
   const [open, setOpen] = useState(false)
@@ -73,6 +75,12 @@ export function MatchDialog({
 
   const isEditing = !!match
 
+  // Only teams entered in the selected tournament can play it
+  const registeredIds = new Set(
+    registrations.filter((r) => r.tournamentId === tournamentId).map((r) => r.teamId)
+  )
+  const teams = tournamentId ? allTeams.filter((t) => registeredIds.has(t.id)) : allTeams
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
@@ -95,7 +103,12 @@ export function MatchDialog({
               <Label>Torneo</Label>
               <Select
                 value={tournamentId}
-                onValueChange={(v) => v && setTournamentId(v)}
+                onValueChange={(v) => {
+                  if (!v || v === tournamentId) return
+                  setTournamentId(v)
+                  setHomeTeamId("")
+                  setAwayTeamId("")
+                }}
                 name="tournamentId"
               >
                 <SelectTrigger className="w-full">

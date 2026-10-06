@@ -55,6 +55,13 @@ import {
   unpublishArticle,
 } from "@/lib/db/news"
 import { bulkCreateMatches } from "@/lib/db/fixture-actions"
+import { getMatches } from "@/lib/db/matches"
+import {
+  getRegistrations,
+  createRegistration,
+  deleteRegistration,
+  setRoster,
+} from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
 import { requireStaff } from "@/lib/auth"
 import type { Player, Match } from "@/lib/types"
@@ -69,7 +76,7 @@ function revalidateSite() {
 
 /**
  * Reads seriesId/divisionId from a form. The division decides the series, so
- * a team or tournament can never end up in a division of another series.
+ * a tournament can never end up in a division of another series.
  */
 async function readSeriesDivision(
   formData: FormData
@@ -192,10 +199,6 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
   if (!shortName?.trim()) return { error: "El nombre corto es obligatorio." }
 
-  const scope = await readSeriesDivision(formData)
-  if (scope.error) return { error: scope.error }
-  if (!scope.divisionId) return { error: "Elegí la serie y la división del equipo." }
-
   const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
   if (uploadError) return { error: uploadError }
 
@@ -203,8 +206,6 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
     name: name.trim(),
     shortName: shortName.trim(),
     category: category?.trim() || undefined,
-    seriesId: scope.seriesId,
-    divisionId: scope.divisionId,
     coach: coach?.trim() || undefined,
     assistantCoach: assistantCoach?.trim() || undefined,
     tournamentId: tournamentId || undefined,
@@ -233,10 +234,6 @@ export async function updateTeamAction(
 
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
 
-  const scope = await readSeriesDivision(formData)
-  if (scope.error) return { error: scope.error }
-  if (!scope.divisionId) return { error: "Elegí la serie y la división del equipo." }
-
   const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
   if (uploadError) return { error: uploadError }
 
@@ -244,8 +241,6 @@ export async function updateTeamAction(
     name: name.trim(),
     shortName: shortName?.trim() || undefined,
     category: category?.trim() || undefined,
-    seriesId: scope.seriesId,
-    divisionId: scope.divisionId,
     coach: coach?.trim() || null,
     assistantCoach: assistantCoach?.trim() || null,
     // Only touch the tournament when the form sends it (editing used to clear it)
@@ -375,6 +370,12 @@ export async function createMatchAction(
   if (homeTeamId === awayTeamId)
     return { error: "El equipo local y visitante no pueden ser el mismo." }
 
+  const { data: registrations } = await getRegistrations({ tournamentId })
+  const registered = new Set((registrations ?? []).map((r) => r.teamId))
+  if (!registered.has(homeTeamId) || !registered.has(awayTeamId)) {
+    return { error: "Los dos equipos tienen que estar inscriptos en el torneo." }
+  }
+
   const result = await createMatch({
     tournamentId,
     homeTeamId,
@@ -495,6 +496,18 @@ export async function generateFixtureAction(
   }
 
   if (teamIds.length < 2) return { error: "Se necesitan al menos 2 equipos." }
+
+  // The preview's order is kept, but the teams must be exactly the registered ones
+  const { data: registrations } = await getRegistrations({ tournamentId })
+  const registered = new Set((registrations ?? []).map((r) => r.teamId))
+  if (teamIds.length !== registered.size || teamIds.some((id) => !registered.has(id))) {
+    return { error: "Los equipos cambiaron. Cerrá y volvé a generar la vista previa." }
+  }
+
+  const { data: existing } = await getMatches(tournamentId)
+  if ((existing ?? []).length > 0) {
+    return { error: "Este torneo ya tiene partidos cargados. Borralos antes de generar el fixture de nuevo." }
+  }
 
   const result = await bulkCreateMatches(tournamentId, teamIds)
   if (result.error) return { error: result.error }
@@ -952,4 +965,53 @@ export async function deleteSponsorAction(id: string): Promise<{ error?: string 
   if (result.error) return { error: result.error }
   revalidateSite()
   return {}
+}
+
+// ---------------------------------------------------------------------------
+// Registration (inscripción) actions
+// ---------------------------------------------------------------------------
+
+export async function registerTeamAction(
+  tournamentId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const teamId = formData.get("teamId") as string | null
+  if (!teamId) return { error: "Elegí un equipo." }
+
+  const result = await createRegistration(tournamentId, teamId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function unregisterTeamAction(
+  registrationId: string
+): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await deleteRegistration(registrationId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
+}
+
+/** Lista de buena fe: the checked players (playerIds) replace the current list. */
+export async function setRosterAction(
+  registrationId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const playerIds = formData.getAll("playerIds").filter((v): v is string => typeof v === "string")
+  const result = await setRoster(registrationId, playerIds)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
 }

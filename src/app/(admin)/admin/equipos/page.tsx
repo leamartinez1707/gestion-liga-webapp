@@ -4,6 +4,8 @@ import Link from "next/link"
 
 import { getTeamsPaginated } from "@/lib/db/teams"
 import { getSeriesOptions } from "@/lib/db/series"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
 import { scopeLabel } from "@/lib/scope"
 import { createTeamAction, updateTeamAction, deleteTeamAction } from "@/lib/actions/admin"
 import {
@@ -29,10 +31,17 @@ export default async function EquiposPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
 
-  const [{ data: teams, error, totalPages }, series] = await Promise.all([
-    getTeamsPaginated(page, LIMIT),
-    getSeriesOptions(),
-  ])
+  const [{ data: teams, error, totalPages }, series, { data: tournaments }, { data: registrations }] =
+    await Promise.all([getTeamsPaginated(page, LIMIT), getSeriesOptions(), getTournaments(), getRegistrations()])
+
+  const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
+  // "Serie 1 · División A (2026)" for each tournament the team is entered in
+  const registrationsOf = (teamId: string) =>
+    (registrations ?? [])
+      .filter((r) => r.teamId === teamId)
+      .map((r) => tournamentMap.get(r.tournamentId))
+      .filter((t) => t !== undefined)
+      .map((t) => `${scopeLabel(series, t.seriesId, t.divisionId)} (${t.season})`)
 
   if (error) {
     return (
@@ -49,7 +58,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Equipos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Gestioná los equipos de la liga</p>
         </div>
-        <TeamDialog action={createTeamAction} series={series}>
+        <TeamDialog action={createTeamAction}>
           <Button className="gap-1.5">
             <Plus className="h-4 w-4" /> Nuevo Equipo
           </Button>
@@ -61,7 +70,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>Serie · División</TableHead>
+              <TableHead>Inscripciones</TableHead>
               <TableHead>DT</TableHead>
               <TableHead className="w-28 text-right">Acciones</TableHead>
             </TableRow>
@@ -77,8 +86,8 @@ export default async function EquiposPage({ searchParams }: Props) {
             {teams.map((team) => (
               <TableRow key={team.id}>
                 <TableCell className="font-medium">{team.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {scopeLabel(series, team.seriesId, team.divisionId)}
+                <TableCell className="text-muted-foreground whitespace-normal">
+                  {registrationsOf(team.id).join(", ") || "Sin inscripciones"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{team.coach || "—"}</TableCell>
                 <TableCell className="text-right">
@@ -88,7 +97,7 @@ export default async function EquiposPage({ searchParams }: Props) {
                         <Users className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <TeamDialog action={updateTeamAction.bind(null, team.id)} team={team} series={series}>
+                    <TeamDialog action={updateTeamAction.bind(null, team.id)} team={team}>
                       <Button variant="ghost" size="icon-sm" aria-label="Editar">
                         <Pencil className="h-4 w-4" />
                       </Button>

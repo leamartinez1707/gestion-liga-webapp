@@ -6,6 +6,7 @@ import { requireDelegateTeam } from "@/lib/auth"
 import { uploadOptionalImage } from "@/lib/actions/upload"
 import { getPlayer, createPlayer, updatePlayer, deletePlayer } from "@/lib/db/players"
 import { updateTeam } from "@/lib/db/teams"
+import { getRegistration, setRoster } from "@/lib/db/registrations"
 import type { Player } from "@/lib/types"
 
 // Delegate actions always work on the delegate's own team (from their profile),
@@ -130,4 +131,25 @@ export async function delegateDeletePlayerAction(
   if (result.error) return { error: result.error }
   revalidateSite()
   return {}
+}
+
+/** Lista de buena fe of one of the delegate's own registrations. */
+export async function delegateSetRosterAction(
+  registrationId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const auth = await requireDelegateTeam()
+  if (!auth.profile) return { error: auth.error }
+
+  const { data: registration } = await getRegistration(registrationId)
+  if (registration?.teamId !== auth.profile.teamId) {
+    return { error: "Esa inscripción no es de tu equipo." }
+  }
+
+  const playerIds = formData.getAll("playerIds").filter((v): v is string => typeof v === "string")
+  const result = await setRoster(registrationId, playerIds)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
 }

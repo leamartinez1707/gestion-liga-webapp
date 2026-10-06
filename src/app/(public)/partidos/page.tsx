@@ -6,7 +6,8 @@ import { getTeams } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { calculateStandings } from "@/lib/db/standings"
-import { resolveScope, scopeQuery, teamsInScope, tournamentsInScope } from "@/lib/scope"
+import { getRegistrations } from "@/lib/db/registrations"
+import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { StandingsTable } from "@/components/standings-table"
@@ -38,28 +39,25 @@ export default async function PartidosPage({ searchParams }: Props) {
   const params = await searchParams
   const fechaParam = parseInt(params.fecha ?? "0")
 
-  const [{ data: matches, error }, { data: teams }, { data: tournaments }, seriesOptions] =
-    await Promise.all([getMatches(), getTeams(), getTournaments(), getSeriesOptions()])
+  const [{ data: matches, error }, { data: teams }, { data: tournaments }, seriesOptions, { data: registrations }] =
+    await Promise.all([getMatches(), getTeams(), getTournaments(), getSeriesOptions(), getRegistrations()])
 
   if (error) return <div className="container mx-auto px-4 py-16 text-center"><p className="text-destructive">{error}</p></div>
 
   const scope = resolveScope(seriesOptions, params.serie, params.div)
   const teamsList = teams ?? []
   const teamMap = new Map(teamsList.map((t) => [t.id, t]))
-  const scopeTeams = teamsInScope(teamsList, scope)
 
   // Tournaments of the selected division (latest first)
   const divisionTournaments = tournamentsInScope(tournaments ?? [], scope)
   const selectedTorneo =
     divisionTournaments.find((t) => t.id === params.torneo) ?? divisionTournaments[0]
 
-  const matchesList = (matches ?? []).filter((m) =>
-    selectedTorneo
-      ? m.tournamentId === selectedTorneo.id
-      : teamMap.get(m.homeTeamId)?.divisionId === scope.division?.id
+  const matchesList = (matches ?? []).filter((m) => m.tournamentId === selectedTorneo?.id)
+  const standings = calculateStandings(
+    matchesList,
+    teamsInTournament(teamsList, registrations ?? [], selectedTorneo?.id)
   )
-
-  const standings = calculateStandings(matchesList, scopeTeams)
 
   // Group by matchday; default to the next matchday still to be played
   const matchdays = [...new Set(matchesList.map((m) => m.matchday))].sort((a, b) => a - b)

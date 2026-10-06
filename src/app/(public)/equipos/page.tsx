@@ -1,7 +1,9 @@
 import Link from "next/link"
 import { getTeams } from "@/lib/db/teams"
 import { getSeriesOptions } from "@/lib/db/series"
-import { resolveScope, scopeQuery, teamsInScope } from "@/lib/scope"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
+import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PhotoAvatar } from "@/components/photo-avatar"
 
@@ -12,7 +14,8 @@ interface Props {
 export default async function EquiposPage({ searchParams }: Props) {
   const params = await searchParams
 
-  const [{ data: teams, error }, seriesOptions] = await Promise.all([getTeams(), getSeriesOptions()])
+  const [{ data: teams, error }, seriesOptions, { data: tournaments }, { data: registrations }] =
+    await Promise.all([getTeams(), getSeriesOptions(), getTournaments(), getRegistrations()])
 
   if (error) {
     return (
@@ -23,7 +26,10 @@ export default async function EquiposPage({ searchParams }: Props) {
   }
 
   const scope = resolveScope(seriesOptions, params.serie, params.div)
-  const teamsList = teamsInScope(teams ?? [], scope).sort((a, b) => a.name.localeCompare(b.name))
+  // Teams entered in the division's current tournament
+  const currentTournament = tournamentsInScope(tournaments ?? [], scope)[0]
+  const teamsList = teamsInTournament(teams ?? [], registrations ?? [], currentTournament?.id)
+    .sort((a, b) => a.name.localeCompare(b.name))
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")
 
   return (
@@ -32,7 +38,9 @@ export default async function EquiposPage({ searchParams }: Props) {
         Equipos{scopeName && <span className="text-primary"> · {scopeName}</span>}
       </h1>
       <p className="mt-3 text-muted-foreground max-w-lg">
-        {teamsList.length} {teamsList.length === 1 ? "equipo compite" : "equipos compiten"} en esta división.
+        {currentTournament
+          ? `${teamsList.length} ${teamsList.length === 1 ? "equipo inscripto" : "equipos inscriptos"} en ${currentTournament.name}.`
+          : "Esta división todavía no tiene torneo."}
       </p>
 
       {teamsList.length === 0 ? (

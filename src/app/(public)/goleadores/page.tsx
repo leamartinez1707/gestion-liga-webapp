@@ -5,7 +5,8 @@ import { getTopScorers } from "@/lib/db/goals"
 import { getTeams } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
-import { resolveScope, scopeQuery, teamsInScope, tournamentsInScope } from "@/lib/scope"
+import { getRegistrations } from "@/lib/db/registrations"
+import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PhotoAvatar } from "@/components/photo-avatar"
 
@@ -20,20 +21,20 @@ interface Props { searchParams: Promise<{ serie?: string; div?: string }> }
 
 export default async function GoleadoresPage({ searchParams }: Props) {
   const params = await searchParams
-  const [seriesOptions, { data: teams }, { data: tournaments }] = await Promise.all([
+  const [seriesOptions, { data: teams }, { data: tournaments }, { data: registrations }] = await Promise.all([
     getSeriesOptions(),
     getTeams(),
     getTournaments(),
+    getRegistrations(),
   ])
 
   const scope = resolveScope(seriesOptions, params.serie, params.div)
-  const teamIds = teamsInScope(teams ?? [], scope).map((t) => t.id)
-  // Current tournament of the division; all of its tournaments if there's none yet
   const currentTournament = tournamentsInScope(tournaments ?? [], scope)[0]
+  const teamIds = teamsInTournament(teams ?? [], registrations ?? [], currentTournament?.id).map((t) => t.id)
 
   const { data: scorers, error } = await getTopScorers(30, {
     teamIds,
-    tournamentIds: currentTournament ? [currentTournament.id] : undefined,
+    tournamentIds: currentTournament ? [currentTournament.id] : [],
   })
 
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")

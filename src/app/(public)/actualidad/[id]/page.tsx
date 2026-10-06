@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import { getArticle } from "@/lib/db/news"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CoverImage } from "@/components/cover-image"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -58,6 +59,12 @@ export default async function ArticuloPage({
           {article.title}
         </h1>
       </header>
+
+      {article.imageUrl && (
+        <div className="relative aspect-[16/9] -mx-6 md:-mx-8 mb-10 overflow-hidden">
+          <CoverImage src={article.imageUrl} alt={article.title} sizes="(min-width: 768px) 768px, 100vw" priority />
+        </div>
+      )}
 
       {/* Article body */}
       <div className="text-base leading-relaxed text-foreground/90 space-y-5">

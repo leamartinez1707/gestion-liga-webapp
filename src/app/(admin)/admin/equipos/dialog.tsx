@@ -4,6 +4,8 @@ import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
 import type { Team } from "@/lib/types"
+import type { SeriesOption } from "@/lib/scope"
+import { SeriesDivisionFields } from "@/components/series-division-fields"
 import {
   Dialog,
   DialogContent,
@@ -32,9 +34,10 @@ interface TeamDialogProps {
     formData: FormData
   ) => Promise<{ error?: string; success?: boolean }>
   team?: Team
+  series: SeriesOption[]
 }
 
-export function TeamDialog({ children, action, team }: TeamDialogProps) {
+export function TeamDialog({ children, action, team, series }: TeamDialogProps) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(action, undefined)
 
@@ -83,15 +86,21 @@ export function TeamDialog({ children, action, team }: TeamDialogProps) {
             />
           </div>
 
-          {/* Category */}
+          {/* Series / division */}
+          <SeriesDivisionFields
+            series={series}
+            defaultSeriesId={team?.seriesId}
+            defaultDivisionId={team?.divisionId}
+          />
+
+          {/* Category (optional display label) */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="category">Categoría</Label>
+            <Label htmlFor="category">Categoría (opcional)</Label>
             <Input
               id="category"
               name="category"
               defaultValue={team?.category ?? ""}
               placeholder="Ej: Primera División"
-              required
             />
           </div>
 

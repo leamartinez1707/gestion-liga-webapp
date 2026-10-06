@@ -4,6 +4,8 @@ import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
 import type { Tournament } from "@/lib/types"
+import type { SeriesOption } from "@/lib/scope"
+import { SeriesDivisionFields } from "@/components/series-division-fields"
 import {
   Dialog,
   DialogContent,
@@ -50,6 +52,7 @@ interface TournamentDialogProps {
     formData: FormData
   ) => Promise<{ error?: string; success?: boolean }>
   tournament?: Tournament
+  series: SeriesOption[]
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +62,7 @@ export function TournamentDialog({
   children,
   action,
   tournament,
+  series,
 }: TournamentDialogProps) {
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState(tournament?.format ?? "league")
@@ -92,15 +96,21 @@ export function TournamentDialog({
             />
           </div>
 
-          {/* Category */}
+          {/* Series / division */}
+          <SeriesDivisionFields
+            series={series}
+            defaultSeriesId={tournament?.seriesId}
+            defaultDivisionId={tournament?.divisionId}
+          />
+
+          {/* Category (optional display label) */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="category">Categoría</Label>
+            <Label htmlFor="category">Categoría (opcional)</Label>
             <Input
               id="category"
               name="category"
               defaultValue={tournament?.category ?? ""}
               placeholder="Ej: Primera División"
-              required
             />
           </div>
 

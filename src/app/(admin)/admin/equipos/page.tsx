@@ -3,7 +3,9 @@ import { Plus, Pencil, Trash2, Users } from "lucide-react"
 import Link from "next/link"
 
 import { getTeamsPaginated } from "@/lib/db/teams"
-import { createTeamAction, deleteTeamAction } from "@/lib/actions/admin"
+import { getSeriesOptions } from "@/lib/db/series"
+import { scopeLabel } from "@/lib/scope"
+import { createTeamAction, updateTeamAction, deleteTeamAction } from "@/lib/actions/admin"
 import {
   Table,
   TableBody,
@@ -27,7 +29,10 @@ export default async function EquiposPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
 
-  const { data: teams, error, totalPages } = await getTeamsPaginated(page, LIMIT)
+  const [{ data: teams, error, totalPages }, series] = await Promise.all([
+    getTeamsPaginated(page, LIMIT),
+    getSeriesOptions(),
+  ])
 
   if (error) {
     return (
@@ -44,7 +49,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Equipos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Gestioná los equipos de la liga</p>
         </div>
-        <TeamDialog action={createTeamAction}>
+        <TeamDialog action={createTeamAction} series={series}>
           <Button className="gap-1.5">
             <Plus className="h-4 w-4" /> Nuevo Equipo
           </Button>
@@ -56,7 +61,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead>Serie · División</TableHead>
               <TableHead>DT</TableHead>
               <TableHead className="w-28 text-right">Acciones</TableHead>
             </TableRow>
@@ -72,7 +77,9 @@ export default async function EquiposPage({ searchParams }: Props) {
             {teams.map((team) => (
               <TableRow key={team.id}>
                 <TableCell className="font-medium">{team.name}</TableCell>
-                <TableCell className="text-muted-foreground">{team.category}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {scopeLabel(series, team.seriesId, team.divisionId)}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{team.coach || "—"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -81,7 +88,7 @@ export default async function EquiposPage({ searchParams }: Props) {
                         <Users className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <TeamDialog action={createTeamAction} team={team}>
+                    <TeamDialog action={updateTeamAction.bind(null, team.id)} team={team} series={series}>
                       <Button variant="ghost" size="icon-sm" aria-label="Editar">
                         <Pencil className="h-4 w-4" />
                       </Button>

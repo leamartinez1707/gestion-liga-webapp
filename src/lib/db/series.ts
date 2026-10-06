@@ -1,5 +1,6 @@
 import type { Series, Division } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { buildSeriesOptions, type SeriesOption } from "@/lib/scope"
 
 // ---------------------------------------------------------------------------
 // Read helpers
@@ -40,6 +41,23 @@ export async function getDivisions(seriesId?: string): Promise<{ data: Division[
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
+}
+
+export async function getDivision(id: string): Promise<{ data: Division | null; error: string | null }> {
+  try {
+    const supabase = createReadOnlyClient()
+    const { data, error } = await supabase.from("divisions").select("*").eq("id", id).maybeSingle()
+    if (error) return { data: null, error: error.message }
+    return { data: data ? mapDivisionRow(data) : null, error: null }
+  } catch {
+    return { data: null, error: "No se pudo conectar con la base de datos." }
+  }
+}
+
+/** Series with their divisions, for selectors (public header and admin forms). */
+export async function getSeriesOptions(): Promise<SeriesOption[]> {
+  const [{ data: series }, { data: divisions }] = await Promise.all([getSeries(), getDivisions()])
+  return buildSeriesOptions(series ?? [], divisions ?? [])
 }
 
 // ---------------------------------------------------------------------------

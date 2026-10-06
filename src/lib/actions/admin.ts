@@ -15,6 +15,7 @@ import {
   createDivision,
   updateDivision,
   deleteDivision,
+  getDivision,
 } from "@/lib/db/series"
 import {
   assignDelegate,
@@ -66,6 +67,22 @@ function revalidateSite() {
   revalidatePath("/", "layout")
 }
 
+/**
+ * Reads seriesId/divisionId from a form. The division decides the series, so
+ * a team or tournament can never end up in a division of another series.
+ */
+async function readSeriesDivision(
+  formData: FormData
+): Promise<{ seriesId: string | null; divisionId: string | null; error?: string }> {
+  const divisionId = (formData.get("divisionId") as string | null) || null
+  if (divisionId) {
+    const { data: division } = await getDivision(divisionId)
+    if (!division) return { seriesId: null, divisionId: null, error: "La división elegida no existe." }
+    return { seriesId: division.seriesId, divisionId }
+  }
+  return { seriesId: (formData.get("seriesId") as string | null) || null, divisionId: null }
+}
+
 // ---------------------------------------------------------------------------
 // Tournament actions
 // ---------------------------------------------------------------------------
@@ -85,13 +102,18 @@ export async function createTournamentAction(
   const endDate = formData.get("endDate") as string
 
   if (!name?.trim()) return { error: "El nombre del torneo es obligatorio." }
-  if (!category?.trim()) return { error: "La categoría es obligatoria." }
   if (!season?.trim()) return { error: "La temporada es obligatoria." }
   if (!format) return { error: "El formato es obligatorio." }
 
+  const scope = await readSeriesDivision(formData)
+  if (scope.error) return { error: scope.error }
+  if (!scope.divisionId) return { error: "Elegí la serie y la división del torneo." }
+
   const result = await createTournament({
     name: name.trim(),
-    category: category.trim(),
+    category: category?.trim() || undefined,
+    seriesId: scope.seriesId,
+    divisionId: scope.divisionId,
     season: season.trim(),
     format: format as "league" | "elimination" | "groups",
     startDate: startDate || undefined,
@@ -120,10 +142,16 @@ export async function updateTournamentAction(
 
   if (!name?.trim()) return { error: "El nombre del torneo es obligatorio." }
 
+  const scope = await readSeriesDivision(formData)
+  if (scope.error) return { error: scope.error }
+  if (!scope.divisionId) return { error: "Elegí la serie y la división del torneo." }
+
   const result = await updateTournament(id, {
     name: name.trim(),
-    category: category.trim() || undefined,
-    season: season.trim() || undefined,
+    category: category?.trim() || undefined,
+    seriesId: scope.seriesId,
+    divisionId: scope.divisionId,
+    season: season?.trim() || undefined,
     format: (format as "league" | "elimination" | "groups") || undefined,
     startDate: startDate || null,
     endDate: endDate || null,
@@ -163,7 +191,10 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
 
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
   if (!shortName?.trim()) return { error: "El nombre corto es obligatorio." }
-  if (!category?.trim()) return { error: "La categoría es obligatoria." }
+
+  const scope = await readSeriesDivision(formData)
+  if (scope.error) return { error: scope.error }
+  if (!scope.divisionId) return { error: "Elegí la serie y la división del equipo." }
 
   const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
   if (uploadError) return { error: uploadError }
@@ -171,7 +202,9 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
   const result = await createTeam({
     name: name.trim(),
     shortName: shortName.trim(),
-    category: category.trim(),
+    category: category?.trim() || undefined,
+    seriesId: scope.seriesId,
+    divisionId: scope.divisionId,
     coach: coach?.trim() || undefined,
     assistantCoach: assistantCoach?.trim() || undefined,
     tournamentId: tournamentId || undefined,
@@ -196,9 +229,13 @@ export async function updateTeamAction(
   const category = formData.get("category") as string
   const coach = formData.get("coach") as string
   const assistantCoach = formData.get("assistantCoach") as string
-  const tournamentId = formData.get("tournamentId") as string
+  const tournamentId = formData.get("tournamentId") as string | null
 
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
+
+  const scope = await readSeriesDivision(formData)
+  if (scope.error) return { error: scope.error }
+  if (!scope.divisionId) return { error: "Elegí la serie y la división del equipo." }
 
   const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
   if (uploadError) return { error: uploadError }
@@ -207,9 +244,12 @@ export async function updateTeamAction(
     name: name.trim(),
     shortName: shortName?.trim() || undefined,
     category: category?.trim() || undefined,
+    seriesId: scope.seriesId,
+    divisionId: scope.divisionId,
     coach: coach?.trim() || null,
     assistantCoach: assistantCoach?.trim() || null,
-    tournamentId: tournamentId || null,
+    // Only touch the tournament when the form sends it (editing used to clear it)
+    tournamentId: tournamentId === null ? undefined : tournamentId || null,
     shieldUrl: shieldUrl ?? undefined,
   })
 
@@ -537,7 +577,7 @@ export async function createArticleAction(
     excerpt: excerpt?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
-    seriesId: seriesId || null,
+    seriesId: seriesId && seriesId !== "null" ? seriesId : null,
     imageUrl,
     published: published === "true",
   })
@@ -570,7 +610,7 @@ export async function updateArticleAction(
     excerpt: excerpt?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
-    seriesId: seriesId || null,
+    seriesId: seriesId && seriesId !== "null" ? seriesId : null,
     imageUrl: imageUrl ?? undefined,
     published: published === "true",
   })

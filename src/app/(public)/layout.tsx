@@ -1,6 +1,5 @@
 import { Suspense } from "react"
-import { getSeries, getDivisions } from "@/lib/db/series"
-import type { SeriesOption } from "@/components/series-selector"
+import { getSeriesOptions } from "@/lib/db/series"
 import { Header } from "@/components/layout/header"
 
 function HeaderFallback() {
@@ -14,22 +13,7 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [{ data: seriesList }, { data: divisionsList }] = await Promise.all([
-    getSeries(),
-    getDivisions(),
-  ])
-
-  const series = seriesList ?? []
-  const divisions = divisionsList ?? []
-
-  const seriesOptions: SeriesOption[] = series.map((s) => ({
-    id: s.id,
-    name: s.name,
-    slug: s.slug,
-    divisions: divisions
-      .filter((d) => d.seriesId === s.id)
-      .map((d) => ({ id: d.id, name: d.name })),
-  }))
+  const seriesOptions = await getSeriesOptions()
 
   return (
     <>

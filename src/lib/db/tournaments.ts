@@ -60,16 +60,20 @@ export async function getTournament(id: string): Promise<{ data: Tournament | nu
 
 export async function createTournament(
   data: Pick<Tournament, "name" | "category" | "season" | "format"> & {
+    seriesId?: string | null
+    divisionId?: string | null
     startDate?: string
     endDate?: string
   }
 ): Promise<{ error?: string; id?: string }> {
   try {
     const supabase = await createClient()
-    const { data: inserted, error } = await (supabase.from("tournaments") as any)
+    const { data: inserted, error } = await supabase.from("tournaments")
       .insert({
         name: data.name,
         category: data.category,
+        series_id: data.seriesId ?? null,
+        division_id: data.divisionId ?? null,
         season: data.season,
         format: data.format,
         start_date: data.startDate ?? null,
@@ -89,6 +93,8 @@ export async function updateTournament(
   id: string,
   data: Partial<
     Pick<Tournament, "name" | "category" | "season" | "format"> & {
+      seriesId: string | null
+      divisionId: string | null
       startDate?: string | null
       endDate?: string | null
     }
@@ -101,6 +107,8 @@ export async function updateTournament(
     if (data.category !== undefined) payload.category = data.category
     if (data.season !== undefined) payload.season = data.season
     if (data.format !== undefined) payload.format = data.format
+    if (data.seriesId !== undefined) payload.series_id = data.seriesId
+    if (data.divisionId !== undefined) payload.division_id = data.divisionId
     if (data.startDate !== undefined) payload.start_date = data.startDate
     if (data.endDate !== undefined) payload.end_date = data.endDate
 

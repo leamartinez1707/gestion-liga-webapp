@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { PhotoAvatar } from "@/components/photo-avatar"
 
 interface StandingsTableProps {
   standings: Standing[]
@@ -65,7 +66,11 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
                     isTop3 && "text-primary"
                   )}
                 >
-                  {s.teamName}
+                  <span className="flex items-center gap-2">
+                    <PhotoAvatar src={s.shield} name={s.teamName} className="size-6" fallbackClassName="text-[9px]" />
+                    <span className="sm:hidden">{s.teamShortName}</span>
+                    <span className="hidden sm:inline">{s.teamName}</span>
+                  </span>
                 </TableCell>
                 <TableCell className="text-center tabular-nums text-muted-foreground">
                   {s.played}

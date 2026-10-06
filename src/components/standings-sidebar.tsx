@@ -1,5 +1,6 @@
 import type { Standing } from "@/lib/db/standings"
 import { cn } from "@/lib/utils"
+import { PhotoAvatar } from "@/components/photo-avatar"
 
 interface StandingsSidebarProps {
   standings: Standing[]
@@ -35,9 +36,11 @@ export function StandingsSidebar({ standings, className }: StandingsSidebarProps
                 {i + 1}
               </span>
 
+              <PhotoAvatar src={s.shield} name={s.teamName} className="size-6" fallbackClassName="text-[9px]" />
+
               {/* Team name */}
-              <span className="flex-1 font-bold text-foreground min-w-0 leading-tight">
-                {s.teamName}
+              <span className="flex-1 font-bold text-foreground min-w-0 leading-tight truncate">
+                {s.teamShortName}
               </span>
               <div className="flex items-center gap-x-2">
               {/* Points */}

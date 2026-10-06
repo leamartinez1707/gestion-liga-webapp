@@ -3,10 +3,10 @@
 import { useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 
-import type { Match, Team, NewsArticle, Sponsor } from "@/lib/types"
+import type { Team, Tournament, NewsArticle, Sponsor } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import type { LeagueInfo } from "@/lib/types"
-import type { SeriesOption } from "@/components/series-selector"
+import { resolveScope, teamsInScope, tournamentsInScope, type SeriesOption } from "@/lib/scope"
 import { calculateStandings } from "@/lib/db/standings"
 import { StandingsSidebar } from "@/components/standings-sidebar"
 import { LeftSidebar } from "@/components/left-sidebar"
@@ -15,18 +15,10 @@ import { ScrollableBanners } from "@/components/scrollable-banners"
 import { FixturePanel } from "@/components/fixture-panel"
 import { Card, CardContent } from "@/components/ui/card"
 
-function toDivSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-}
-
 interface HomePageClientProps {
   seriesOptions: SeriesOption[]
   teams: Team[]
+  tournaments: Tournament[]
   matches: MatchWithTeams[]
   articles: NewsArticle[]
   leagueInfo: LeagueInfo
@@ -54,6 +46,7 @@ function formatDateShort(dateStr: string): string {
 export function HomePageClient({
   seriesOptions,
   teams,
+  tournaments,
   matches,
   articles,
   leagueInfo: _leagueInfo,
@@ -64,36 +57,17 @@ export function HomePageClient({
   const paramSerie = searchParams.get("serie") ?? ""
   const paramDiv = searchParams.get("div") ?? ""
 
-  const currentSeries =
-    seriesOptions.find((s) => s.slug === paramSerie) ??
-    seriesOptions[0]
+  const scope = resolveScope(seriesOptions, paramSerie, paramDiv)
+  const selectedSeriesId = scope.series?.id ?? ""
 
-  const currentDivision = currentSeries?.divisions.find(
-    (d) => toDivSlug(d.name) === paramDiv
-  )
-
-  const selectedSeriesId = currentSeries?.id ?? ""
-  const selectedDivisionId = currentDivision?.id ?? ""
-
-  // Filter teams by selected series AND division
-  const filteredTeams = (() => {
-    let result = teams
-
-    if (selectedSeriesId) {
-      result = result.filter((t) => t.seriesId === selectedSeriesId)
-    }
-
-    if (selectedDivisionId) {
-      result = result.filter((t) => t.divisionId === selectedDivisionId)
-    }
-
-    return result
-  })()
-
-  const filteredTeamIds = new Set(filteredTeams.map((t) => t.id))
-  const filteredMatches = matches.filter(
-    (m) => filteredTeamIds.has(m.homeTeamId) || filteredTeamIds.has(m.awayTeamId)
-  )
+  // Standings and fixture belong to one division: its latest tournament
+  const filteredTeams = useMemo(() => teamsInScope(teams, scope), [teams, scope])
+  const currentTournament = tournamentsInScope(tournaments, scope)[0]
+  const filteredMatches = useMemo(() => {
+    if (currentTournament) return matches.filter((m) => m.tournamentId === currentTournament.id)
+    const ids = new Set(filteredTeams.map((t) => t.id))
+    return matches.filter((m) => ids.has(m.homeTeamId) && ids.has(m.awayTeamId))
+  }, [matches, currentTournament, filteredTeams])
 
   const standings = useMemo(
     () => calculateStandings(filteredMatches, filteredTeams),
@@ -110,8 +84,9 @@ export function HomePageClient({
 
   const sortedNews = [...articles].sort((a, b) => b.date.localeCompare(a.date))
 
+  // News of the selected series plus general league news
   const seriesNews = selectedSeriesId
-    ? sortedNews.filter((a) => a.seriesId === selectedSeriesId)
+    ? sortedNews.filter((a) => !a.seriesId || a.seriesId === selectedSeriesId)
     : sortedNews
 
   const teamMap = new Map(teams.map((t) => [t.id, t]))
@@ -165,7 +140,7 @@ export function HomePageClient({
             </div>
           ))}
 
-          {filteredTeams.length === 0 && selectedDivisionId && (
+          {filteredTeams.length === 0 && scope.division && (
             <div className="flex items-center justify-center h-48 rounded-lg border border-dashed border-border bg-muted-bg text-sm text-muted-foreground">
               No hay equipos en esta división todavía
             </div>

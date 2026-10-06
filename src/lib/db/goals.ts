@@ -3,55 +3,69 @@ import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 export interface GoalScorer {
   playerId: string
   playerName: string
+  playerPhoto: string | null
   teamId: string
   teamName: string
   teamShortName: string
+  teamShield: string | null
   goals: number
 }
 
-export async function getTopScorers(limit = 20): Promise<{ data: GoalScorer[] | null; error: string | null }> {
+/**
+ * Top scorers, optionally limited to some teams (e.g. one division) and/or to
+ * matches of some tournaments.
+ */
+export async function getTopScorers(
+  limit = 20,
+  filter: { teamIds?: string[]; tournamentIds?: string[] } = {}
+): Promise<{ data: GoalScorer[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
 
-    // Aggregate goals by player with a join
-    const { data, error } = await (supabase
-      .from("goals") as any)
+    if (filter.teamIds && filter.teamIds.length === 0) return { data: [], error: null }
+
+    const { data, error } = await supabase
+      .from("goals")
       .select(`
         player_id,
         goals,
-        player:player_id(name, team_id)
+        match:match_id(tournament_id),
+        player:player_id(name, photo_url, team_id, team:team_id(name, short_name, shield_url))
       `)
 
     if (error) return { data: null, error: error.message }
 
-    // Aggregate manually since Supabase doesn't do GROUP BY with joins well
-    const playerMap = new Map<string, { name: string; teamId: string; goals: number }>()
+    const teamIds = filter.teamIds ? new Set(filter.teamIds) : null
+    const tournamentIds = filter.tournamentIds ? new Set(filter.tournamentIds) : null
 
+    // Aggregate in JS: PostgREST has no GROUP BY across embedded resources
+    const byPlayer = new Map<string, GoalScorer>()
     for (const row of data ?? []) {
-      const pid = row.player_id as string
-      const existing = playerMap.get(pid)
-      playerMap.set(pid, {
-        name: (row.player as any)?.name ?? "Desconocido",
-        teamId: (row.player as any)?.team_id ?? "",
-        goals: (existing?.goals ?? 0) + ((row.goals as number) ?? 0),
+      const player = row.player
+      if (!row.player_id || !player?.team_id) continue
+      if (teamIds && !teamIds.has(player.team_id)) continue
+      if (tournamentIds && !(row.match?.tournament_id && tournamentIds.has(row.match.tournament_id))) continue
+
+      const existing = byPlayer.get(row.player_id)
+      if (existing) {
+        existing.goals += row.goals ?? 0
+        continue
+      }
+      byPlayer.set(row.player_id, {
+        playerId: row.player_id,
+        playerName: player.name,
+        playerPhoto: player.photo_url,
+        teamId: player.team_id,
+        teamName: player.team?.name ?? "—",
+        teamShortName: player.team?.short_name ?? "—",
+        teamShield: player.team?.shield_url ?? null,
+        goals: row.goals ?? 0,
       })
     }
 
-    // Get all team names
-    const { data: teams } = await supabase.from("teams").select("id, name, short_name")
-
-    const teamMap = new Map((teams ?? []).map((t: any) => [t.id, t]))
-
-    const scorers: GoalScorer[] = [...playerMap.entries()]
-      .map(([playerId, info]) => ({
-        playerId,
-        playerName: info.name,
-        teamId: info.teamId,
-        teamName: teamMap.get(info.teamId)?.name ?? "—",
-        teamShortName: teamMap.get(info.teamId)?.short_name ?? "—",
-        goals: info.goals,
-      }))
-      .sort((a, b) => b.goals - a.goals)
+    const scorers = [...byPlayer.values()]
+      .filter((s) => s.goals > 0)
+      .sort((a, b) => b.goals - a.goals || a.playerName.localeCompare(b.playerName))
       .slice(0, limit)
 
     return { data: scorers, error: null }
@@ -68,7 +82,7 @@ export async function saveMatchGoals(
     const supabase = await createClient()
 
     // Delete existing goals for this match
-    await (supabase.from("goals") as any).delete().eq("match_id", matchId)
+    await supabase.from("goals").delete().eq("match_id", matchId)
 
     // Insert new goals
     if (scorers.length > 0) {
@@ -78,7 +92,7 @@ export async function saveMatchGoals(
         goals: s.goals,
       }))
 
-      const { error } = await (supabase.from("goals") as any).insert(rows)
+      const { error } = await supabase.from("goals").insert(rows)
       if (error) return { error: error.message }
     }
 

@@ -4,6 +4,8 @@ import { useActionState } from "react"
 import { useFormStatus } from "react-dom"
 
 import type { Team } from "@/lib/types"
+import type { SeriesOption } from "@/lib/scope"
+import { SeriesDivisionFields } from "@/components/series-division-fields"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,13 +21,14 @@ function SubmitButton() {
 
 interface TeamEditFormProps {
   team: Team
+  series: SeriesOption[]
   action: (
     prev: unknown,
     formData: FormData
   ) => Promise<{ error?: string; success?: boolean }>
 }
 
-export function TeamEditForm({ team, action }: TeamEditFormProps) {
+export function TeamEditForm({ team, series, action }: TeamEditFormProps) {
   const [state, formAction] = useActionState(action, undefined)
 
   return (
@@ -52,14 +55,19 @@ export function TeamEditForm({ team, action }: TeamEditFormProps) {
         />
       </div>
 
+      <SeriesDivisionFields
+        series={series}
+        defaultSeriesId={team.seriesId}
+        defaultDivisionId={team.divisionId}
+      />
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="category">Categoría</Label>
+        <Label htmlFor="category">Categoría (opcional)</Label>
         <Input
           id="category"
           name="category"
           defaultValue={team.category}
           placeholder="Ej: Primera División"
-          required
         />
       </div>
 

@@ -8,7 +8,7 @@ import { getTeams } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getPlayersByTeam } from "@/lib/db/players"
-import { getMatchEvents } from "@/lib/db/match-events"
+import { getMatchEvents, getMatchRefereeName } from "@/lib/db/match-events"
 import { getGoalsByMatch } from "@/lib/db/goals"
 import { getSanctions } from "@/lib/db/sanctions"
 import { getAlbums } from "@/lib/db/gallery"
@@ -48,7 +48,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
   const { data: match } = await getMatch(id)
   if (!match) notFound()
 
-  const [{ data: teams }, { data: tournaments }, seriesOptions, { data: allMatches }, events, goalsByMatch, { data: sanctions }, { data: albums }, { data: articles }, { data: homePlayers }, { data: awayPlayers }] =
+  const [{ data: teams }, { data: tournaments }, seriesOptions, { data: allMatches }, events, goalsByMatch, { data: sanctions }, { data: albums }, { data: articles }, { data: homePlayers }, { data: awayPlayers }, refereeName] =
     await Promise.all([
       getTeams(),
       getTournaments(),
@@ -61,6 +61,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
       getArticles(),
       getPlayersByTeam(match.homeTeamId),
       getPlayersByTeam(match.awayTeamId),
+      getMatchRefereeName(id),
     ])
 
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
@@ -104,6 +105,31 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
 
   const playerName = (pid?: string) => (pid ? players.get(pid)?.name ?? "Jugador" : "Sin identificar")
 
+  // Scorers under each team on the scoreboard: "Barán (2), Morales, Pérez (e/c)"
+  const scorersOf = (teamId?: string) => {
+    const counts = new Map<string, { name: string; goals: number; own: boolean }>()
+    for (const i of incidents) {
+      if (i.teamId !== teamId || i.icon !== "⚽") continue
+      const own = i.label === "Gol en contra"
+      const key = `${i.playerId ?? "?"}-${own}`
+      const prev = counts.get(key)
+      const add = i.count ?? 1
+      counts.set(key, { name: playerName(i.playerId), goals: (prev?.goals ?? 0) + add, own })
+    }
+    return [...counts.values()].map((c) => `${c.name}${c.goals > 1 ? ` (${c.goals})` : ""}${c.own ? " (e/c)" : ""}`)
+  }
+
+  // Head-to-head numbers of this match, per team
+  const countOf = (teamId: string | undefined, test: (i: Incident) => boolean) => incidents.filter((i) => i.teamId === teamId && test(i)).reduce((n, i) => n + (i.count ?? 1), 0)
+  const cardTeam = (i: Incident) => (i.playerId ? teamOfPlayer(i.playerId) ?? i.teamId : i.teamId)
+  const cardsOf = (teamId: string | undefined, label: string) => incidents.filter((i) => i.label === label && cardTeam(i) === teamId).length
+  const matchStats = [
+    { label: "Goles", home: match.homeScore ?? 0, away: match.awayScore ?? 0 },
+    { label: "Asistencias", home: countOf(home?.id, (i) => !!i.assistId), away: countOf(away?.id, (i) => !!i.assistId) },
+    { label: "Amarillas", home: cardsOf(home?.id, "Amarilla"), away: cardsOf(away?.id, "Amarilla") },
+    { label: "Rojas", home: cardsOf(home?.id, "Roja"), away: cardsOf(away?.id, "Roja") },
+  ]
+
   // Previous meetings between both teams (any tournament)
   const headToHead = (allMatches ?? [])
     .filter(
@@ -137,7 +163,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
         <div className="page-container relative py-7 md:py-10">
           <p className="text-center font-display text-sm font-semibold uppercase tracking-[0.12em] text-accent md:text-base">{eyebrow}</p>
           <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 md:gap-10">
-            <ScoreTeam team={home} />
+            <ScoreTeam team={home} scorers={scorersOf(home?.id)} />
             <div className="text-center">
               {played ? (
                 <p className="font-display text-6xl font-extrabold leading-none tabular-nums md:text-8xl">
@@ -150,13 +176,14 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
                 <MatchStatusBadge match={match} />
               </div>
             </div>
-            <ScoreTeam team={away} />
+            <ScoreTeam team={away} scorers={scorersOf(away?.id)} />
           </div>
           <p className="mt-6 text-center text-sm text-white/70">
             {formatDate(match.date)}
             {match.time && played && ` · ${match.time.slice(0, 5)} hs`}
             {match.venue && ` · ${match.venue}`}
           </p>
+          {refereeName && <p className="mt-1 text-center text-sm text-white/70">Árbitro: <span className="font-semibold text-white">{refereeName}</span></p>}
           {match.notes && <p className="mt-1 text-center text-sm text-white/70">{match.notes}</p>}
         </div>
       </section>
@@ -169,6 +196,31 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
 
         <div className="grid gap-10 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] xl:items-start">
           <section className="min-w-0">
+            {played && (
+              <div className="mb-10">
+                <SectionTitle>Estadísticas del partido</SectionTitle>
+                <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+                  {matchStats.map((s) => {
+                    const total = s.home + s.away
+                    return (
+                      <div key={s.label}>
+                        <div className="mb-1 flex items-center justify-between font-display text-lg font-bold tabular-nums">
+                          <span>{s.home}</span>
+                          <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</span>
+                          <span>{s.away}</span>
+                        </div>
+                        <div className="flex h-2 gap-1 overflow-hidden rounded-full bg-muted">
+                          <div className="flex flex-1 justify-end"><div className="h-full rounded-l-full bg-primary" style={{ width: total ? `${(s.home / total) * 100}%` : "0%" }} /></div>
+                          <div className="flex flex-1"><div className="h-full rounded-r-full bg-secondary" style={{ width: total ? `${(s.away / total) * 100}%` : "0%" }} /></div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {!events.length && <p className="mt-2 text-xs text-muted-foreground">Resultado cargado desde el panel: las asistencias solo se registran con la planilla del árbitro.</p>}
+              </div>
+            )}
+
             <SectionTitle>Incidencias</SectionTitle>
             {incidents.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
@@ -268,18 +320,22 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
   )
 }
 
-function ScoreTeam({ team }: { team?: Team }) {
-  const content = (
-    <>
-      <PhotoAvatar src={team?.shield} name={team?.name ?? "—"} className="size-16 bg-white md:size-24" fallbackClassName="text-lg md:text-2xl" />
-      <span className="font-display text-xl font-bold uppercase leading-tight md:text-3xl">{team?.name ?? "—"}</span>
-    </>
-  )
-  return team ? (
-    <Link href={`/equipos/${team.id}`} className="flex min-w-0 flex-col items-center gap-2 text-center hover:opacity-90">
-      {content}
-    </Link>
-  ) : (
-    <div className="flex min-w-0 flex-col items-center gap-2 text-center">{content}</div>
+function ScoreTeam({ team, scorers }: { team?: Team; scorers: string[] }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+      {team ? (
+        <Link href={`/equipos/${team.id}`} className="flex flex-col items-center gap-2 hover:opacity-90">
+          <PhotoAvatar src={team.shield} name={team.name} className="size-16 bg-white md:size-24" fallbackClassName="text-lg md:text-2xl" />
+          <span className="font-display text-xl font-bold uppercase leading-tight md:text-3xl">{team.name}</span>
+        </Link>
+      ) : (
+        <span className="font-display text-xl font-bold uppercase">—</span>
+      )}
+      {scorers.length > 0 && (
+        <ul className="space-y-0.5 text-xs text-white/75 md:text-sm">
+          {scorers.map((s) => <li key={s}>⚽ {s}</li>)}
+        </ul>
+      )}
+    </div>
   )
 }

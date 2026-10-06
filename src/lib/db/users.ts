@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/admin"
 export interface LeagueUser {
   id: string
   email: string
+  displayName: string | null
   role: Role
   teamId: string | null
   teamName: string | null
@@ -16,13 +17,14 @@ export async function getUsers(): Promise<{ data: LeagueUser[]; error: string | 
     const supabase = await createClient()
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, role, team_id, team:team_id(name)")
+      .select("id, email, display_name, role, team_id, team:team_id(name)")
       .order("email")
     if (error) return { data: [], error: error.message }
     return {
       data: data.map((row) => ({
         id: row.id,
         email: row.email,
+        displayName: row.display_name,
         role: row.role as Role,
         teamId: row.team_id,
         teamName: row.team?.name ?? null,
@@ -59,6 +61,7 @@ function friendlyAuthError(message: string): string {
 export async function createUser(input: {
   email: string
   password: string
+  displayName: string | null
   role: Role
   teamId: string | null
 }): Promise<{ error?: string }> {
@@ -74,7 +77,7 @@ export async function createUser(input: {
     // The on_auth_user_created trigger made a 'delegate' profile; set the real role
     const { error: profileError } = await admin
       .from("profiles")
-      .upsert({ id: data.user.id, email: input.email, role: input.role, team_id: input.teamId })
+      .upsert({ id: data.user.id, email: input.email, display_name: input.displayName, role: input.role, team_id: input.teamId })
     if (profileError) return { error: profileError.message }
     return {}
   } catch (e) {
@@ -85,13 +88,14 @@ export async function createUser(input: {
 export async function updateUserRole(
   id: string,
   role: Role,
-  teamId: string | null
+  teamId: string | null,
+  displayName: string | null
 ): Promise<{ error?: string }> {
   try {
     const admin = createServiceClient()
     const { error } = await admin
       .from("profiles")
-      .update({ role, team_id: role === "delegate" ? teamId : null })
+      .update({ role, team_id: role === "delegate" ? teamId : null, display_name: displayName })
       .eq("id", id)
     return error ? { error: error.message } : {}
   } catch (e) {

@@ -140,9 +140,9 @@ export type Database = {
         ]
       }
       profiles: {
-        Row: { created_at: string | null; email: string; id: string; role: string; team_id: string | null }
-        Insert: { created_at?: string | null; email: string; id: string; role?: string; team_id?: string | null }
-        Update: { created_at?: string | null; email?: string; id?: string; role?: string; team_id?: string | null }
+        Row: { created_at: string | null; display_name: string | null; email: string; id: string; role: string; team_id: string | null }
+        Insert: { created_at?: string | null; display_name?: string | null; email: string; id: string; role?: string; team_id?: string | null }
+        Update: { created_at?: string | null; display_name?: string | null; email?: string; id?: string; role?: string; team_id?: string | null }
         Relationships: [
           { foreignKeyName: "profiles_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
         ]
@@ -252,6 +252,7 @@ export type Database = {
     Functions: {
       assign_delegate: { Args: { p_email: string; p_team_id: string }; Returns: undefined }
       is_staff: { Args: never; Returns: boolean }
+      match_referee_name: { Args: { p_match_id: string }; Returns: string | null }
       my_team_id: { Args: never; Returns: string }
       revoke_delegate: { Args: { p_team_id: string }; Returns: undefined }
       withdraw_team: { Args: { p_registration_id: string }; Returns: number }

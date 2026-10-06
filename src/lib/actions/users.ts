@@ -45,6 +45,7 @@ export async function createUserAction(_prev: unknown, formData: FormData) {
   const password = (formData.get("password") as string | null) ?? ""
   const role = ROLES.find((r) => r === formData.get("role"))
   const teamId = (formData.get("teamId") as string | null) || null
+  const displayName = (formData.get("displayName") as string | null)?.trim() || null
 
   if (!email) return { error: "El email es obligatorio." }
   if (password.length < 8) return { error: "La contraseña tiene que tener al menos 8 caracteres." }
@@ -57,7 +58,7 @@ export async function createUserAction(_prev: unknown, formData: FormData) {
     if (full) return { error: full }
   }
 
-  const result = await createUser({ email, password, role, teamId: role === "delegate" ? teamId : null })
+  const result = await createUser({ email, password, displayName, role, teamId: role === "delegate" ? teamId : null })
   if (result.error) return { error: result.error }
   refresh()
   return { success: true as const }
@@ -69,6 +70,7 @@ export async function updateUserRoleAction(userId: string, _prev: unknown, formD
 
   const role = ROLES.find((r) => r === formData.get("role"))
   const teamId = (formData.get("teamId") as string | null) || null
+  const displayName = (formData.get("displayName") as string | null)?.trim() || null
   if (!role) return { error: "Elegí el rol." }
 
   const target = await getUser(userId)
@@ -82,7 +84,7 @@ export async function updateUserRoleAction(userId: string, _prev: unknown, formD
     if (full) return { error: full }
   }
 
-  const result = await updateUserRole(userId, role, teamId)
+  const result = await updateUserRole(userId, role, teamId, displayName)
   if (result.error) return { error: result.error }
   refresh()
   return { success: true as const }

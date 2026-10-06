@@ -1,7 +1,6 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import type { Tournament } from "@/lib/types"
 import {
   Select,
   SelectContent,
@@ -10,40 +9,34 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-interface MatchFilterProps {
-  tournaments: Tournament[]
-  currentTournament?: string
+interface SeasonFilterProps {
+  seasons: string[]
+  current: string
 }
 
-export function MatchFilter({
-  tournaments,
-  currentTournament,
-}: MatchFilterProps) {
+/** Season of the matches page: the list and the dialogs only load that season's data. */
+export function SeasonFilter({ seasons, current }: SeasonFilterProps) {
   const router = useRouter()
 
-  const handleFilter = (value: string | null) => {
-    if (value && value !== "all") {
-      router.push(`/admin/partidos?tournament=${value}`)
-    } else {
-      router.push("/admin/partidos")
-    }
-  }
+  if (seasons.length <= 1) return null
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">Filtrar por torneo:</span>
+      <span className="text-sm text-muted-foreground">Temporada:</span>
       <Select
-        value={currentTournament ?? "all"}
-        onValueChange={handleFilter}
+        value={current}
+        onValueChange={(value: string | null) => {
+          // Back to page 1 of the new season
+          if (value) router.push(`/admin/partidos?temporada=${encodeURIComponent(value)}`)
+        }}
       >
-        <SelectTrigger className="w-72">
-          <SelectValue placeholder="Todos los torneos" />
+        <SelectTrigger className="w-32">
+          <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Todos los torneos</SelectItem>
-          {tournaments.map((t) => (
-            <SelectItem key={t.id} value={t.id}>
-              {t.name} — {t.category}
+          {seasons.map((s) => (
+            <SelectItem key={s} value={s}>
+              {s}
             </SelectItem>
           ))}
         </SelectContent>

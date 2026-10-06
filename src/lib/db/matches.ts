@@ -13,18 +13,22 @@ const MATCH_SELECT = `
 
 export async function getMatchesPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  /** Only matches of these tournaments (e.g. one season's) */
+  tournamentIds?: string[]
 ): Promise<PaginatedResult<MatchWithTeams>> {
+  if (tournamentIds?.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
   try {
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
-      .from("matches")
-      .select(MATCH_SELECT, { count: "exact" })
+    let query = supabase.from("matches").select(MATCH_SELECT, { count: "exact" })
+    if (tournamentIds) query = query.in("tournament_id", tournamentIds)
+    const { data, error, count } = await query
       .order("date", { ascending: true })
       .order("time", { ascending: true })
+      .order("id")
       .range(from, to)
 
     if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }

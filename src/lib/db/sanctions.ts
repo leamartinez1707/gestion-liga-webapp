@@ -1,5 +1,6 @@
 import type { Sanction, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 export async function getSanctionsPaginated(
   page = 1,
@@ -135,19 +136,47 @@ export async function syncMatchRedCards(
 // CRUD operations
 // ---------------------------------------------------------------------------
 
-export async function getSanctions(): Promise<{ data: SanctionWithDetails[] | null; error: string | null }> {
+const SANCTION_DETAILS = `
+  *,
+  player:player_id (name, team_id),
+  match:match_id (home_team_id, away_team_id, home_score, away_score, matchday)
+`
+// Same columns, but only sanctions whose match passes the filters on `match`
+const SANCTION_DETAILS_INNER = `
+  *,
+  player:player_id (name, team_id),
+  match:match_id!inner (home_team_id, away_team_id, home_score, away_score, matchday, tournament_id)
+`
+
+/**
+ * Sanctions with player and match, newest first. Pass a filter so the query
+ * only returns what the page needs:
+ * - `playerIds` / `matchIds`: sanctions of those players / matches
+ * - `tournamentIds`: sanctions from matches of those tournaments
+ * - `teamId`: sanctions from matches the team played (either side)
+ * With no filter it reads the whole table (paged).
+ */
+export async function getSanctions(
+  filter: { playerIds?: string[]; matchIds?: string[]; tournamentIds?: string[]; teamId?: string } = {}
+): Promise<{ data: SanctionWithDetails[] | null; error: string | null }> {
+  if (filter.playerIds?.length === 0 || filter.matchIds?.length === 0 || filter.tournamentIds?.length === 0) {
+    return { data: [], error: null }
+  }
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("sanctions")
-      .select(`
-        *,
-        player:player_id (name, team_id),
-        match:match_id (home_team_id, away_team_id, home_score, away_score, matchday)
-      `)
-      .order("created_at", { ascending: false })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRowWithDetails), error: null }
+    const byMatch = !!filter.tournamentIds || !!filter.teamId
+    const { data, error } = await fetchAll((from, to) => {
+      let query = supabase.from("sanctions").select(byMatch ? SANCTION_DETAILS_INNER : SANCTION_DETAILS)
+      if (filter.playerIds) query = query.in("player_id", filter.playerIds)
+      if (filter.matchIds) query = query.in("match_id", filter.matchIds)
+      if (filter.tournamentIds) query = query.in("match.tournament_id", filter.tournamentIds)
+      if (filter.teamId) {
+        query = query.or(`home_team_id.eq.${filter.teamId},away_team_id.eq.${filter.teamId}`, { referencedTable: "match" })
+      }
+      return query.order("created_at", { ascending: false }).order("id").range(from, to)
+    })
+    if (error) return { data: null, error }
+    return { data: data.map((row) => mapRowWithDetails(row as unknown as Record<string, unknown>)), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }

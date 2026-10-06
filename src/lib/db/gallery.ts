@@ -1,5 +1,6 @@
 import type { Photo, PhotoAlbum } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 export const GALLERY_BUCKET = "public-images"
 
@@ -56,17 +57,18 @@ export async function getAlbums(
 ): Promise<{ data: PhotoAlbum[] | null; error: string | null }> {
   try {
     const supabase = filter.asStaff ? await createClient() : createReadOnlyClient()
-    let query = supabase
-      .from("photo_albums")
-      .select("*, photos(count)")
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false })
-    if (filter.matchIds) {
-      if (filter.matchIds.length === 0) return { data: [], error: null }
-      query = query.in("match_id", filter.matchIds)
-    }
-    const { data, error } = await query
-    if (error) return { data: null, error: error.message }
+    const matchIds = filter.matchIds
+    if (matchIds?.length === 0) return { data: [], error: null }
+    const { data, error } = await fetchAll((from, to) => {
+      let query = supabase.from("photo_albums").select("*, photos(count)")
+      if (matchIds) query = query.in("match_id", matchIds)
+      return query
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to)
+    })
+    if (error) return { data: null, error }
     return { data: (data as AlbumRow[]).map(mapAlbum), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
@@ -97,13 +99,17 @@ export async function getPhotos(
 ): Promise<{ data: Photo[] | null; error: string | null }> {
   try {
     const supabase = asStaff ? await createClient() : createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("photos")
-      .select("id, album_id, url, thumb_url, caption, display_order")
-      .eq("album_id", albumId)
-      .order("display_order")
-      .order("created_at")
-    if (error) return { data: null, error: error.message }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase
+        .from("photos")
+        .select("id, album_id, url, thumb_url, caption, display_order")
+        .eq("album_id", albumId)
+        .order("display_order")
+        .order("created_at")
+        .order("id")
+        .range(from, to)
+    )
+    if (error) return { data: null, error }
     return { data: data.map(mapPhoto), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }

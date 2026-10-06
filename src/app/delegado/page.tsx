@@ -52,7 +52,7 @@ export default async function DelegadoDashboard() {
     getTournaments(),
     getSeriesOptions(),
     getMatches(),
-    getSanctions(),
+    getSanctions({ teamId: team.id }),
   ])
   const suspended = activeSuspensions(sanctions ?? [], matches ?? [])
   const playersList = players ?? []

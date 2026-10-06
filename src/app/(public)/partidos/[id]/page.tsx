@@ -56,7 +56,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
       getMatches(),
       getMatchEvents(id),
       getGoalsByMatch([id]),
-      getSanctions(),
+      getSanctions({ matchIds: [id] }),
       getAlbums({ matchIds: [id] }),
       getArticles(),
       getPlayersByTeam(match.homeTeamId),

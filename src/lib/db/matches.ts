@@ -1,5 +1,6 @@
 import type { Match, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 export async function getMatchesPaginated(
   page = 1,
@@ -40,19 +41,18 @@ export async function getMatches(
 ): Promise<{ data: MatchWithTeams[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    let query = supabase.from("matches").select(`
+    // Paged: the whole fixture can exceed the API row cap
+    const { data, error } = await fetchAll((from, to) => {
+      let query = supabase.from("matches").select(`
         *,
         home_team:home_team_id (name),
         away_team:away_team_id (name)
       `)
-
-    if (tournamentId) {
-      query = query.eq("tournament_id", tournamentId)
-    }
-
-    const { data, error } = await query.order("date", { ascending: true }).order("time", { ascending: true })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRowWithTeams), error: null }
+      if (tournamentId) query = query.eq("tournament_id", tournamentId)
+      return query.order("date", { ascending: true }).order("time", { ascending: true }).order("id").range(from, to)
+    })
+    if (error) return { data: null, error }
+    return { data: data.map(mapRowWithTeams), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }

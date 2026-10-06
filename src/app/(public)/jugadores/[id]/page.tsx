@@ -51,7 +51,7 @@ export default async function JugadorPage({
       getTeams(),
       getMatches(),
       getTournaments(),
-      getSanctions(),
+      getSanctions({ playerIds: [id] }),
       getSeriesOptions(),
       getPlayerMatchLines(id),
     ])

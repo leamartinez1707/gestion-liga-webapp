@@ -38,7 +38,7 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
       getRegistrations({ tournamentId: match.tournamentId }),
       getMatchEvents(id),
       getMatches(match.tournamentId),
-      getSanctions(),
+      getSanctions({ tournamentIds: [match.tournamentId] }),
     ])
   if (!home || !away) notFound()
 

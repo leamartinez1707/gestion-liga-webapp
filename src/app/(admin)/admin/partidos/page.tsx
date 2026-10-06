@@ -39,7 +39,7 @@ export default async function PartidosPage({ searchParams }: Props) {
   const matchesList = matches || []
   const [goalsByMatch, { data: sanctions }, referees, withSheet] = await Promise.all([
     getGoalsByMatch(matchesList.map((m) => m.id)),
-    getSanctions(),
+    getSanctions({ matchIds: matchesList.map((m) => m.id) }),
     getReferees(),
     getMatchIdsWithEvents(matchesList.map((m) => m.id)),
   ])

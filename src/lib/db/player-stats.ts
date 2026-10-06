@@ -1,4 +1,5 @@
 import { createReadOnlyClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 /** What a player did in one match. */
 export interface PlayerMatchLine {
@@ -47,12 +48,16 @@ export async function getAssistCounts(matchIds: string[]): Promise<Map<string, n
   if (matchIds.length === 0) return counts
   try {
     const supabase = createReadOnlyClient()
-    const { data } = await supabase
-      .from("match_events")
-      .select("assist_player_id")
-      .in("match_id", matchIds)
-      .not("assist_player_id", "is", null)
-    for (const row of data ?? []) {
+    const { data } = await fetchAll((from, to) =>
+      supabase
+        .from("match_events")
+        .select("assist_player_id")
+        .in("match_id", matchIds)
+        .not("assist_player_id", "is", null)
+        .order("id")
+        .range(from, to)
+    )
+    for (const row of data) {
       if (row.assist_player_id) counts.set(row.assist_player_id, (counts.get(row.assist_player_id) ?? 0) + 1)
     }
   } catch {

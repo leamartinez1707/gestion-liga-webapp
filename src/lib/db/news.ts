@@ -1,5 +1,6 @@
 import type { NewsArticle, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 /** Admin listing: uses the session client so staff also see drafts (RLS). */
 export async function getArticlesPaginated(
@@ -48,17 +49,13 @@ export interface ArticleRow {
 export async function getArticles(seriesId?: string): Promise<{ data: ArticleRow[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    let query = supabase
-      .from("news_articles")
-      .select("*")
-      .eq("published", true)
-      .order("date", { ascending: false })
-    if (seriesId) {
-      query = query.eq("series_id", seriesId)
-    }
-    const { data, error } = await query
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) => {
+      let query = supabase.from("news_articles").select("*").eq("published", true)
+      if (seriesId) query = query.eq("series_id", seriesId)
+      return query.order("date", { ascending: false }).order("id").range(from, to)
+    })
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }

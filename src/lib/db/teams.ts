@@ -1,5 +1,6 @@
 import type { Team, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 export async function getTeamsPaginated(
   page = 1,
@@ -32,13 +33,11 @@ export async function getTeamsPaginated(
 export async function getTeamsByTournament(tournamentId: string): Promise<{ data: Team[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("teams")
-      .select("*")
-      .eq("tournament_id", tournamentId)
-      .order("name", { ascending: true })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("teams").select("*").eq("tournament_id", tournamentId).order("name", { ascending: true }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
@@ -47,12 +46,11 @@ export async function getTeamsByTournament(tournamentId: string): Promise<{ data
 export async function getTeams(): Promise<{ data: Team[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("teams")
-      .select("*")
-      .order("created_at", { ascending: false })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("teams").select("*").order("created_at", { ascending: false }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }

@@ -1,5 +1,6 @@
 import type { Registration } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 function mapRow(row: { id: string; tournament_id: string; team_id: string; withdrawn_at: string | null }): Registration {
   return {
@@ -15,11 +16,13 @@ export async function getRegistrations(
 ): Promise<{ data: Registration[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    let query = supabase.from("registrations").select("id, tournament_id, team_id, withdrawn_at")
-    if (filter.tournamentId) query = query.eq("tournament_id", filter.tournamentId)
-    if (filter.teamId) query = query.eq("team_id", filter.teamId)
-    const { data, error } = await query
-    if (error) return { data: null, error: error.message }
+    const { data, error } = await fetchAll((from, to) => {
+      let query = supabase.from("registrations").select("id, tournament_id, team_id, withdrawn_at")
+      if (filter.tournamentId) query = query.eq("tournament_id", filter.tournamentId)
+      if (filter.teamId) query = query.eq("team_id", filter.teamId)
+      return query.order("id").range(from, to)
+    })
+    if (error) return { data: null, error }
     return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
@@ -49,11 +52,16 @@ export async function getRosters(
   if (registrationIds.length === 0) return { data: rosters, error: null }
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("registration_players")
-      .select("registration_id, player_id")
-      .in("registration_id", registrationIds)
-    if (error) return { data: rosters, error: error.message }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase
+        .from("registration_players")
+        .select("registration_id, player_id")
+        .in("registration_id", registrationIds)
+        .order("registration_id")
+        .order("player_id")
+        .range(from, to)
+    )
+    if (error) return { data: rosters, error }
     for (const row of data) rosters.get(row.registration_id)?.push(row.player_id)
     return { data: rosters, error: null }
   } catch {

@@ -54,7 +54,7 @@ export default async function EquipoDetailPage({
       getTournaments(),
       getRegistrations({ teamId: id }),
       getMatches(),
-      getSanctions(),
+      getSanctions({ teamId: id }),
       getTeamSeasonPhotos(id),
     ])
 

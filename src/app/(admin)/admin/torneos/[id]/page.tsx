@@ -61,7 +61,7 @@ export default async function TorneoInscripcionesPage({
   const matchdays = [...new Set((matches ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
   const [goalsByMatch, { data: sanctions }, referees, withSheet] = await Promise.all([
     getGoalsByMatch((matches ?? []).map((m) => m.id)),
-    getSanctions(),
+    getSanctions({ tournamentIds: [id] }),
     getReferees(),
     getMatchIdsWithEvents((matches ?? []).map((m) => m.id)),
   ])

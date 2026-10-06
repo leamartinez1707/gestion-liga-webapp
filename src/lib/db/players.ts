@@ -1,5 +1,6 @@
 import type { Player, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 export async function getPlayersPaginated(
   page = 1,
@@ -32,12 +33,11 @@ export async function getPlayersPaginated(
 export async function getPlayers(): Promise<{ data: Player[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("players")
-      .select("*")
-      .order("created_at", { ascending: false })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("players").select("*").order("created_at", { ascending: false }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
@@ -48,13 +48,11 @@ export async function getPlayersByTeam(
 ): Promise<{ data: Player[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("players")
-      .select("*")
-      .eq("team_id", teamId)
-      .order("number", { ascending: true })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("players").select("*").eq("team_id", teamId).order("number", { ascending: true }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
@@ -65,8 +63,10 @@ export async function getPlayersByIds(ids: string[]): Promise<Player[]> {
   if (ids.length === 0) return []
   try {
     const supabase = createReadOnlyClient()
-    const { data } = await supabase.from("players").select("*").in("id", ids).order("number", { ascending: true })
-    return (data ?? []).map(mapRow)
+    const { data } = await fetchAll((from, to) =>
+      supabase.from("players").select("*").in("id", ids).order("number", { ascending: true }).order("id").range(from, to)
+    )
+    return data.map(mapRow)
   } catch {
     return []
   }

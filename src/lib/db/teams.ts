@@ -75,6 +75,8 @@ export async function getTeam(id: string): Promise<{ data: Team | null; error: s
 
 export async function createTeam(
   data: Pick<Team, "name" | "shortName" | "category"> & {
+    seriesId?: string | null
+    divisionId?: string | null
     coach?: string
     assistantCoach?: string
     tournamentId?: string
@@ -88,6 +90,8 @@ export async function createTeam(
         name: data.name,
         short_name: data.shortName,
         category: data.category,
+        series_id: data.seriesId ?? null,
+        division_id: data.divisionId ?? null,
         coach: data.coach ?? null,
         assistant_coach: data.assistantCoach ?? null,
         tournament_id: data.tournamentId ?? null,
@@ -109,6 +113,8 @@ export async function updateTeam(
     name: string
     shortName: string
     category: string
+    seriesId: string | null
+    divisionId: string | null
     coach: string | null
     assistantCoach: string | null
     tournamentId: string | null
@@ -121,6 +127,8 @@ export async function updateTeam(
     if (data.name !== undefined) payload.name = data.name
     if (data.shortName !== undefined) payload.short_name = data.shortName
     if (data.category !== undefined) payload.category = data.category
+    if (data.seriesId !== undefined) payload.series_id = data.seriesId
+    if (data.divisionId !== undefined) payload.division_id = data.divisionId
     if (data.coach !== undefined) payload.coach = data.coach
     if (data.assistantCoach !== undefined)
       payload.assistant_coach = data.assistantCoach

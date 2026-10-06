@@ -56,7 +56,7 @@ export function TeamDialog({ children, action, team }: TeamDialogProps) {
           {/* Shield */}
           <div className="flex flex-col gap-1.5">
             <Label>Escudo</Label>
-            <ImageUpload name="shield" currentUrl={team?.shield} />
+            <ImageUpload maxSize={512} name="shield" currentUrl={team?.shield} />
           </div>
 
           {/* Name */}
@@ -83,15 +83,14 @@ export function TeamDialog({ children, action, team }: TeamDialogProps) {
             />
           </div>
 
-          {/* Category */}
+          {/* Category (optional display label) */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="category">Categoría</Label>
+            <Label htmlFor="category">Categoría (opcional)</Label>
             <Input
               id="category"
               name="category"
               defaultValue={team?.category ?? ""}
               placeholder="Ej: Primera División"
-              required
             />
           </div>
 

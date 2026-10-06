@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type { Match, Team, NewsArticle } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
+import { CoverImage } from "@/components/cover-image"
 
 interface FeaturedBannerProps {
   article: NewsArticle
@@ -32,9 +33,7 @@ export function FeaturedBanner({
       >
         {/* Image area */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent z-10" />
-        <div className="absolute inset-0 bg-primary-light flex items-center justify-center">
-          <span className="text-xs text-muted-foreground">Imagen</span>
-        </div>
+        <CoverImage src={article.image} alt={article.title} sizes={isLarge ? "(min-width: 1024px) 60vw, 100vw" : "350px"} />
 
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 z-20 p-4 md:p-6">

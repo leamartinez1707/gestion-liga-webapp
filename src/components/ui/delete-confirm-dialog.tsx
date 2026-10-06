@@ -18,12 +18,21 @@ interface DeleteConfirmDialogProps {
   children: React.ReactElement
   itemName: string
   onConfirm: () => Promise<{ error?: string }>
+  /** Override the texts for confirmations that aren't a delete (e.g. a team withdrawal) */
+  title?: string
+  description?: React.ReactNode
+  confirmLabel?: string
+  pendingLabel?: string
 }
 
 export function DeleteConfirmDialog({
   children,
   itemName,
   onConfirm,
+  title = "Confirmar eliminación",
+  description,
+  confirmLabel = "Eliminar",
+  pendingLabel = "Eliminando…",
 }: DeleteConfirmDialogProps) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,9 +42,9 @@ export function DeleteConfirmDialog({
     setPending(true)
     setError(null)
     const result = await onConfirm()
+    setPending(false)
     if (result.error) {
       setError(result.error)
-      setPending(false)
     } else {
       setOpen(false)
     }
@@ -46,10 +55,14 @@ export function DeleteConfirmDialog({
       <DialogTrigger render={children} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmar eliminación</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            ¿Estás seguro de que querés eliminar <strong>{itemName}</strong>?
-            Esta acción no se puede deshacer.
+            {description ?? (
+              <>
+                ¿Estás seguro de que querés eliminar <strong>{itemName}</strong>?
+                Esta acción no se puede deshacer.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -66,7 +79,7 @@ export function DeleteConfirmDialog({
             className="gap-1.5"
           >
             <Trash2 className="h-4 w-4" />
-            {pending ? "Eliminando…" : "Eliminar"}
+            {pending ? pendingLabel : confirmLabel}
           </Button>
         </div>
       </DialogContent>

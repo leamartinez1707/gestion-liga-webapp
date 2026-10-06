@@ -123,7 +123,7 @@ export function PlayerDialog({
           {/* Photo */}
           <div className="flex flex-col gap-1.5">
             <Label>Foto</Label>
-            <ImageUpload name="photo" currentUrl={player?.photo} />
+            <ImageUpload maxSize={512} name="photo" currentUrl={player?.photo} />
           </div>
 
           {/* Team */}

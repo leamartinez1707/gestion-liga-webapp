@@ -1,5 +1,8 @@
 import { Suspense } from "react"
-import { getSeries, getDivisions } from "@/lib/db/series"
+import { getSeriesOptions } from "@/lib/db/series"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
+import { getAlbums } from "@/lib/db/gallery"
 import { getTeams } from "@/lib/db/teams"
 import { getMatches } from "@/lib/db/matches"
 import { getArticles } from "@/lib/db/news"
@@ -7,7 +10,6 @@ import { getSponsors } from "@/lib/db/sponsors"
 import { leagueInfo } from "@/lib/data/league"
 import type { NewsArticle } from "@/lib/types"
 import type { ArticleRow } from "@/lib/db/news"
-import type { SeriesOption } from "@/components/series-selector"
 import { HomePageClient } from "./home-client"
 
 function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
@@ -24,28 +26,21 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
   }
 }
 
+// Safety net for edits made directly in Supabase; panel actions revalidate immediately.
+export const revalidate = 300
+
 export default async function HomePage() {
-  const [seriesResult, divisionsResult, teamsResult, matchesResult, articlesResult, sponsorsResult] =
+  const [seriesOptions, teamsResult, tournamentsResult, registrationsResult, matchesResult, articlesResult, sponsorsResult, albumsResult] =
     await Promise.all([
-      getSeries(),
-      getDivisions(),
+      getSeriesOptions(),
       getTeams(),
+      getTournaments(),
+      getRegistrations(),
       getMatches(),
       getArticles(),
       getSponsors(),
+      getAlbums(),
     ])
-
-  const seriesList = seriesResult.data ?? []
-  const divisionsList = divisionsResult.data ?? []
-
-  const seriesOptions: SeriesOption[] = seriesList.map((s) => ({
-    id: s.id,
-    name: s.name,
-    slug: s.slug,
-    divisions: divisionsList
-      .filter((d) => d.seriesId === s.id)
-      .map((d) => ({ id: d.id, name: d.name })),
-  }))
 
   const teams = teamsResult.data ?? []
   const matches = matchesResult.data ?? []
@@ -56,6 +51,9 @@ export default async function HomePage() {
       <HomePageClient
         seriesOptions={seriesOptions}
         teams={teams}
+        tournaments={tournamentsResult.data ?? []}
+        registrations={registrationsResult.data ?? []}
+        albums={(albumsResult.data ?? []).filter((a) => a.photoCount > 0)}
         matches={matches}
         articles={articles}
         leagueInfo={leagueInfo}

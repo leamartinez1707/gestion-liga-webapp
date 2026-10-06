@@ -3,7 +3,11 @@ import { Plus, Pencil, Trash2, Users } from "lucide-react"
 import Link from "next/link"
 
 import { getTeamsPaginated } from "@/lib/db/teams"
-import { createTeamAction, deleteTeamAction } from "@/lib/actions/admin"
+import { getSeriesOptions } from "@/lib/db/series"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
+import { scopeLabel } from "@/lib/scope"
+import { createTeamAction, updateTeamAction, deleteTeamAction } from "@/lib/actions/admin"
 import {
   Table,
   TableBody,
@@ -27,7 +31,17 @@ export default async function EquiposPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
 
-  const { data: teams, error, totalPages } = await getTeamsPaginated(page, LIMIT)
+  const [{ data: teams, error, totalPages }, series, { data: tournaments }, { data: registrations }] =
+    await Promise.all([getTeamsPaginated(page, LIMIT), getSeriesOptions(), getTournaments(), getRegistrations()])
+
+  const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
+  // "Serie 1 · División A (2026)" for each tournament the team is entered in
+  const registrationsOf = (teamId: string) =>
+    (registrations ?? [])
+      .filter((r) => r.teamId === teamId)
+      .map((r) => tournamentMap.get(r.tournamentId))
+      .filter((t) => t !== undefined)
+      .map((t) => `${scopeLabel(series, t.seriesId, t.divisionId)} (${t.season})`)
 
   if (error) {
     return (
@@ -56,7 +70,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead>Inscripciones</TableHead>
               <TableHead>DT</TableHead>
               <TableHead className="w-28 text-right">Acciones</TableHead>
             </TableRow>
@@ -72,7 +86,9 @@ export default async function EquiposPage({ searchParams }: Props) {
             {teams.map((team) => (
               <TableRow key={team.id}>
                 <TableCell className="font-medium">{team.name}</TableCell>
-                <TableCell className="text-muted-foreground">{team.category}</TableCell>
+                <TableCell className="text-muted-foreground whitespace-normal">
+                  {registrationsOf(team.id).join(", ") || "Sin inscripciones"}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{team.coach || "—"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -81,7 +97,7 @@ export default async function EquiposPage({ searchParams }: Props) {
                         <Users className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <TeamDialog action={createTeamAction} team={team}>
+                    <TeamDialog action={updateTeamAction.bind(null, team.id)} team={team}>
                       <Button variant="ghost" size="icon-sm" aria-label="Editar">
                         <Pencil className="h-4 w-4" />
                       </Button>

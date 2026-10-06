@@ -15,11 +15,9 @@ import {
   createDivision,
   updateDivision,
   deleteDivision,
+  getDivision,
 } from "@/lib/db/series"
-import {
-  assignDelegate,
-  revokeDelegate,
-} from "@/lib/db/delegates"
+import { assignDelegate } from "@/lib/db/delegates"
 import { saveMatchGoals } from "@/lib/db/goals"
 import {
   createSponsor,
@@ -32,19 +30,23 @@ import {
   deleteTeam,
 } from "@/lib/db/teams"
 import {
+  getPlayersByTeam,
   createPlayer,
   updatePlayer,
   deletePlayer,
 } from "@/lib/db/players"
 import {
+  getMatch,
+  getMatches,
   createMatch,
   updateMatch,
   deleteMatch,
 } from "@/lib/db/matches"
 import {
   createSanction,
+  getSanction,
   deleteSanction,
-  processMatchSanctions,
+  syncMatchRedCards,
 } from "@/lib/db/sanctions"
 import {
   createArticle,
@@ -54,8 +56,53 @@ import {
   unpublishArticle,
 } from "@/lib/db/news"
 import { bulkCreateMatches } from "@/lib/db/fixture-actions"
+import {
+  getRegistrations,
+  createRegistration,
+  deleteRegistration,
+  withdrawRegistration,
+  setRoster,
+} from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
+import { updateLeagueSettings } from "@/lib/db/settings"
+import { createClient } from "@/lib/supabase/server"
+import {
+  createAlbum,
+  updateAlbum,
+  deleteAlbum,
+  addPhotos,
+  deletePhoto,
+  getAlbum,
+  getPhotos,
+  storagePathFromUrl,
+  type AlbumInput,
+} from "@/lib/db/gallery"
+import { requireStaff } from "@/lib/auth"
 import type { Player, Match } from "@/lib/types"
+
+/**
+ * Public pages (home, actualidad, goleadores…) are statically rendered, so any
+ * change made from the panels must invalidate the whole site, not just /admin.
+ */
+function revalidateSite() {
+  revalidatePath("/", "layout")
+}
+
+/**
+ * Reads seriesId/divisionId from a form. The division decides the series, so
+ * a tournament can never end up in a division of another series.
+ */
+async function readSeriesDivision(
+  formData: FormData
+): Promise<{ seriesId: string | null; divisionId: string | null; error?: string }> {
+  const divisionId = (formData.get("divisionId") as string | null) || null
+  if (divisionId) {
+    const { data: division } = await getDivision(divisionId)
+    if (!division) return { seriesId: null, divisionId: null, error: "La división elegida no existe." }
+    return { seriesId: division.seriesId, divisionId }
+  }
+  return { seriesId: (formData.get("seriesId") as string | null) || null, divisionId: null }
+}
 
 // ---------------------------------------------------------------------------
 // Tournament actions
@@ -65,6 +112,9 @@ export async function createTournamentAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const category = formData.get("category") as string
   const season = formData.get("season") as string
@@ -73,13 +123,18 @@ export async function createTournamentAction(
   const endDate = formData.get("endDate") as string
 
   if (!name?.trim()) return { error: "El nombre del torneo es obligatorio." }
-  if (!category?.trim()) return { error: "La categoría es obligatoria." }
   if (!season?.trim()) return { error: "La temporada es obligatoria." }
   if (!format) return { error: "El formato es obligatorio." }
 
+  const scope = await readSeriesDivision(formData)
+  if (scope.error) return { error: scope.error }
+  if (!scope.divisionId) return { error: "Elegí la serie y la división del torneo." }
+
   const result = await createTournament({
     name: name.trim(),
-    category: category.trim(),
+    category: category?.trim() || undefined,
+    seriesId: scope.seriesId,
+    divisionId: scope.divisionId,
     season: season.trim(),
     format: format as "league" | "elimination" | "groups",
     startDate: startDate || undefined,
@@ -87,7 +142,7 @@ export async function createTournamentAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -96,6 +151,9 @@ export async function updateTournamentAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const category = formData.get("category") as string
   const season = formData.get("season") as string
@@ -105,26 +163,35 @@ export async function updateTournamentAction(
 
   if (!name?.trim()) return { error: "El nombre del torneo es obligatorio." }
 
+  const scope = await readSeriesDivision(formData)
+  if (scope.error) return { error: scope.error }
+  if (!scope.divisionId) return { error: "Elegí la serie y la división del torneo." }
+
   const result = await updateTournament(id, {
     name: name.trim(),
-    category: category.trim() || undefined,
-    season: season.trim() || undefined,
+    category: category?.trim() || undefined,
+    seriesId: scope.seriesId,
+    divisionId: scope.divisionId,
+    season: season?.trim() || undefined,
     format: (format as "league" | "elimination" | "groups") || undefined,
     startDate: startDate || null,
     endDate: endDate || null,
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteTournamentAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteTournament(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return {}
 }
 
@@ -133,6 +200,9 @@ export async function deleteTournamentAction(
 // ---------------------------------------------------------------------------
 
 export async function createTeamAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const shortName = formData.get("shortName") as string
   const category = formData.get("category") as string
@@ -142,7 +212,6 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
 
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
   if (!shortName?.trim()) return { error: "El nombre corto es obligatorio." }
-  if (!category?.trim()) return { error: "La categoría es obligatoria." }
 
   const { url: shieldUrl, error: uploadError } = await uploadOptionalImage(formData, "shield", "teams")
   if (uploadError) return { error: uploadError }
@@ -150,7 +219,7 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
   const result = await createTeam({
     name: name.trim(),
     shortName: shortName.trim(),
-    category: category.trim(),
+    category: category?.trim() || undefined,
     coach: coach?.trim() || undefined,
     assistantCoach: assistantCoach?.trim() || undefined,
     tournamentId: tournamentId || undefined,
@@ -158,7 +227,7 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/equipos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -167,12 +236,15 @@ export async function updateTeamAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const shortName = formData.get("shortName") as string
   const category = formData.get("category") as string
   const coach = formData.get("coach") as string
   const assistantCoach = formData.get("assistantCoach") as string
-  const tournamentId = formData.get("tournamentId") as string
+  const tournamentId = formData.get("tournamentId") as string | null
 
   if (!name?.trim()) return { error: "El nombre del equipo es obligatorio." }
 
@@ -185,22 +257,25 @@ export async function updateTeamAction(
     category: category?.trim() || undefined,
     coach: coach?.trim() || null,
     assistantCoach: assistantCoach?.trim() || null,
-    tournamentId: tournamentId || null,
+    // Only touch the tournament when the form sends it (editing used to clear it)
+    tournamentId: tournamentId === null ? undefined : tournamentId || null,
     shieldUrl: shieldUrl ?? undefined,
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/equipos")
-  revalidatePath(`/admin/equipos/${id}`)
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteTeamAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteTeam(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/equipos")
+  revalidateSite()
   redirect("/admin/equipos")
 }
 
@@ -209,6 +284,9 @@ export async function deleteTeamAction(
 // ---------------------------------------------------------------------------
 
 export async function createPlayerAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const number = formData.get("number") as string
   const position = formData.get("position") as string
@@ -229,7 +307,7 @@ export async function createPlayerAction(_prev: unknown, formData: FormData) {
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/jugadores")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -238,11 +316,14 @@ export async function updatePlayerAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const number = formData.get("number") as string
   const position = formData.get("position") as string
   const teamId = formData.get("teamId") as string
-  const active = formData.get("active") as string
+  const active = formData.get("active") as string | null
 
   if (!name?.trim()) return { error: "El nombre del jugador es obligatorio." }
 
@@ -254,21 +335,24 @@ export async function updatePlayerAction(
     number: number ? parseInt(number, 10) : undefined,
     position: (position as Player["position"]) || undefined,
     teamId: teamId || undefined,
-    active: active === "true",
-    photo: photoUrl ?? null,
+    active: active === null ? undefined : active === "true",
+    photo: photoUrl ?? undefined,
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/jugadores")
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deletePlayerAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deletePlayer(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/jugadores")
+  revalidateSite()
   return {}
 }
 
@@ -280,6 +364,9 @@ export async function createMatchAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const tournamentId = formData.get("tournamentId") as string
   const homeTeamId = formData.get("homeTeamId") as string
   const awayTeamId = formData.get("awayTeamId") as string
@@ -297,6 +384,12 @@ export async function createMatchAction(
   if (homeTeamId === awayTeamId)
     return { error: "El equipo local y visitante no pueden ser el mismo." }
 
+  const { data: registrations } = await getRegistrations({ tournamentId })
+  const registered = new Set((registrations ?? []).filter((r) => !r.withdrawnAt).map((r) => r.teamId))
+  if (!registered.has(homeTeamId) || !registered.has(awayTeamId)) {
+    return { error: "Los dos equipos tienen que estar inscriptos en el torneo." }
+  }
+
   const result = await createMatch({
     tournamentId,
     homeTeamId,
@@ -308,81 +401,142 @@ export async function createMatchAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/partidos")
+  revalidateSite()
   return { success: true as const }
 }
+
+const MATCH_STATUSES: Match["status"][] = ["scheduled", "ongoing", "finished", "postponed", "cancelled"]
+const WALKOVER_SCORE = 3
 
 export async function updateMatchAction(
   id: string,
   _prev: unknown,
   formData: FormData
 ) {
-  const homeScore = formData.get("homeScore") as string
-  const awayScore = formData.get("awayScore") as string
-  const status = formData.get("status") as string
-  const date = formData.get("date") as string
-  const time = formData.get("time") as string
-  const matchday = formData.get("matchday") as string
-  const venue = formData.get("venue") as string
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
 
-  const payload: Partial<{
-    homeScore: number | null
-    awayScore: number | null
-    status: Match["status"]
-    date: string
-    time: string
-    matchday: number
-    venue: string | null
-  }> = {}
+  const { data: match } = await getMatch(id)
+  if (!match) return { error: "El partido no existe." }
 
-  if (homeScore !== null && homeScore !== undefined && homeScore !== "") {
-    payload.homeScore = parseInt(homeScore, 10)
-  }
-  if (awayScore !== null && awayScore !== undefined && awayScore !== "") {
-    payload.awayScore = parseInt(awayScore, 10)
-  }
-  if (status) payload.status = status as Match["status"]
-  if (date) payload.date = date
-  if (time) payload.time = time
-  if (matchday) payload.matchday = parseInt(matchday, 10)
-  payload.venue = venue || null
+  const homeScore = formData.get("homeScore") as string | null
+  const awayScore = formData.get("awayScore") as string | null
+  const statusValue = formData.get("status") as string | null
+  const result = (formData.get("result") as string | null) ?? "normal" // normal | wo_home | wo_away
+  const homeTeamId = (formData.get("homeTeamId") as string | null) || match.homeTeamId
+  const awayTeamId = (formData.get("awayTeamId") as string | null) || match.awayTeamId
+  const date = formData.get("date") as string | null
+  const time = formData.get("time") as string | null
+  const matchday = formData.get("matchday") as string | null
+  const venue = formData.get("venue") as string | null
+  const notes = formData.get("notes") as string | null
+  const refereeId = formData.get("refereeId") as string | null
 
-  const result = await updateMatch(id, payload)
+  const status = MATCH_STATUSES.find((s) => s === statusValue) ?? match.status
 
-  if (result.error) return { error: result.error }
-
-  // Auto-process red cards
-  const redCards = formData.getAll("redCards") as string[]
-  const validRedCards = redCards.filter((p) => p && p !== "none")
-  if (validRedCards.length > 0) {
-    await processMatchSanctions(id, validRedCards)
-  }
-
-  // Save goals
-  const goalPlayers = formData.getAll("goalPlayer") as string[]
-  const goalCounts = formData.getAll("goalCount") as string[]
-  const scorers: { playerId: string; goals: number }[] = []
-  for (let i = 0; i < goalPlayers.length; i++) {
-    const pid = goalPlayers[i]
-    const count = parseInt(goalCounts[i] || "1", 10)
-    if (pid && pid !== "none" && count > 0) {
-      scorers.push({ playerId: pid, goals: count })
+  // Changing who plays (e.g. a rescheduled or swapped match)
+  if (homeTeamId !== match.homeTeamId || awayTeamId !== match.awayTeamId) {
+    if (homeTeamId === awayTeamId) return { error: "El equipo local y visitante no pueden ser el mismo." }
+    const { data: registrations } = await getRegistrations({ tournamentId: match.tournamentId })
+    const registered = new Set((registrations ?? []).filter((r) => !r.withdrawnAt).map((r) => r.teamId))
+    if (!registered.has(homeTeamId) || !registered.has(awayTeamId)) {
+      return { error: "Los dos equipos tienen que estar inscriptos en el torneo." }
     }
   }
-  if (scorers.length > 0) {
-    await saveMatchGoals(id, scorers)
+
+  const walkover = result === "wo_home" || result === "wo_away"
+  const payload: Parameters<typeof updateMatch>[1] = {
+    homeTeamId,
+    awayTeamId,
+    status: walkover ? "finished" : status,
+    walkover,
+    date: date || undefined,
+    time: time || undefined,
+    matchday: matchday ? parseInt(matchday, 10) : undefined,
+    venue: venue?.trim() || null,
+    notes: notes?.trim() || null,
+    // "none" = sin árbitro; field absent = don't touch
+    refereeId: refereeId === null ? undefined : refereeId === "none" ? null : refereeId,
   }
 
-  revalidatePath("/admin/partidos")
+  if (walkover) {
+    // W.O. is always 3-0 for the team that showed up
+    payload.homeScore = result === "wo_home" ? WALKOVER_SCORE : 0
+    payload.awayScore = result === "wo_away" ? WALKOVER_SCORE : 0
+  } else if (status === "postponed" || status === "cancelled") {
+    payload.homeScore = null
+    payload.awayScore = null
+  } else {
+    if (homeScore) payload.homeScore = parseInt(homeScore, 10)
+    if (awayScore) payload.awayScore = parseInt(awayScore, 10)
+    if (status === "finished" && (payload.homeScore == null && match.homeScore == null)) {
+      return { error: "Cargá el resultado para dar el partido por finalizado." }
+    }
+  }
+
+  // Scorers from the form, merged by player; checked against the score
+  let goals: { playerId: string; goals: number }[] | null = null
+  if (!walkover && formData.has("goalPlayer")) {
+    const goalPlayers = formData.getAll("goalPlayer") as string[]
+    const goalCounts = formData.getAll("goalCount") as string[]
+    const byPlayer = new Map<string, number>()
+    goalPlayers.forEach((pid, i) => {
+      const count = parseInt(goalCounts[i] || "0", 10)
+      if (pid && pid !== "none" && count > 0) byPlayer.set(pid, (byPlayer.get(pid) ?? 0) + count)
+    })
+    const list = [...byPlayer].map(([playerId, count]) => ({ playerId, goals: count }))
+    goals = list
+
+    if (list.length > 0) {
+      const [{ data: homePlayers }, { data: awayPlayers }] = await Promise.all([
+        getPlayersByTeam(homeTeamId),
+        getPlayersByTeam(awayTeamId),
+      ])
+      const homeIds = new Set((homePlayers ?? []).map((p) => p.id))
+      const awayIds = new Set((awayPlayers ?? []).map((p) => p.id))
+      const sum = (ids: Set<string>) => list.filter((g) => ids.has(g.playerId)).reduce((a, g) => a + g.goals, 0)
+      const homeScoreFinal = payload.homeScore ?? match.homeScore ?? 0
+      const awayScoreFinal = payload.awayScore ?? match.awayScore ?? 0
+      if (list.some((g) => !homeIds.has(g.playerId) && !awayIds.has(g.playerId))) {
+        return { error: "Hay goleadores que no son de ninguno de los dos equipos." }
+      }
+      // Fewer is allowed (own goals); more is a typo
+      if (sum(homeIds) > homeScoreFinal || sum(awayIds) > awayScoreFinal) {
+        return { error: "Los goles cargados por jugador superan el resultado del partido." }
+      }
+    }
+  }
+
+  const update = await updateMatch(id, payload)
+  if (update.error) return { error: update.error }
+
+  // Red cards: the form's selection is the source of truth (no duplicates)
+  if (formData.has("redCardsField")) {
+    const redCards = (formData.getAll("redCards") as string[]).filter((p) => p && p !== "none")
+    const sync = await syncMatchRedCards(id, redCards)
+    if (sync.error) return { error: sync.error }
+  }
+
+  // Scorers: replace what was saved (so they can also be removed)
+  const scorers = walkover ? [] : (goals ?? [])
+  if (walkover || goals) {
+    const saved = await saveMatchGoals(id, scorers)
+    if (saved.error) return { error: saved.error }
+  }
+
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteMatchAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteMatch(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/partidos")
+  revalidateSite()
   return {}
 }
 
@@ -394,6 +548,9 @@ export async function generateFixtureAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const tournamentId = formData.get("tournamentId") as string
   const teamIdsJson = formData.get("teamIds") as string
 
@@ -409,11 +566,24 @@ export async function generateFixtureAction(
 
   if (teamIds.length < 2) return { error: "Se necesitan al menos 2 equipos." }
 
-  const result = await bulkCreateMatches(tournamentId, teamIds)
+  // The preview's order is kept, but the teams must be exactly the registered ones
+  const { data: registrations } = await getRegistrations({ tournamentId })
+  const registered = new Set((registrations ?? []).filter((r) => !r.withdrawnAt).map((r) => r.teamId))
+  if (teamIds.length !== registered.size || teamIds.some((id) => !registered.has(id))) {
+    return { error: "Los equipos cambiaron. Cerrá y volvé a generar la vista previa." }
+  }
+
+  const { data: existing } = await getMatches(tournamentId)
+  if ((existing ?? []).length > 0) {
+    return { error: "Este torneo ya tiene partidos cargados. Borralos antes de generar el fixture de nuevo." }
+  }
+
+  const result = await bulkCreateMatches(tournamentId, teamIds, {
+    doubleRound: formData.get("doubleRound") === "true",
+  })
   if (result.error) return { error: result.error }
 
-  revalidatePath("/admin/partidos")
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -425,6 +595,9 @@ export async function createSanctionAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const playerId = formData.get("playerId") as string
   const matchId = formData.get("matchId") as string | null
   const cardType = formData.get("cardType") as string
@@ -433,27 +606,36 @@ export async function createSanctionAction(
 
   if (!playerId) return { error: "El jugador es obligatorio." }
   if (!cardType) return { error: "El tipo de tarjeta es obligatorio." }
-  if (!matchDate) return { error: "La fecha del partido es obligatoria." }
+  if (!matchId) return { error: "Elegí el partido de la sanción." }
+
+  const { data: match } = await getMatch(matchId)
+  if (!match) return { error: "El partido no existe." }
 
   const result = await createSanction({
     playerId,
     matchId: matchId || undefined,
     cardType: cardType as "yellow" | "red",
-    matchDate,
-    matchesSuspended: matchesSuspended ? parseInt(matchesSuspended, 10) : cardType === "red" ? 1 : 0,
+    matchDate: matchDate || match.date,
+    matchesSuspended: cardType === "yellow" ? 0 : matchesSuspended ? parseInt(matchesSuspended, 10) : 1,
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sanciones")
+  if (cardType === "yellow") await recomputeAccumulationFor(playerId, matchId)
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteSanctionAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const { data: sanction } = await getSanction(id)
   const result = await deleteSanction(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sanciones")
+  if (sanction?.cardType === "yellow") await recomputeAccumulationFor(sanction.playerId, sanction.matchId)
+  revalidateSite()
   return {}
 }
 
@@ -465,6 +647,9 @@ export async function createArticleAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const title = formData.get("title") as string
   const excerpt = formData.get("excerpt") as string
   const content = formData.get("content") as string
@@ -482,13 +667,13 @@ export async function createArticleAction(
     excerpt: excerpt?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
-    seriesId: seriesId || null,
+    seriesId: seriesId && seriesId !== "null" ? seriesId : null,
     imageUrl,
     published: published === "true",
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -497,6 +682,9 @@ export async function updateArticleAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const title = formData.get("title") as string
   const excerpt = formData.get("excerpt") as string
   const content = formData.get("content") as string
@@ -512,53 +700,66 @@ export async function updateArticleAction(
     excerpt: excerpt?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
-    seriesId: seriesId || null,
+    seriesId: seriesId && seriesId !== "null" ? seriesId : null,
     imageUrl: imageUrl ?? undefined,
     published: published === "true",
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteArticleAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteArticle(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return {}
 }
 
 export async function publishArticleAction(id: string) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await publishArticle(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function unpublishArticleAction(id: string) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await unpublishArticle(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
 /** Form action wrapper for publish — accepts FormData, returns void */
 export async function publishArticleFormAction(formData: FormData) {
+  if ((await requireStaff()).error) return
+
   const id = formData.get("id") as string
   if (!id) return
   await publishArticle(id)
-  revalidatePath("/admin/noticias")
+  revalidateSite()
 }
 
 /** Form action wrapper for unpublish — accepts FormData, returns void */
 export async function unpublishArticleFormAction(formData: FormData) {
+  if ((await requireStaff()).error) return
+
   const id = formData.get("id") as string
   if (!id) return
   await unpublishArticle(id)
-  revalidatePath("/admin/noticias")
+  revalidateSite()
 }
 
 // ---------------------------------------------------------------------------
@@ -569,6 +770,9 @@ export async function createSeriesAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const description = formData.get("description") as string
 
@@ -580,7 +784,7 @@ export async function createSeriesAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/series")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -589,6 +793,9 @@ export async function updateSeriesAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const description = formData.get("description") as string
 
@@ -598,17 +805,19 @@ export async function updateSeriesAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/series")
-  revalidatePath(`/admin/series/${id}`)
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteSeriesAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteSeries(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/series")
+  revalidateSite()
   return {}
 }
 
@@ -621,6 +830,9 @@ export async function createDivisionAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
 
   if (!name?.trim()) return { error: "El nombre de la división es obligatorio." }
@@ -631,7 +843,7 @@ export async function createDivisionAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/series/${seriesId}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -641,6 +853,9 @@ export async function updateDivisionAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const displayOrder = formData.get("displayOrder") as string
 
@@ -650,7 +865,7 @@ export async function updateDivisionAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/series/${seriesId}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -658,9 +873,12 @@ export async function deleteDivisionAction(
   id: string,
   seriesId: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteDivision(id)
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/series/${seriesId}`)
+  revalidateSite()
   return {}
 }
 
@@ -673,86 +891,75 @@ export async function assignDelegateAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const email = formData.get("email") as string
   if (!email?.trim()) return { error: "El email es obligatorio." }
 
   const result = await assignDelegate(teamId, email.trim())
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/equipos/${teamId}`)
+  revalidateSite()
   return { success: true as const }
-}
-
-/** Form-compatible wrapper for assignDelegate */
-export async function assignDelegateFormAction(formData: FormData): Promise<void> {
-  const teamId = formData.get("teamId") as string
-  const email = formData.get("email") as string
-  if (!email?.trim()) throw new Error("El email es obligatorio.")
-
-  const result = await assignDelegate(teamId, email.trim())
-  if (result.error) throw new Error(result.error)
-  revalidatePath(`/admin/equipos/${teamId}`)
-}
-
-export async function revokeDelegateAction(teamId: string) {
-  "use server"
-  const result = await revokeDelegate(teamId)
-  if (result.error) return { error: result.error }
-  revalidatePath(`/admin/equipos/${teamId}`)
-  return { success: true as const }
-}
-
-/** Form-compatible wrapper for revokeDelegate */
-export async function revokeDelegateFormAction(formData: FormData): Promise<void> {
-  const teamId = formData.get("teamId") as string
-  const result = await revokeDelegate(teamId)
-  if (result.error) throw new Error(result.error)
-  revalidatePath(`/admin/equipos/${teamId}`)
 }
 
 // ---------------------------------------------------------------------------
 // Matchday suspension
 // ---------------------------------------------------------------------------
 
+/**
+ * Suspends one matchday of one tournament.
+ * - days > 0: every pending match from that matchday on moves the same number
+ *   of days (the whole calendar shifts, e.g. one week).
+ * - days = 0: the matchday's pending matches are marked "suspendido" to be
+ *   rescheduled later; the rest of the calendar stays.
+ */
 export async function suspendMatchdayAction(
   _prev: unknown,
   formData: FormData
 ) {
-  const matchday = formData.get("matchday") as string
-  const days = formData.get("days") as string
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
 
-  if (!matchday) return { error: "La fecha es obligatoria." }
-  const matchdayNum = parseInt(matchday, 10)
-  const daysNum = parseInt(days || "7", 10)
+  const tournamentId = formData.get("tournamentId") as string | null
+  const matchday = parseInt((formData.get("matchday") as string | null) ?? "", 10)
+  const days = parseInt((formData.get("days") as string | null) || "0", 10)
+  const reason = (formData.get("reason") as string | null)?.trim() || null
 
-  try {
-    const { createClient } = await import("@/lib/supabase/server")
-    const supabase = await createClient()
+  if (!tournamentId) return { error: "Elegí el torneo." }
+  if (!matchday || matchday < 1) return { error: "Indicá el número de fecha." }
+  if (Number.isNaN(days) || days < 0) return { error: "Los días a correr no pueden ser negativos." }
 
-    // Get all matches from this matchday onward
-    const { data: matches } = await (supabase.from("matches") as any)
-      .select("id, date, matchday")
-      .gte("matchday", matchdayNum)
-      .order("matchday")
+  const { data: matches } = await getMatches(tournamentId)
+  const pending = (matches ?? []).filter(
+    (m) => m.status === "scheduled" || m.status === "postponed"
+  )
+  const affected = days > 0
+    ? pending.filter((m) => m.matchday >= matchday)
+    : pending.filter((m) => m.matchday === matchday)
 
-    if (!matches?.length) return { error: "No se encontraron partidos para esa fecha." }
+  if (affected.length === 0) return { error: "No hay partidos pendientes en esa fecha." }
 
-    // Shift each match's date
-    for (const m of matches) {
-      if (!m.date) continue
-      const matchdayDiff = (m.matchday as number) - matchdayNum
-      const newDate = new Date(m.date as string)
-      newDate.setDate(newDate.getDate() + daysNum * (matchdayDiff + 1))
-
-      await (supabase.from("matches") as any)
-        .update({ date: newDate.toISOString().split("T")[0] })
-        .eq("id", m.id)
-    }
-
-    revalidatePath("/admin/partidos")
-    return { success: true as const }
-  } catch {
-    return { error: "No se pudo suspender la fecha." }
+  for (const m of affected) {
+    const result = days > 0
+      ? await updateMatch(m.id, {
+          status: "scheduled",
+          date: m.date ? shiftDate(m.date, days) : undefined,
+          notes: m.matchday === matchday ? reason : undefined,
+        })
+      : await updateMatch(m.id, { status: "postponed", notes: reason })
+    if (result.error) return { error: result.error }
   }
+
+  revalidateSite()
+  return { success: true as const }
+}
+
+/** "2026-08-15" + 7 → "2026-08-22" (UTC, no timezone drift) */
+function shiftDate(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 // ---------------------------------------------------------------------------
@@ -760,45 +967,272 @@ export async function suspendMatchdayAction(
 // ---------------------------------------------------------------------------
 
 export async function createSponsorAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const logoUrl = formData.get("logoUrl") as string
   const linkUrl = formData.get("linkUrl") as string
   const displayOrder = formData.get("displayOrder") as string
 
   if (!name?.trim()) return { error: "El nombre es obligatorio." }
-  if (!logoUrl?.trim()) return { error: "La URL del logo es obligatoria." }
+
+  // An uploaded file wins over a pasted URL (the upload used to be ignored)
+  const { url: uploadedLogo, error: uploadError } = await uploadOptionalImage(formData, "logo", "sponsors")
+  if (uploadError) return { error: uploadError }
+  const logo = uploadedLogo ?? logoUrl?.trim()
+  if (!logo) return { error: "Subí el logo o pegá su URL." }
 
   const result = await createSponsor({
     name: name.trim(),
-    logoUrl: logoUrl.trim(),
+    logoUrl: logo,
     linkUrl: linkUrl?.trim() || undefined,
     displayOrder: displayOrder ? parseInt(displayOrder) : 0,
   })
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sponsors")
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function updateSponsorAction(id: string, _prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const logoUrl = formData.get("logoUrl") as string
   const linkUrl = formData.get("linkUrl") as string
   const displayOrder = formData.get("displayOrder") as string
 
+  const { url: uploadedLogo, error: uploadError } = await uploadOptionalImage(formData, "logo", "sponsors")
+  if (uploadError) return { error: uploadError }
+
   const result = await updateSponsor(id, {
     name: name?.trim() || undefined,
-    logoUrl: logoUrl?.trim() || undefined,
+    logoUrl: uploadedLogo ?? (logoUrl?.trim() || undefined),
     linkUrl: linkUrl?.trim() || null,
     displayOrder: displayOrder ? parseInt(displayOrder) : undefined,
   })
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sponsors")
+  revalidateSite()
   return { success: true as const }
 }
 
 export async function deleteSponsorAction(id: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteSponsor(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sponsors")
+  revalidateSite()
   return {}
+}
+
+// ---------------------------------------------------------------------------
+// Registration (inscripción) actions
+// ---------------------------------------------------------------------------
+
+export async function registerTeamAction(
+  tournamentId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const teamId = formData.get("teamId") as string | null
+  if (!teamId) return { error: "Elegí un equipo." }
+
+  const result = await createRegistration(tournamentId, teamId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function unregisterTeamAction(
+  registrationId: string
+): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await deleteRegistration(registrationId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
+}
+
+/** Team leaves the tournament: played matches stay, pending ones become W.O. 3-0. */
+export async function withdrawTeamAction(
+  registrationId: string
+): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await withdrawRegistration(registrationId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
+}
+
+/** Lista de buena fe: the checked players (playerIds) replace the current list. */
+export async function setRosterAction(
+  registrationId: string,
+  _prev: unknown,
+  formData: FormData
+) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const playerIds = formData.getAll("playerIds").filter((v): v is string => typeof v === "string")
+  const result = await setRoster(registrationId, playerIds)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+// ---------------------------------------------------------------------------
+// Gallery actions
+// ---------------------------------------------------------------------------
+
+function readAlbumForm(formData: FormData): AlbumInput | { error: string } {
+  const title = (formData.get("title") as string | null)?.trim()
+  if (!title) return { error: "El título del álbum es obligatorio." }
+  const optional = (name: string) => {
+    const value = (formData.get(name) as string | null)?.trim()
+    return value && value !== "null" ? value : null
+  }
+  return {
+    title,
+    description: optional("description"),
+    date: optional("date"),
+    seriesId: optional("seriesId"),
+    matchId: optional("matchId"),
+    published: formData.get("published") === "true",
+  }
+}
+
+export async function createAlbumAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const input = readAlbumForm(formData)
+  if ("error" in input) return { error: input.error }
+
+  const result = await createAlbum(input)
+  if (result.error || !result.id) return { error: result.error ?? "No se pudo crear el álbum." }
+  revalidateSite()
+  redirect(`/admin/galeria/${result.id}`)
+}
+
+export async function updateAlbumAction(id: string, _prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const input = readAlbumForm(formData)
+  if ("error" in input) return { error: input.error }
+
+  const result = await updateAlbum(id, input)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function deleteAlbumAction(id: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await deleteAlbum(id)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  redirect("/admin/galeria")
+}
+
+/**
+ * The browser uploads the files straight to Storage (no body-size limit),
+ * then sends the public URLs here. Only URLs inside this album's folder are accepted.
+ */
+export async function addPhotosAction(
+  albumId: string,
+  photos: { url: string; thumbUrl: string | null }[]
+): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const inAlbum = (url: string | null) => !url || storagePathFromUrl(url)?.startsWith(`gallery/${albumId}/`)
+  if (!photos.every((p) => inAlbum(p.url) && inAlbum(p.thumbUrl))) {
+    return { error: "Alguna foto no pertenece a este álbum." }
+  }
+
+  const { data: album } = await getAlbum(albumId, true)
+  if (!album) return { error: "El álbum no existe." }
+
+  const result = await addPhotos(albumId, photos)
+  if (result.error) return { error: result.error }
+  // The cover is shown in cards: the thumbnail is enough
+  const first = photos[0]
+  if (!album.coverUrl && first) await updateAlbum(albumId, { coverUrl: first.thumbUrl ?? first.url })
+
+  revalidateSite()
+  return {}
+}
+
+export async function deletePhotoAction(photoId: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await deletePhoto(photoId)
+  if (result.error || !result.albumId) return { error: result.error }
+
+  // Deleted the cover: use the next photo (or none)
+  const { data: album } = await getAlbum(result.albumId, true)
+  if (album?.coverUrl && result.urls?.includes(album.coverUrl)) {
+    const { data: photos } = await getPhotos(result.albumId, true)
+    const next = photos?.[0]
+    await updateAlbum(result.albumId, { coverUrl: next ? next.thumbUrl ?? next.url : null })
+  }
+
+  revalidateSite()
+  return {}
+}
+
+export async function setAlbumCoverAction(albumId: string, url: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await updateAlbum(albumId, { coverUrl: url })
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
+}
+
+// ---------------------------------------------------------------------------
+// League settings and referees
+// ---------------------------------------------------------------------------
+
+export async function updateSettingsAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const num = (name: string) => parseInt((formData.get(name) as string | null) ?? "", 10)
+  const settings = {
+    yellowCardsForSuspension: num("yellowCardsForSuspension"),
+    yellowSuspensionMatches: num("yellowSuspensionMatches"),
+    redCardMatches: num("redCardMatches"),
+  }
+  if (Object.values(settings).some((v) => Number.isNaN(v) || v < 0 || v > 50)) {
+    return { error: "Revisá los números: tienen que ser entre 0 y 50." }
+  }
+
+  const result = await updateLeagueSettings(settings)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+/** After adding/removing a yellow by hand: rebuild that player's accumulation. */
+async function recomputeAccumulationFor(playerId: string, matchId: string | null) {
+  if (!matchId) return
+  const { data: match } = await getMatch(matchId)
+  if (!match) return
+  const supabase = await createClient()
+  await supabase.rpc("recompute_accumulation", { p_player_id: playerId, p_tournament_id: match.tournamentId })
 }

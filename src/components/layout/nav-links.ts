@@ -7,6 +7,8 @@ export const navLinks: NavLink[] = [
   { label: "Inicio", href: "/" },
   { label: "Equipos", href: "/equipos" },
   { label: "Partidos", href: "/partidos" },
+  { label: "Goleadores", href: "/goleadores" },
   { label: "Actualidad", href: "/actualidad" },
+  { label: "Fotos", href: "/galeria" },
   { label: "Institucional", href: "/institucional" },
 ]

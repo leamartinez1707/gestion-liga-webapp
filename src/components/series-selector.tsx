@@ -1,22 +1,9 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { resolveScope, type SeriesOption } from "@/lib/scope"
 
-export interface SeriesOption {
-  id: string
-  name: string
-  slug: string
-  divisions: DivisionOption[]
-}
-
-export interface DivisionOption {
-  id: string
-  name: string
-}
-
-function toDivSlug(name: string): string {
-  return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
-}
+export type { SeriesOption, DivisionOption } from "@/lib/scope"
 
 interface SeriesSelectorProps {
   series: SeriesOption[]
@@ -27,18 +14,22 @@ interface SeriesSelectorProps {
 }
 
 export function SeriesSelector({ series, selectedSeries, selectedDivision, onSeriesChange, onDivisionChange }: SeriesSelectorProps) {
-  const currentSeries = series.find((s) => s.slug === selectedSeries || s.id === selectedSeries)
-  const divisions = currentSeries?.divisions ?? []
+  // Same fallback as the pages: first series / first division when not in the URL
+  const scope = resolveScope(series, selectedSeries, selectedDivision)
+  const divisions = scope.series?.divisions ?? []
 
   return (
     <div className="space-y-2">
       {/* Series tabs */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Serie">
         {series.map((s) => {
-          const isActive = selectedSeries === s.slug || selectedSeries === s.id
+          const isActive = scope.series?.id === s.id
           return (
             <button
               key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => onSeriesChange(s.slug)}
               className={cn(
                 "px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide transition-all border",
@@ -55,16 +46,18 @@ export function SeriesSelector({ series, selectedSeries, selectedDivision, onSer
 
       {/* Division pills */}
       {divisions.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1" role="tablist" aria-label="División">
           {divisions.map((d) => {
-            const slug = toDivSlug(d.name)
-            const isActive = selectedDivision === slug || selectedDivision === d.id
+            const isActive = scope.division?.id === d.id
             return (
               <button
                 key={d.id}
-                onClick={() => onDivisionChange(slug)}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => onDivisionChange(d.slug)}
                 className={cn(
-                  "px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors",
+                  "min-h-8 px-3 py-1 rounded-full text-xs font-medium transition-colors",
                   isActive
                     ? "bg-primary/10 text-primary font-semibold"
                     : "text-muted-foreground hover:bg-muted-bg hover:text-foreground"

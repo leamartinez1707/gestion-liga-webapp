@@ -1,13 +1,19 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { LogOut } from "lucide-react"
 import { signOut } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
+import { getSessionProfile, homeFor } from "@/lib/auth"
 
-export default function DelegadoLayout({
+export default async function DelegadoLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const profile = await getSessionProfile()
+  if (!profile) redirect("/login")
+  if (profile.role !== "delegate") redirect(homeFor(profile))
+
   return (
     <div className="min-h-screen bg-muted-bg">
       {/* Simple header */}

@@ -3,15 +3,20 @@
 -- Description: Core tables for tournament, team, player, match, sanction, and
 --              news management. Designed to extend Supabase auth.users via the
 --              profiles table.
+--
+-- Roles, RLS policies, helper functions and triggers live in
+-- supabase/migrations/ (apply them after this file on a fresh project).
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
 -- Profiles (extends auth.users)
 -- -----------------------------------------------------------------------------
+-- role: superadmin / editor = staff (panel /admin); delegate = gestiona su equipo (team_id)
 create table profiles (
   id uuid references auth.users primary key,
   email text unique not null,
-  role text not null check (role in ('superadmin', 'editor')),
+  role text not null default 'delegate' check (role in ('superadmin', 'editor', 'delegate', 'referee')),
+  team_id uuid,              -- FK a teams agregada más abajo (teams se crea después)
   created_at timestamptz default now()
 );
 
@@ -61,7 +66,8 @@ create index idx_tournaments_series on tournaments(series_id);
 create index idx_tournaments_division on tournaments(division_id);
 
 -- -----------------------------------------------------------------------------
--- Teams (belongs to a series/division and optionally to a tournament)
+-- Teams (clubs). Series/division/tournament come from registrations; the
+-- series_id, division_id and tournament_id columns are legacy and unused.
 -- -----------------------------------------------------------------------------
 create table teams (
   id uuid default gen_random_uuid() primary key,
@@ -106,7 +112,12 @@ create table matches (
   time time,
   home_score integer,
   away_score integer,
-  status text default 'scheduled' check (status in ('scheduled', 'ongoing', 'finished')),
+  -- postponed = suspendido (a reprogramar), cancelled = no se juega; ninguno cuenta en la tabla
+  status text default 'scheduled' check (status in ('scheduled', 'ongoing', 'finished', 'postponed', 'cancelled')),
+  walkover boolean not null default false,   -- ganado por W.O. (siempre 3-0)
+  notes text,                                -- nota pública, p. ej. "Suspendido por lluvia"
+  referee_id uuid references profiles on delete set null,  -- árbitro que carga la planilla
+  live_period text check (live_period in ('1T', 'ET', '2T')),
   venue text,
   created_at timestamptz default now()
 );
@@ -118,7 +129,8 @@ create table sanctions (
   id uuid default gen_random_uuid() primary key,
   player_id uuid references players,
   match_id uuid references matches,
-  card_type text check (card_type in ('yellow', 'red')),
+  card_type text check (card_type in ('yellow', 'red', 'accumulation')),
+  source text not null default 'manual' check (source in ('manual', 'match', 'accumulation')),
   match_date date,
   matches_suspended integer default 0,
   expires_after_match integer,
@@ -144,6 +156,107 @@ create table news_articles (
 );
 
 -- -----------------------------------------------------------------------------
+-- Registrations (inscripción de un equipo en un torneo) y lista de buena fe.
+-- Reglas (triggers en supabase/migrations/20261007120000_registrations.sql):
+--   - un equipo no puede estar en dos divisiones de la misma serie en una temporada
+--   - un jugador de la lista tiene que ser del equipo; uno por torneo
+-- -----------------------------------------------------------------------------
+create table registrations (
+  id uuid default gen_random_uuid() primary key,
+  tournament_id uuid not null references tournaments on delete cascade,
+  team_id uuid not null references teams on delete cascade,
+  withdrawn_at timestamptz,   -- baja: los partidos pendientes pasaron a W.O. (withdraw_team)
+  created_at timestamptz default now(),
+  unique (tournament_id, team_id)
+);
+
+create table registration_players (
+  registration_id uuid not null references registrations on delete cascade,
+  player_id uuid not null references players on delete cascade,
+  tournament_id uuid not null references tournaments on delete cascade,
+  created_at timestamptz default now(),
+  primary key (registration_id, player_id),
+  unique (tournament_id, player_id)
+);
+
+-- -----------------------------------------------------------------------------
+-- Galería: álbumes (de una serie o de toda la liga, opcionalmente de un
+-- partido) y sus fotos (bucket public-images, carpeta gallery/<album_id>/)
+-- -----------------------------------------------------------------------------
+create table photo_albums (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  description text,
+  date date default current_date,
+  series_id uuid references series on delete set null,
+  match_id uuid references matches on delete set null,
+  cover_url text,
+  published boolean not null default false,
+  created_at timestamptz default now()
+);
+
+create table photos (
+  id uuid default gen_random_uuid() primary key,
+  album_id uuid not null references photo_albums on delete cascade,
+  url text not null,
+  thumb_url text,             -- miniatura 480px generada al subir
+  caption text,
+  display_order integer not null default 0,
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Configuración de la liga (una fila) y planilla en vivo.
+-- recompute_match() deriva marcador, goleadores y tarjetas de match_events
+-- (supabase/migrations/20261010120000_live_sheet.sql).
+-- -----------------------------------------------------------------------------
+create table league_settings (
+  id boolean primary key default true check (id),
+  yellow_cards_for_suspension integer not null default 5,  -- 0 = no suspende
+  yellow_suspension_matches integer not null default 1,
+  red_card_matches integer not null default 1,
+  updated_at timestamptz default now()
+);
+
+create table match_events (
+  id uuid default gen_random_uuid() primary key,
+  match_id uuid not null references matches on delete cascade,
+  team_id uuid not null references teams on delete cascade,
+  player_id uuid references players on delete set null,
+  type text not null check (type in ('goal', 'own_goal', 'yellow', 'red')),
+  period text check (period in ('1T', '2T')),
+  created_by uuid default auth.uid(),
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Goals (goleadores por partido)
+-- -----------------------------------------------------------------------------
+create table goals (
+  id uuid default gen_random_uuid() primary key,
+  match_id uuid references matches on delete cascade,
+  player_id uuid references players on delete cascade,
+  goals integer not null default 1,
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Sponsors
+-- -----------------------------------------------------------------------------
+create table sponsors (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  logo_url text not null,
+  link_url text,
+  display_order integer default 0,
+  created_at timestamptz default now()
+);
+
+alter table profiles
+  add constraint profiles_team_id_fkey
+  foreign key (team_id) references teams(id) on delete set null;
+
+-- -----------------------------------------------------------------------------
 -- Indexes
 -- -----------------------------------------------------------------------------
 create index idx_teams_tournament on teams(tournament_id);
@@ -154,3 +267,4 @@ create index idx_sanctions_player on sanctions(player_id);
 create index idx_sanctions_match on sanctions(match_id);
 create index idx_news_published on news_articles(published);
 create index idx_news_series on news_articles(series_id);
+create index idx_profiles_team on profiles(team_id);

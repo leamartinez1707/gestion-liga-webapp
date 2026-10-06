@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom"
 import { Pencil } from "lucide-react"
 
 import type { Team } from "@/lib/types"
-import { updateTeamAction } from "@/lib/actions/admin"
+import { delegateUpdateTeamAction } from "@/lib/actions/delegate"
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ function SubmitButton() {
 export function TeamEditForm({ team }: { team: Team }) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(
-    updateTeamAction.bind(null, team.id),
+    delegateUpdateTeamAction,
     undefined
   )
 
@@ -61,7 +61,7 @@ export function TeamEditForm({ team }: { team: Team }) {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Escudo</Label>
-            <ImageUpload name="shield" currentUrl={team.shield} />
+            <ImageUpload maxSize={512} name="shield" currentUrl={team.shield} />
           </div>
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
           <div className="flex justify-end pt-2">

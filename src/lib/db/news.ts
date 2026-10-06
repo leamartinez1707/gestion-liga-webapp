@@ -1,12 +1,13 @@
 import type { NewsArticle, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
+/** Admin listing: uses the session client so staff also see drafts (RLS). */
 export async function getArticlesPaginated(
   page = 1,
   limit = 10
 ): Promise<PaginatedResult<ArticleRow>> {
   try {
-    const supabase = createReadOnlyClient()
+    const supabase = await createClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
@@ -41,12 +42,14 @@ export interface ArticleRow {
   date: string
 }
 
+/** Public listing: published articles only (RLS also hides drafts from anon). */
 export async function getArticles(seriesId?: string): Promise<{ data: ArticleRow[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
     let query = supabase
       .from("news_articles")
       .select("*")
+      .eq("published", true)
       .order("date", { ascending: false })
     if (seriesId) {
       query = query.eq("series_id", seriesId)
@@ -66,7 +69,8 @@ export async function getArticle(id: string): Promise<{ data: ArticleRow | null;
       .from("news_articles")
       .select("*")
       .eq("id", id)
-      .single()
+      .eq("published", true)
+      .maybeSingle()
     if (error) return { data: null, error: error.message }
     return { data: data ? mapRow(data) : null, error: null }
   } catch {

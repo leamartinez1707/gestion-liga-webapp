@@ -6,6 +6,7 @@ import type { NewsArticle, Match, Team } from "@/lib/types"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { CoverImage } from "@/components/cover-image"
 
 interface MainCarouselProps {
   articles: NewsArticle[]
@@ -26,27 +27,30 @@ export function MainCarousel({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const total = articles.length
-  if (total === 0) return null
 
-  const prev = useCallback(() => setCurrent((c) => (c === 0 ? total - 1 : c - 1)), [total])
-  const next = useCallback(() => setCurrent((c) => (c === total - 1 ? 0 : c + 1)), [total])
+  const prev = useCallback(() => setCurrent((c) => (c <= 0 ? total - 1 : c - 1)), [total])
+  const next = useCallback(() => setCurrent((c) => (c >= total - 1 ? 0 : c + 1)), [total])
 
   // Auto-advance
   useEffect(() => {
+    if (total < 2) return
     timerRef.current = setInterval(next, 5000)
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [next])
+  }, [next, total])
 
-  const article = articles[current]
-  const match = allMatches?.[current]
+  if (total === 0) return null
+
+  // The list changes with the selected series: keep the index in range
+  const index = current % total
+  const article = articles[index]
+  const match = allMatches?.[index]
 
   return (
     <div className="relative group">
       {/* Slides */}
       <Link href={`/actualidad/${article.id}`}>
         <div className="relative overflow-hidden rounded-lg border border-border bg-background aspect-[21/9]">
-          {/* Image placeholder */}
-          <div className="absolute inset-0 bg-primary-light" />
+          <CoverImage src={article.image} alt={article.title} sizes="(min-width: 1024px) 60vw, 100vw" priority={index === 0} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
           {/* Content */}
@@ -98,7 +102,7 @@ export function MainCarousel({
               onClick={() => setCurrent(i)}
               className={cn(
                 "w-2 h-2 rounded-full transition-all",
-                i === current ? "bg-primary w-4" : "bg-border hover:bg-muted-foreground"
+                i === index ? "bg-primary w-4" : "bg-border hover:bg-muted-foreground"
               )}
               aria-label={`Ir a slide ${i + 1}`}
             />

@@ -37,7 +37,7 @@ export function SponsorDialog({ children, action, sponsor }: Props) {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Logo</Label>
-            <ImageUpload name="logo" currentUrl={sponsor?.logoUrl} />
+            <ImageUpload maxSize={512} name="logo" currentUrl={sponsor?.logoUrl} />
             <p className="text-xs text-muted-foreground">O poné la URL manualmente:</p>
             <Input name="logoUrl" defaultValue={sponsor?.logoUrl ?? ""} placeholder="https://... o subí la imagen arriba" />
           </div>

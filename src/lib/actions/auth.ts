@@ -12,7 +12,11 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(
+      error.code === "invalid_credentials"
+        ? "Email o contraseña incorrectos."
+        : "No se pudo iniciar sesión. Intentá de nuevo."
+    )
   }
 
   redirect("/admin")

@@ -118,6 +118,9 @@ export async function updateMatch(
     awayScore: number | null
     status: Match["status"]
     venue: string | null
+    walkover: boolean
+    notes: string | null
+    refereeId: string | null
   }>
 ): Promise<{ error?: string }> {
   try {
@@ -133,6 +136,9 @@ export async function updateMatch(
     if (data.awayScore !== undefined) payload.away_score = data.awayScore
     if (data.status !== undefined) payload.status = data.status
     if (data.venue !== undefined) payload.venue = data.venue
+    if (data.walkover !== undefined) payload.walkover = data.walkover
+    if (data.notes !== undefined) payload.notes = data.notes
+    if (data.refereeId !== undefined) payload.referee_id = data.refereeId
 
     const { error } = await (supabase.from("matches") as any)
       .update(payload)
@@ -183,6 +189,11 @@ function mapRowWithTeams(row: Record<string, unknown>): MatchWithTeams {
     status: (row.status as Match["status"]) ?? "scheduled",
     matchday: (row.matchday as number) ?? 0,
     tournamentId: (row.tournament_id as string) ?? "",
+    venue: (row.venue as string) ?? undefined,
+    walkover: (row.walkover as boolean) ?? false,
+    notes: (row.notes as string) ?? undefined,
+    refereeId: (row.referee_id as string) ?? undefined,
+    livePeriod: (row.live_period as Match["livePeriod"]) ?? undefined,
     homeTeamName: homeTeam?.name as string ?? "",
     awayTeamName: awayTeam?.name as string ?? "",
   }

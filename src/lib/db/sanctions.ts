@@ -37,7 +37,7 @@ export interface SanctionRow {
   id: string
   playerId: string
   matchId: string | null
-  cardType: "yellow" | "red"
+  cardType: "yellow" | "red" | "accumulation"
   matchDate: string | null
   matchesSuspended: number
   expiresAfterMatch: number | null
@@ -54,16 +54,11 @@ export interface SanctionWithDetails extends SanctionRow {
 // ---------------------------------------------------------------------------
 
 /**
- * Calculate how many matches a player is suspended for based on card type
- * and existing yellow card count.
- *
- * Rules:
- * - Red card = 1 match suspension (configurable)
- * - Two yellows in same match = red card
+ * Matches of suspension for a card. Red = 1 fecha (more can be set by hand
+ * on the Sanciones page); a yellow is only recorded.
  */
 export function calculateSuspension(
-  cardType: "yellow" | "red",
-  existingYellowCards: number
+  cardType: "yellow" | "red"
 ): { matchesSuspended: number } {
   if (cardType === "red") {
     return { matchesSuspended: 1 }
@@ -78,37 +73,56 @@ export function calculateSuspension(
 // Auto-sanction processing
 // ---------------------------------------------------------------------------
 
-export async function processMatchSanctions(
+/**
+ * Makes the match's red cards match the form: adds the missing ones (1 fecha
+ * of suspension each) and removes the ones that were unchecked. Saving the
+ * result again no longer duplicates sanctions.
+ */
+export async function syncMatchRedCards(
   matchId: string,
   redCardPlayerIds: string[]
 ): Promise<{ error?: string }> {
   try {
     const supabase = await createClient()
 
-    // Get match details
-    const { data: match } = await (supabase.from("matches") as any)
-      .select("*")
+    const { data: match } = await supabase
+      .from("matches")
+      .select("date, matchday")
       .eq("id", matchId)
       .single()
-
     if (!match) return { error: "Partido no encontrado" }
 
-    const tournamentId = match.tournament_id
-    const matchday = match.matchday
-    const matchDate = match.date
+    const { data: existing } = await supabase
+      .from("sanctions")
+      .select("id, player_id")
+      .eq("match_id", matchId)
+      .eq("card_type", "red")
 
-    // Create sanction for each red card player
-    for (const playerId of redCardPlayerIds) {
-      const { matchesSuspended } = calculateSuspension("red", 0)
+    const wanted = new Set(redCardPlayerIds)
+    const have = new Set((existing ?? []).map((s) => s.player_id))
 
-      await (supabase.from("sanctions") as any).insert({
-        player_id: playerId,
-        match_id: matchId,
-        card_type: "red",
-        match_date: matchDate,
-        matches_suspended: matchesSuspended,
-        expires_after_match: matchday ? matchday + matchesSuspended : null,
-      })
+    const toRemove = (existing ?? []).filter((s) => !s.player_id || !wanted.has(s.player_id)).map((s) => s.id)
+    if (toRemove.length > 0) {
+      const { error } = await supabase.from("sanctions").delete().in("id", toRemove)
+      if (error) return { error: error.message }
+    }
+
+    const toAdd = [...wanted].filter((id) => !have.has(id))
+    if (toAdd.length > 0) {
+      const { data: settings } = await supabase.from("league_settings").select("red_card_matches").maybeSingle()
+      const matchesSuspended = settings?.red_card_matches ?? calculateSuspension("red").matchesSuspended
+      const { error } = await supabase.from("sanctions").insert(
+        toAdd.map((playerId) => ({
+          player_id: playerId,
+          match_id: matchId,
+          card_type: "red",
+          match_date: match.date,
+          matches_suspended: matchesSuspended,
+          expires_after_match: match.matchday ? match.matchday + matchesSuspended : null,
+          source: "match",
+        }))
+      )
+      if (error) return { error: error.message }
     }
 
     return {}
@@ -166,13 +180,23 @@ export async function createSanction(
 ): Promise<{ error?: string; id?: string }> {
   try {
     const supabase = await createClient()
-    const { data: inserted, error } = await (supabase.from("sanctions") as any)
+    const matchesSuspended = data.matchesSuspended ?? 0
+
+    // Last matchday the player misses (used to know when the suspension ends)
+    let expiresAfterMatch: number | null = null
+    if (data.matchId) {
+      const { data: match } = await supabase.from("matches").select("matchday").eq("id", data.matchId).maybeSingle()
+      if (match?.matchday) expiresAfterMatch = match.matchday + matchesSuspended
+    }
+
+    const { data: inserted, error } = await supabase.from("sanctions")
       .insert({
         player_id: data.playerId,
         match_id: data.matchId ?? null,
         card_type: data.cardType,
         match_date: data.matchDate,
-        matches_suspended: data.matchesSuspended ?? 0,
+        matches_suspended: matchesSuspended,
+        expires_after_match: expiresAfterMatch,
       })
       .select()
       .single()
@@ -189,7 +213,7 @@ export async function deleteSanction(
 ): Promise<{ error?: string }> {
   try {
     const supabase = await createClient()
-    const { error } = await (supabase.from("sanctions") as any)
+    const { error } = await supabase.from("sanctions")
       .delete()
       .eq("id", id)
     if (error) return { error: error.message }
@@ -211,7 +235,7 @@ function mapRowWithDetails(row: Record<string, unknown>): SanctionWithDetails {
     id: row.id as string,
     playerId: row.player_id as string,
     matchId: (row.match_id as string) ?? null,
-    cardType: (row.card_type as "yellow" | "red") ?? "yellow",
+    cardType: (row.card_type as SanctionRow["cardType"]) ?? "yellow",
     matchDate: (row.match_date as string) ?? null,
     matchesSuspended: (row.matches_suspended as number) ?? 0,
     expiresAfterMatch: (row.expires_after_match as number) ?? null,

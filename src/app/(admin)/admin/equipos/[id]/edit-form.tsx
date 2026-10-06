@@ -53,13 +53,12 @@ export function TeamEditForm({ team, action }: TeamEditFormProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="category">Categoría</Label>
+        <Label htmlFor="category">Categoría (opcional)</Label>
         <Input
           id="category"
           name="category"
           defaultValue={team.category}
           placeholder="Ej: Primera División"
-          required
         />
       </div>
 

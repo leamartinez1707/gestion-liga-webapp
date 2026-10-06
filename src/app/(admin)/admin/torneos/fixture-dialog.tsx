@@ -14,7 +14,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Loader2, Calendar } from "lucide-react"
 
 function SubmitButton() {
@@ -56,6 +55,7 @@ export function FixtureDialog({
 }: FixtureDialogProps) {
   const [open, setOpen] = useState(false)
   const [preview, setPreview] = useState<FixtureMatch[] | null>(null)
+  const [doubleRound, setDoubleRound] = useState(false)
   const [state, formAction] = useActionState(action, undefined)
 
   if (state?.success && open) {
@@ -64,7 +64,7 @@ export function FixtureDialog({
 
   const handleGeneratePreview = () => {
     const teamIds = teams.map((t) => t.id)
-    const fixtures = generateRoundRobin(teamIds)
+    const fixtures = generateRoundRobin(teamIds, { doubleRound })
     setPreview(fixtures)
   }
 
@@ -101,9 +101,20 @@ export function FixtureDialog({
           )}
 
           {teams.length >= 2 && !preview && (
-            <Button onClick={handleGeneratePreview} variant="outline" className="gap-1.5">
-              Previsualizar Fixture
-            </Button>
+            <>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={doubleRound}
+                  onChange={(e) => setDoubleRound(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Ida y vuelta (cada equipo juega dos veces con cada rival, una de local y otra de visitante)
+              </label>
+              <Button onClick={handleGeneratePreview} variant="outline" className="gap-1.5">
+                Previsualizar Fixture
+              </Button>
+            </>
           )}
 
           {preview && (
@@ -157,6 +168,7 @@ export function FixtureDialog({
                 name="teamIds"
                 value={JSON.stringify(teams.map((t) => t.id))}
               />
+              <input type="hidden" name="doubleRound" value={doubleRound ? "true" : "false"} />
 
               {state?.error && (
                 <p className="text-sm text-destructive mb-2">{state.error}</p>

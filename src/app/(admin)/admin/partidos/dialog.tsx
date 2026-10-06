@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
-import type { Match, Team, Tournament, Player } from "@/lib/types"
+import type { Match, Team, Tournament, Player, Registration } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import {
   Dialog,
@@ -23,6 +23,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const statusItems = [
+  { value: "scheduled", label: "Programado" },
+  { value: "ongoing", label: "En juego" },
+  { value: "finished", label: "Finalizado" },
+  { value: "postponed", label: "Suspendido (a reprogramar)" },
+  { value: "cancelled", label: "Cancelado" },
+]
+
+const resultItems = [
+  { value: "normal", label: "Resultado normal" },
+  { value: "wo_home", label: "W.O. — gana el local (3-0)" },
+  { value: "wo_away", label: "W.O. — gana el visitante (0-3)" },
+]
+
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
@@ -41,7 +55,18 @@ interface MatchDialogProps {
   match?: MatchWithTeams | Match
   tournaments: Tournament[]
   teams: Team[]
+  registrations: Registration[]
   players: Player[]
+  /** Preselect the tournament when adding a match from a tournament page */
+  defaultTournamentId?: string
+  /** Saved scorers of this match (edit mode) */
+  existingGoals?: { playerId: string; goals: number }[]
+  /** Players with a red card in this match (edit mode) */
+  redCardPlayerIds?: string[]
+  /** Referees that can be assigned (staff only list) */
+  referees?: { id: string; email: string }[]
+  /** The match has a live sheet: scorers and cards come from it */
+  hasSheet?: boolean
 }
 
 export function MatchDialog({
@@ -49,12 +74,18 @@ export function MatchDialog({
   action,
   match,
   tournaments,
-  teams,
+  teams: allTeams,
+  registrations,
   players,
+  defaultTournamentId,
+  existingGoals = [],
+  redCardPlayerIds = [],
+  referees = [],
+  hasSheet = false,
 }: MatchDialogProps) {
   const [open, setOpen] = useState(false)
   const [tournamentId, setTournamentId] = useState(
-    "tournamentId" in (match ?? {}) ? (match as Match).tournamentId ?? "" : ""
+    "tournamentId" in (match ?? {}) ? (match as Match).tournamentId ?? "" : defaultTournamentId ?? ""
   )
   const [homeTeamId, setHomeTeamId] = useState(
     "homeTeamId" in (match ?? {}) ? (match as Match).homeTeamId ?? "" : ""
@@ -65,6 +96,12 @@ export function MatchDialog({
   const [status, setStatus] = useState(
     "status" in (match ?? {}) ? (match as Match).status ?? "scheduled" : "scheduled"
   )
+  const [result, setResult] = useState(
+    match && "walkover" in match && match.walkover
+      ? (match.homeScore ?? 0) > (match.awayScore ?? 0) ? "wo_home" : "wo_away"
+      : "normal"
+  )
+  const [refereeId, setRefereeId] = useState(match && "refereeId" in match && match.refereeId ? match.refereeId : "none")
   const [state, formAction] = useActionState(action, undefined)
 
   if (state?.success && open) {
@@ -72,6 +109,21 @@ export function MatchDialog({
   }
 
   const isEditing = !!match
+
+  // Only teams entered in the selected tournament can play it
+  const registeredIds = new Set(
+    registrations.filter((r) => r.tournamentId === tournamentId && !r.withdrawnAt).map((r) => r.teamId)
+  )
+  const teams = tournamentId ? allTeams.filter((t) => registeredIds.has(t.id)) : allTeams
+  const matchTeams = [homeTeamId, awayTeamId]
+    .map((id) => allTeams.find((t) => t.id === id))
+    .filter((t) => t !== undefined)
+
+  // Saved scorers + a few empty rows
+  const goalRows = [
+    ...existingGoals,
+    ...Array.from({ length: Math.max(3, 5 - existingGoals.length) }, () => ({ playerId: "none", goals: 1 })),
+  ]
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -95,7 +147,12 @@ export function MatchDialog({
               <Label>Torneo</Label>
               <Select
                 value={tournamentId}
-                onValueChange={(v) => v && setTournamentId(v)}
+                onValueChange={(v) => {
+                  if (!v || v === tournamentId) return
+                  setTournamentId(v)
+                  setHomeTeamId("")
+                  setAwayTeamId("")
+                }}
                 name="tournamentId"
               >
                 <SelectTrigger className="w-full">
@@ -165,7 +222,7 @@ export function MatchDialog({
                 defaultValue={
                   "date" in (match ?? {}) ? (match as Match).date ?? "" : ""
                 }
-                required
+                required={!isEditing}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -177,7 +234,7 @@ export function MatchDialog({
                 defaultValue={
                   "time" in (match ?? {}) ? (match as Match).time ?? "" : ""
                 }
-                required
+                required={!isEditing}
               />
             </div>
           </div>
@@ -218,6 +275,50 @@ export function MatchDialog({
           {/* Score & Status (edit mode) */}
           {isEditing && (
             <>
+              <div className="flex flex-col gap-1.5">
+                <Label>Estado</Label>
+                <Select
+                  items={statusItems}
+                  value={status}
+                  onValueChange={(v) => v && setStatus(v as Match["status"])}
+                  name="status"
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusItems.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>Resultado</Label>
+                <Select
+                  items={resultItems}
+                  value={result}
+                  onValueChange={(v) => v && setResult(v)}
+                  name="result"
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resultItems.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {result !== "normal" && (
+                  <p className="text-xs text-muted-foreground">
+                    Se carga 3-0 y el partido queda finalizado. No se registran goleadores.
+                  </p>
+                )}
+              </div>
+
+              {result === "normal" && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="homeScore">Goles Local</Label>
@@ -244,86 +345,120 @@ export function MatchDialog({
                   />
                 </div>
               </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
-                <Label>Estado</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => v && setStatus(v as Match["status"])}
-                  name="status"
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Programado</SelectItem>
-                    <SelectItem value="ongoing">En juego</SelectItem>
-                    <SelectItem value="finished">Finalizado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="notes">Nota pública (opcional)</Label>
+                <Input
+                  id="notes"
+                  name="notes"
+                  defaultValue={(match as Match).notes ?? ""}
+                  placeholder="Ej: Suspendido por lluvia"
+                />
               </div>
             </>
           )}
 
-          {/* Red cards — only when editing an existing match */}
+          {/* Referee: fills in the live sheet from their phone */}
           {isEditing && (
+            <div className="flex flex-col gap-1.5">
+              <Label>Árbitro</Label>
+              <Select
+                items={[{ value: "none", label: "Sin asignar" }, ...referees.map((r) => ({ value: r.id, label: r.email }))]}
+                value={refereeId}
+                onValueChange={(v) => v && setRefereeId(v)}
+                name="refereeId"
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {referees.map((r) => <SelectItem key={r.id} value={r.id}>{r.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {referees.length === 0 && (
+                <p className="text-xs text-muted-foreground">Creá cuentas de árbitro en Usuarios.</p>
+              )}
+            </div>
+          )}
+
+          {isEditing && hasSheet && result === "normal" && (
+            <p className="rounded-md bg-muted-bg p-3 text-xs text-muted-foreground border-t">
+              Este partido tiene planilla: los goles y las tarjetas se cargan desde ahí
+              (<a href={`/arbitro/partido/${(match as Match).id}`} className="text-primary underline">abrir planilla</a>).
+            </p>
+          )}
+
+          {/* Red cards — only when editing an existing match */}
+          {isEditing && !hasSheet && (
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Tarjetas Rojas</Label>
               <p className="text-xs text-muted-foreground">
                 Seleccioná los jugadores que recibieron tarjeta roja
               </p>
+              <input type="hidden" name="redCardsField" value="1" />
               <select
                 multiple
                 name="redCards"
+                defaultValue={redCardPlayerIds}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[80px]"
               >
-                {players
-                  .filter((p) => p.teamId === homeTeamId || p.teamId === awayTeamId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} (#{p.number}) — {teams.find((t) => t.id === p.teamId)?.shortName}
-                    </option>
-                  ))}
+                {matchTeams.map((team) => (
+                  <optgroup key={team.id} label={team.name}>
+                    {players.filter((p) => p.teamId === team.id).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}{p.number > 0 ? ` (#${p.number})` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                Ctrl/Cmd + clic para elegir varios. Cada roja suma 1 fecha de suspensión; para cambiarla, editala en Sanciones.
+              </p>
             </div>
           )}
 
-          {/* Goals — only when editing and status is finished */}
-          {isEditing && match && (
+          {/* Goals — only when editing (a W.O. has no scorers) */}
+          {isEditing && match && result === "normal" && !hasSheet && (
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Goles</Label>
               <p className="text-xs text-muted-foreground">
                 Registrar quiénes hicieron los goles y cuántos
               </p>
               <div className="space-y-2">
-                {[0, 1, 2, 3, 4].map((i) => (
+                {goalRows.map((row, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <select
                       name="goalPlayer"
-                      defaultValue="none"
+                      defaultValue={row.playerId}
                       className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
                     >
                       <option value="none">— Sin jugador —</option>
-                      {players
-                        .filter((p) => p.teamId === homeTeamId || p.teamId === awayTeamId)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (#{p.number})
-                          </option>
-                        ))}
+                      {matchTeams.map((team) => (
+                        <optgroup key={team.id} label={team.name}>
+                          {players.filter((p) => p.teamId === team.id).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}{p.number > 0 ? ` (#${p.number})` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
                     </select>
                     <input
                       type="number"
                       name="goalCount"
-                      defaultValue={i === 0 ? 1 : 0}
+                      defaultValue={row.goals}
                       min={0}
-                      max={10}
+                      max={30}
                       className="w-16 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-center"
-                      placeholder="Goles"
+                      aria-label="Goles"
                     />
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Para quitar un goleador elegí &quot;Sin jugador&quot;. Pueden ser menos que el resultado (goles en contra).
+              </p>
             </div>
           )}
 

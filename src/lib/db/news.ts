@@ -34,6 +34,7 @@ export interface ArticleRow {
   id: string
   title: string
   excerpt: string | null
+  author: string | null
   content: string | null
   imageUrl: string | null
   category: string | null
@@ -82,6 +83,7 @@ export async function createArticle(
   data: {
     title: string
     excerpt?: string | null
+    author?: string | null
     content?: string | null
     imageUrl?: string | null
     category?: string | null
@@ -95,6 +97,7 @@ export async function createArticle(
       .insert({
         title: data.title,
         excerpt: data.excerpt ?? null,
+        author: data.author ?? null,
         content: data.content ?? null,
         image_url: data.imageUrl ?? null,
         category: data.category ?? null,
@@ -117,6 +120,7 @@ export async function updateArticle(
   data: Partial<{
     title: string
     excerpt: string | null
+    author: string | null
     content: string | null
     imageUrl: string | null
     category: string | null
@@ -129,6 +133,7 @@ export async function updateArticle(
     const payload: Record<string, unknown> = {}
     if (data.title !== undefined) payload.title = data.title
     if (data.excerpt !== undefined) payload.excerpt = data.excerpt
+    if (data.author !== undefined) payload.author = data.author
     if (data.content !== undefined) payload.content = data.content
     if (data.imageUrl !== undefined) payload.image_url = data.imageUrl
     if (data.category !== undefined) payload.category = data.category
@@ -177,6 +182,7 @@ function mapRow(row: Record<string, unknown>): ArticleRow {
     id: row.id as string,
     title: row.title as string,
     excerpt: (row.excerpt as string) ?? null,
+    author: (row.author as string) ?? null,
     content: (row.content as string) ?? null,
     imageUrl: (row.image_url as string) ?? null,
     category: (row.category as string) ?? null,

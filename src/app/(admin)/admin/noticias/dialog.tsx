@@ -152,6 +152,11 @@ export function ArticleDialog({
             />
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="author">Autor</Label>
+            <Input id="author" name="author" defaultValue={article?.author ?? ""} placeholder="Ej: Prensa de la liga" />
+          </div>
+
           {/* Content */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="content">Contenido</Label>

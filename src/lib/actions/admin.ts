@@ -652,6 +652,7 @@ export async function createArticleAction(
 
   const title = formData.get("title") as string
   const excerpt = formData.get("excerpt") as string
+  const author = formData.get("author") as string | null
   const content = formData.get("content") as string
   const category = formData.get("category") as string
   const seriesId = formData.get("seriesId") as string
@@ -665,6 +666,7 @@ export async function createArticleAction(
   const result = await createArticle({
     title: title.trim(),
     excerpt: excerpt?.trim() || null,
+    author: author?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
     seriesId: seriesId && seriesId !== "null" ? seriesId : null,
@@ -687,6 +689,7 @@ export async function updateArticleAction(
 
   const title = formData.get("title") as string
   const excerpt = formData.get("excerpt") as string
+  const author = formData.get("author") as string | null
   const content = formData.get("content") as string
   const category = formData.get("category") as string
   const seriesId = formData.get("seriesId") as string
@@ -698,6 +701,7 @@ export async function updateArticleAction(
   const result = await updateArticle(id, {
     title: title?.trim() || undefined,
     excerpt: excerpt?.trim() || null,
+    author: author?.trim() || null,
     content: content?.trim() || null,
     category: category?.trim() || null,
     seriesId: seriesId && seriesId !== "null" ? seriesId : null,

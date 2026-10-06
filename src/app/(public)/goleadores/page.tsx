@@ -63,7 +63,7 @@ export default async function GoleadoresPage({ searchParams }: Props) {
       )}
 
       {scorers && scorers.length > 0 && (
-        <Card className="mt-12 border-border max-w-2xl">
+        <Card className="mt-12 border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Tabla de goleadores</CardTitle>
           </CardHeader>

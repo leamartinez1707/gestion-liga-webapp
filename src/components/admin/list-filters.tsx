@@ -43,9 +43,15 @@ export function ListFilters({ searchPlaceholder, selects = [], resultLabel }: Pr
   const searchParams = useSearchParams()
   const [q, setQ] = useState(searchParams.get("q") ?? "")
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The debounced search runs later: it must merge into the URL of that moment,
+  // not the one it was typed on (or it would undo a select changed meanwhile)
+  const latest = useRef(searchParams)
+  useEffect(() => {
+    latest.current = searchParams
+  }, [searchParams])
 
   const update = (changes: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(latest.current.toString())
     for (const [key, value] of Object.entries(changes)) {
       if (value) params.set(key, value)
       else params.delete(key)
@@ -107,6 +113,7 @@ export function ListFilters({ searchPlaceholder, selects = [], resultLabel }: Pr
             size="sm"
             className="gap-1"
             onClick={() => {
+              if (timer.current) clearTimeout(timer.current)
               setQ("")
               router.replace(pathname, { scroll: false })
             }}

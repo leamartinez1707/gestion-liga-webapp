@@ -9,7 +9,7 @@ import { getArticles } from "@/lib/db/news"
 import { getSponsors } from "@/lib/db/sponsors"
 import { leagueInfo } from "@/lib/data/league"
 import type { NewsArticle, Tournament } from "@/lib/types"
-import { tournamentsInScope, type Scope, type SeriesOption } from "@/lib/scope"
+import { todayIso, tournamentsInScope, type Scope, type SeriesOption } from "@/lib/scope"
 import type { ArticleRow } from "@/lib/db/news"
 import { HomePageClient } from "./home-client"
 
@@ -32,13 +32,13 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
 export const revalidate = 300
 
 /** Each division's current tournament: the only ones the home page shows standings and fixture for. */
-function currentTournamentIds(seriesOptions: SeriesOption[], tournaments: Tournament[]): string[] {
+function currentTournamentIds(seriesOptions: SeriesOption[], tournaments: Tournament[], today: string): string[] {
   const scopes: Scope[] = seriesOptions.length
     ? seriesOptions.flatMap<Scope>((series) =>
         series.divisions.length ? series.divisions.map((division) => ({ series, division })) : [{ series, division: null }]
       )
     : [{ series: null, division: null }]
-  return [...new Set(scopes.flatMap((scope) => tournamentsInScope(tournaments, scope)[0]?.id ?? []))]
+  return [...new Set(scopes.flatMap((scope) => tournamentsInScope(tournaments, scope, today)[0]?.id ?? []))]
 }
 
 /** Rows of several lists without repeating ids. */
@@ -53,7 +53,9 @@ export default async function HomePage() {
     getSponsors(),
   ])
   const tournaments = tournamentsResult.data ?? []
-  const tournamentIds = currentTournamentIds(seriesOptions, tournaments)
+  // The client picks the current tournament again: same "today" as the data loaded here
+  const today = todayIso()
+  const tournamentIds = currentTournamentIds(seriesOptions, tournaments, today)
   // The visitor picks the series on the client: bring what any series' home needs, and no more
   const seriesIds = seriesOptions.length ? seriesOptions.map((s) => s.id) : [undefined]
 
@@ -85,6 +87,7 @@ export default async function HomePage() {
         seriesOptions={seriesOptions}
         teams={teams ?? []}
         tournaments={tournaments}
+        today={today}
         registrations={registrations}
         albums={uniqueById(albumLists.map((r) => r.data))
           .filter((a) => a.photoCount > 0)

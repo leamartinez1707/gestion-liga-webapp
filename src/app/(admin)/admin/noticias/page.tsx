@@ -19,7 +19,7 @@ interface Props { searchParams: Promise<{ page?: string; q?: string; serie?: str
 export default async function NoticiasPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: articles, error, total, totalPages }, { data: seriesList }, matches] = await Promise.all([
+  const [{ data: articles, error, total, totalPages, page: shownPage }, { data: seriesList }, matches] = await Promise.all([
     getArticlesPaginated(page, LIMIT, {
       q: params.q,
       seriesId: params.serie,
@@ -75,7 +75,7 @@ export default async function NoticiasPage({ searchParams }: Props) {
           </TableBody>
         </Table>
       </div>
-      <Suspense><Pagination page={page} totalPages={totalPages} /></Suspense>
+      <Suspense><Pagination page={shownPage} totalPages={totalPages} /></Suspense>
     </div>
   )
 }

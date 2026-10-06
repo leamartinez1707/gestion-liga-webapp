@@ -1,3 +1,4 @@
+import { todayIso } from "@/lib/scope"
 import { notFound } from "next/navigation"
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
@@ -69,7 +70,7 @@ export default async function EquipoDetailPage({
   const registered = new Set((registrations ?? []).map((r) => r.tournamentId))
   const seasons = [
     ...new Set([
-      String(new Date().getFullYear()),
+      todayIso().slice(0, 4),
       ...(tournaments ?? []).filter((t) => registered.has(t.id)).map((t) => t.season),
       ...seasonPhotos.map((p) => p.season),
     ]),

@@ -23,6 +23,8 @@ interface HomePageClientProps {
   seriesOptions: SeriesOption[]
   teams: Team[]
   tournaments: Tournament[]
+  /** Today (Argentina) as the server saw it when loading the data */
+  today: string
   registrations: Registration[]
   albums: PhotoAlbum[]
   matches: MatchWithTeams[]
@@ -59,6 +61,7 @@ export function HomePageClient({
   articles,
   leagueInfo: _leagueInfo,
   sponsors,
+  today,
 }: HomePageClientProps) {
   const searchParams = useSearchParams()
 
@@ -69,7 +72,7 @@ export function HomePageClient({
   const selectedSeriesId = scope.series?.id ?? ""
 
   // Standings and fixture belong to one division: its latest tournament
-  const currentTournament = tournamentsInScope(tournaments, scope)[0]
+  const currentTournament = tournamentsInScope(tournaments, scope, today)[0]
   const filteredTeams = useMemo(
     () => teamsInTournament(teams, registrations, currentTournament?.id),
     [teams, registrations, currentTournament?.id]

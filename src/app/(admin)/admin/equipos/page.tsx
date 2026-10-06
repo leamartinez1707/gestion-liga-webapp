@@ -39,7 +39,7 @@ export default async function EquiposPage({ searchParams }: Props) {
   ])
   // Tournament filter: the teams entered in it
   const ids = params.torneo ? (registrations ?? []).filter((r) => r.tournamentId === params.torneo).map((r) => r.teamId) : undefined
-  const { data: teams, error, total, totalPages } = await getTeamsPaginated(page, LIMIT, { q: params.q, ids })
+  const { data: teams, error, total, totalPages, page: shownPage } = await getTeamsPaginated(page, LIMIT, { q: params.q, ids })
 
   const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
   // "Serie 1 · División A (2026)" for each tournament the team is entered in
@@ -131,7 +131,7 @@ export default async function EquiposPage({ searchParams }: Props) {
       </div>
 
       <Suspense>
-        <Pagination page={page} totalPages={totalPages} />
+        <Pagination page={shownPage} totalPages={totalPages} />
       </Suspense>
     </div>
   )

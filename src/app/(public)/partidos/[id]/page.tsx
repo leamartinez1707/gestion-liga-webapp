@@ -7,7 +7,7 @@ import { getHeadToHead, getMatch } from "@/lib/db/matches"
 import { getTeamsByIds } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
-import { getPlayersByTeam } from "@/lib/db/players"
+import { getPlayersByIds, getPlayersByTeam } from "@/lib/db/players"
 import { getMatchEvents, getMatchRefereeName } from "@/lib/db/match-events"
 import { getLineup } from "@/lib/db/lineups"
 import { getGoalsByMatch } from "@/lib/db/goals"
@@ -72,7 +72,26 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
   const away = teamMap.get(match.awayTeamId)
   const tournament = (tournaments ?? []).find((t) => t.id === match.tournamentId)
   const players = new Map<string, Player>([...(homePlayers ?? []), ...(awayPlayers ?? [])].map((p) => [p.id, p]))
-  const teamOfPlayer = (playerId: string) => players.get(playerId)?.teamId
+  // Players who were in this match but have since left both clubs
+  const missing = [
+    ...lineup.map((l) => l.playerId),
+    ...events.flatMap((e) => [e.playerId, e.assistPlayerId]),
+    ...(goalsByMatch.get(id) ?? []).map((g) => g.playerId),
+    ...(sanctions ?? []).map((s) => s.playerId),
+  ].filter((pid): pid is string => !!pid && !players.has(pid))
+  for (const p of await getPlayersByIds([...new Set(missing)])) players.set(p.id, p)
+
+  // The team each player played for in this match (the sheet knows it; else his current club)
+  const matchTeam = new Map<string, string>()
+  for (const l of lineup) matchTeam.set(l.playerId, l.teamId)
+  for (const e of events) {
+    if (e.playerId) matchTeam.set(e.playerId, e.teamId)
+    if (e.assistPlayerId) matchTeam.set(e.assistPlayerId, e.teamId)
+  }
+  const teamOfPlayer = (playerId: string) => {
+    const teamId = matchTeam.get(playerId) ?? players.get(playerId)?.teamId
+    return teamId === match.homeTeamId || teamId === match.awayTeamId ? teamId : undefined
+  }
 
   // Incidents: the live sheet when there is one, otherwise what the panel loaded
   const incidents: Incident[] = events.length

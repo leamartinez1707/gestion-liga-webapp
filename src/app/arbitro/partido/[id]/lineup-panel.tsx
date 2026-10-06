@@ -193,7 +193,7 @@ function GuestDialog({
           <div className="grid grid-cols-[1fr_5rem] gap-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="guest-name">Nombre y apellido</Label>
-              <Input id="guest-name" value={name} onChange={(e) => setName(e.target.value)} required minLength={3} />
+              <Input id="guest-name" value={name} onChange={(e) => setName(e.target.value)} required minLength={3} maxLength={80} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="guest-number">Número</Label>

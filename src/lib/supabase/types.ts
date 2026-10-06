@@ -34,9 +34,9 @@ export type Database = {
         ]
       }
       league_settings: {
-        Row: { guest_player_max_matches: number; guest_players_allowed: boolean; id: boolean; red_card_matches: number; updated_at: string | null; yellow_cards_for_suspension: number; yellow_suspension_matches: number }
-        Insert: { guest_player_max_matches?: number; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
-        Update: { guest_player_max_matches?: number; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
+        Row: { guest_player_max_matches: number; referee_edit_days: number | null; guest_players_allowed: boolean; id: boolean; red_card_matches: number; updated_at: string | null; yellow_cards_for_suspension: number; yellow_suspension_matches: number }
+        Insert: { guest_player_max_matches?: number; referee_edit_days?: number | null; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
+        Update: { guest_player_max_matches?: number; referee_edit_days?: number | null; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
         Relationships: []
       }
       match_lineups: {

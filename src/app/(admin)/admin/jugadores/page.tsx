@@ -37,7 +37,7 @@ export default async function JugadoresPage({ searchParams }: Props) {
     teamIds = (teamIds ?? [...inTournament]).filter((id) => inTournament.has(id))
   }
   const active = params.estado === "activos" ? true : params.estado === "inactivos" ? false : undefined
-  const { data: players, error, total, totalPages } = await getPlayersPaginated(page, LIMIT, { q: params.q, teamIds, active })
+  const { data: players, error, total, totalPages, page: shownPage } = await getPlayersPaginated(page, LIMIT, { q: params.q, teamIds, active })
   const filtering = !!(params.q || params.equipo || params.torneo || params.estado)
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
@@ -84,7 +84,7 @@ export default async function JugadoresPage({ searchParams }: Props) {
           </TableBody>
         </Table>
       </div>
-      <Suspense><Pagination page={page} totalPages={totalPages} /></Suspense>
+      <Suspense><Pagination page={shownPage} totalPages={totalPages} /></Suspense>
     </div>
   )
 }

@@ -130,12 +130,16 @@ export function PlayerRow({ player, suspendedUntil }: { player: Player; suspende
           </DialogContent>
         </Dialog>
 
-        {/* Delete */}
+        {/* Take off the squad (stats are kept) */}
         <DeleteConfirmDialog
           itemName={player.name}
           onConfirm={delegateDeletePlayerAction.bind(null, player.id)}
+          title="Dar de baja"
+          description={<>¿Dar de baja a <strong>{player.name}</strong>? Deja de figurar en el plantel, pero se conservan sus goles, tarjetas y partidos jugados. Para volver a darlo de alta, pedíselo a la liga.</>}
+          confirmLabel="Dar de baja"
+          pendingLabel="Guardando…"
         >
-          <Button variant="ghost" size="icon-sm" aria-label="Eliminar" className="text-destructive hover:text-destructive">
+          <Button variant="ghost" size="icon-sm" aria-label="Dar de baja" className="text-destructive hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </DeleteConfirmDialog>

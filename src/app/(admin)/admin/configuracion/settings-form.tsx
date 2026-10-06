@@ -68,6 +68,18 @@ export function SettingsForm({ settings }: { settings: LeagueSettings }) {
         </div>
       </fieldset>
 
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
+        <legend className="px-1 text-sm font-semibold">📝 Planilla del árbitro</legend>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="refereeEditDays">Días que el árbitro puede corregir un partido terminado</Label>
+          <Input id="refereeEditDays" name="refereeEditDays" type="number" min={0} max={365} placeholder="Sin límite"
+            defaultValue={settings.refereeEditDays ?? ""} className="max-w-32" />
+          <p className="text-xs text-muted-foreground">
+            Vacío = sin límite. 0 = solo el mismo día del partido. Pasado el plazo solo un administrador puede editarlo.
+          </p>
+        </div>
+      </fieldset>
+
       <p className="text-xs text-muted-foreground">
         Los cambios se aplican a las tarjetas que se carguen desde ahora.
       </p>

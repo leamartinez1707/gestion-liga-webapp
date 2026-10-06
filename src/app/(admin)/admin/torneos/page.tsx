@@ -31,7 +31,7 @@ interface Props { searchParams: Promise<{ page?: string; q?: string; serie?: str
 export default async function TorneosPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: tournaments, error, total, totalPages }, { data: teams }, series, { data: registrations }, { data: allTournaments }] =
+  const [{ data: tournaments, error, total, totalPages, page: shownPage }, { data: teams }, series, { data: registrations }, { data: allTournaments }] =
     await Promise.all([
       getTournamentsPaginated(page, LIMIT, {
         q: params.q,
@@ -104,7 +104,7 @@ export default async function TorneosPage({ searchParams }: Props) {
           </TableBody>
         </Table>
       </div>
-      <Suspense><Pagination page={page} totalPages={totalPages} /></Suspense>
+      <Suspense><Pagination page={shownPage} totalPages={totalPages} /></Suspense>
     </div>
   )
 }

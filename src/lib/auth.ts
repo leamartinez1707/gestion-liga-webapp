@@ -84,6 +84,13 @@ export async function requireMatchEditor(matchId: string): Promise<Guard<Session
 
   const supabase = await createClient()
   const { data: allowed } = await supabase.rpc("can_edit_match", { p_match_id: matchId })
-  if (!allowed) return { error: "Este partido no está asignado a vos." }
+  if (!allowed) {
+    // Assigned but past the league's edit window (league_settings.referee_edit_days)
+    const { data: match } = await supabase.from("matches").select("referee_id").eq("id", matchId).maybeSingle()
+    if (match?.referee_id === profile.id) {
+      return { error: "Pasó el plazo para corregir este partido. Pedile a un administrador que lo edite." }
+    }
+    return { error: "Este partido no está asignado a vos." }
+  }
   return { profile }
 }

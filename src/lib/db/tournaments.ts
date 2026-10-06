@@ -3,6 +3,7 @@ import type { Tournament, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { isUuid } from "./ids"
 import { fetchAll } from "./fetch-all"
+import { lastPageIfOutOfRange } from "./paginate"
 
 export interface TournamentFilter {
   q?: string
@@ -16,6 +17,10 @@ export async function getTournamentsPaginated(
   limit = 10,
   filter: TournamentFilter = {}
 ): Promise<PaginatedResult<Tournament>> {
+  // A malformed id in the URL matches nothing instead of a DB error
+  if ((filter.seriesId && !isUuid(filter.seriesId)) || (filter.divisionId && !isUuid(filter.divisionId))) {
+    return { data: [], total: 0, page, totalPages: 0, error: null }
+  }
   try {
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
@@ -32,9 +37,13 @@ export async function getTournamentsPaginated(
 
     const { data, error, count } = await query
       .order("created_at", { ascending: false })
+      .order("id")
       .range(from, to)
 
-    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    if (error) {
+      const last = await lastPageIfOutOfRange(error, page, (p) => getTournamentsPaginated(p, limit, filter))
+      return last ?? { data: [], total: 0, page, totalPages: 0, error: error.message }
+    }
     return {
       data: (data ?? []).map(mapRow),
       total: count ?? 0,

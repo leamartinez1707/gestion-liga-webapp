@@ -32,11 +32,7 @@ function SubmitButton() {
   )
 }
 
-export interface MatchOption {
-  value: string
-  /** e.g. "Fecha 3 · Los Pumas vs Titanes (2026-08-15)" */
-  label: string
-}
+import type { MatchOption } from "@/lib/db/match-options"
 
 interface AlbumDialogProps {
   children: React.ReactElement

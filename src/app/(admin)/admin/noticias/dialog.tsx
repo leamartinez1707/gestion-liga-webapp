@@ -4,6 +4,7 @@ import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
 import type { ArticleRow } from "@/lib/db/news"
+import type { MatchOption } from "@/lib/db/match-options"
 import type { Series } from "@/lib/types"
 import {
   Dialog,
@@ -51,6 +52,7 @@ interface ArticleDialogProps {
   ) => Promise<{ error?: string; success?: boolean }>
   article?: ArticleRow
   series: Series[]
+  matches: MatchOption[]
 }
 
 export function ArticleDialog({
@@ -58,10 +60,12 @@ export function ArticleDialog({
   action,
   article,
   series,
+  matches,
 }: ArticleDialogProps) {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState(article?.category ?? "Partidos")
   const [seriesId, setSeriesId] = useState(article?.seriesId ?? "")
+  const [matchId, setMatchId] = useState(article?.matchId ?? "null")
   const [published, setPublished] = useState(article?.published ?? false)
   const [state, formAction] = useActionState(action, undefined)
 
@@ -117,6 +121,19 @@ export function ArticleDialog({
             <p className="text-xs text-muted-foreground">
               La noticia aparecerá destacada en esta serie
             </p>
+          </div>
+
+          {/* Match: the public page shows its result next to the story */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Partido</Label>
+            <Select value={matchId} onValueChange={(v) => v && setMatchId(v)} name="matchId">
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="null">Ninguno</SelectItem>
+                {matches.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Si la noticia es sobre un partido, se muestra el resultado con los escudos</p>
           </div>
 
           {/* Category */}

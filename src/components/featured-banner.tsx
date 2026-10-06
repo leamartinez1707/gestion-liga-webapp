@@ -57,7 +57,7 @@ export function FeaturedBanner({
               <span className="text-base md:text-xl font-bold tabular-nums shrink-0">
                 {match.homeScore ?? "-"}
               </span>
-              <span className="text-xs text-white/60 shrink-0">vs</span>
+              <span className="text-xs text-white/60 shrink-0">-</span>
               <span className="text-base md:text-xl font-bold tabular-nums shrink-0">
                 {match.awayScore ?? "-"}
               </span>

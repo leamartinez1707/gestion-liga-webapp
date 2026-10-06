@@ -23,11 +23,9 @@ export function ScrollableBanners({
   return (
     <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
       {articles.map((article) => {
-        const relatedMatch = allMatches?.find(
-          (m) => m.status === "finished" && (
-            getTeamName(m.homeTeamId).toLowerCase().includes(article.title.toLowerCase().slice(0, 10))
-          )
-        )
+        const relatedMatch = article.matchId
+          ? allMatches?.find((m) => m.id === article.matchId && m.status === "finished")
+          : undefined
         return (
           <div key={article.id} className="snap-start shrink-0 w-[85vw] sm:w-[350px]">
             <FeaturedBanner

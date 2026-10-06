@@ -78,19 +78,20 @@ export type Database = {
         Row: {
           author: string | null; category: string | null; content: string | null; created_at: string | null
           date: string | null; excerpt: string | null; id: string; image_url: string | null; pdf_url: string | null
-          published: boolean | null; series_id: string | null; title: string
+          match_id: string | null; published: boolean | null; series_id: string | null; title: string
         }
         Insert: {
           author?: string | null; category?: string | null; content?: string | null; created_at?: string | null
           date?: string | null; excerpt?: string | null; id?: string; image_url?: string | null; pdf_url?: string | null
-          published?: boolean | null; series_id?: string | null; title: string
+          match_id?: string | null; published?: boolean | null; series_id?: string | null; title: string
         }
         Update: {
           author?: string | null; category?: string | null; content?: string | null; created_at?: string | null
           date?: string | null; excerpt?: string | null; id?: string; image_url?: string | null; pdf_url?: string | null
-          published?: boolean | null; series_id?: string | null; title?: string
+          match_id?: string | null; published?: boolean | null; series_id?: string | null; title?: string
         }
         Relationships: [
+          { foreignKeyName: "news_articles_match_id_fkey"; columns: ["match_id"]; isOneToOne: false; referencedRelation: "matches"; referencedColumns: ["id"] },
           { foreignKeyName: "news_articles_series_id_fkey"; columns: ["series_id"]; isOneToOne: false; referencedRelation: "series"; referencedColumns: ["id"] },
         ]
       }

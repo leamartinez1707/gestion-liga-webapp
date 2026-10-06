@@ -6,6 +6,9 @@ import { getArticle, getArticles } from "@/lib/db/news"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CoverImage } from "@/components/cover-image"
+import { ArticleMatch } from "@/components/article-match"
+import { getMatch } from "@/lib/db/matches"
+import { getTeams } from "@/lib/db/teams"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -40,13 +43,23 @@ export default async function ArticuloPage({
   }
 
   // Related reading: latest news of the same series (or general ones)
-  const { data: others } = await getArticles()
+  const [{ data: others }, { data: match }, { data: teams }] = await Promise.all([
+    getArticles(),
+    article.matchId ? getMatch(article.matchId) : Promise.resolve({ data: null }),
+    article.matchId ? getTeams() : Promise.resolve({ data: null }),
+  ])
+  const teamById = (id: string) => (teams ?? []).find((t) => t.id === id)
   const related = (others ?? [])
     .filter((a) => a.id !== article.id && (!article.seriesId || !a.seriesId || a.seriesId === article.seriesId))
     .slice(0, 4)
 
   const body = (
     <>
+      {match && (
+        <div className="mb-6">
+          <ArticleMatch match={match} home={teamById(match.homeTeamId)} away={teamById(match.awayTeamId)} />
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Badge variant="secondary" className="text-xs font-medium">{article.category ?? "General"}</Badge>
         <time className="text-sm text-muted-foreground">{formatDate(article.date)}</time>

@@ -3,7 +3,7 @@ import { Trophy, Goal, MapPin, ClipboardCheck, FileText } from "lucide-react"
 import type { Sponsor } from "@/lib/types"
 
 const links = [
-  { href: "/", label: "Posiciones", icon: Trophy },
+  { href: "/partidos", label: "Posiciones", icon: Trophy },
   { href: "/goleadores", label: "Goleadores", icon: Goal },
   { href: "/institucional", label: "Complejos", icon: MapPin },
   { href: "/institucional", label: "Inscripción", icon: ClipboardCheck },
@@ -20,7 +20,7 @@ export function LeftSidebar({ sponsors = [] }: Props) {
       <nav className="space-y-0.5">
         {links.map((link) => (
           <Link
-            key={link.href}
+            key={link.label}
             href={link.href}
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted-bg transition-colors"
           >

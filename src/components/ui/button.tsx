@@ -49,6 +49,8 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
+      // render={<Link />} produces an <a>: tell Base UI it isn't a native button
+      nativeButton={props.render === undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

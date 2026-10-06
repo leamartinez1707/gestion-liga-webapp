@@ -16,7 +16,7 @@ export default async function GaleriaPage({ searchParams }: Props) {
   )
 
   return (
-    <div className="container mx-auto px-4 py-16 md:py-20">
+    <div className="page-container py-10 md:py-14">
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
         Fotos{series && <span className="text-primary"> · {series.name}</span>}
       </h1>

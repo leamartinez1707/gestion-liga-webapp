@@ -85,7 +85,7 @@ export function HomePageClient({
 
   const finishedMatches = filteredMatches
     .filter((m) => m.status === "finished")
-    .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(b.time))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
 
   const scheduledMatches = filteredMatches
     .filter((m) => m.status === "scheduled" || m.status === "postponed" || m.status === "ongoing")
@@ -109,7 +109,7 @@ export function HomePageClient({
   }
 
   return (
-    <div className="w-full px-4 md:px-6 py-5">
+    <div className="page-container py-6 md:py-8">
       <AutoRefresh active={filteredMatches.some((m) => m.status === "ongoing")} />
       <div className="grid gap-5 lg:grid-cols-[200px_1fr_300px]">
         {/* ===== LEFT SIDEBAR ===== */}
@@ -118,7 +118,8 @@ export function HomePageClient({
             <LeftSidebar sponsors={sponsors} />
           </div>
         </div>
-        <div className="lg:hidden">
+        {/* On mobile the shortcuts and sponsors go after the content */}
+        <div className="order-last lg:hidden">
           <LeftSidebar sponsors={sponsors} />
         </div>
 
@@ -127,9 +128,6 @@ export function HomePageClient({
           {seriesNews.length > 0 ? (
             <MainCarousel
               articles={seriesNews.slice(0, 5)}
-              matches={finishedMatches}
-              teams={teams}
-              getTeamName={getTeamName}
               formatDate={formatDate}
             />
           ) : (
@@ -138,13 +136,15 @@ export function HomePageClient({
             </div>
           )}
 
-          {seriesOptions.map((serie) => (
+          {seriesOptions.map((serie) => ({ serie, news: sortedNews.filter((a) => a.seriesId === serie.id || !a.seriesId).slice(0, 6) }))
+            .filter(({ news }) => news.length > 0)
+            .map(({ serie, news }) => (
             <div key={serie.id}>
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 {serie.name}
               </h2>
               <ScrollableBanners
-                articles={sortedNews.filter((a) => a.seriesId === serie.id || !a.seriesId).slice(0, 6)}
+                articles={news}
                 matches={finishedMatches}
                 teams={teams}
                 getTeamName={getTeamName}

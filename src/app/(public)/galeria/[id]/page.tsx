@@ -19,7 +19,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
   const { data: photos } = await getPhotos(id)
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="page-container py-12 md:py-16">
       <Button variant="ghost" size="sm" className="mb-6" render={<Link href="/galeria" />}>
         <ArrowLeft className="mr-1 h-4 w-4" />
         Todas las fotos

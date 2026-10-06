@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
-import type { NewsArticle, Match, Team } from "@/lib/types"
+import type { NewsArticle } from "@/lib/types"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -10,17 +10,11 @@ import { CoverImage } from "@/components/cover-image"
 
 interface MainCarouselProps {
   articles: NewsArticle[]
-  matches?: Match[]
-  teams?: Team[]
-  getTeamName: (id: string) => string
   formatDate: (date: string) => string
 }
 
 export function MainCarousel({
   articles,
-  matches: allMatches,
-  teams: allTeams,
-  getTeamName,
   formatDate,
 }: MainCarouselProps) {
   const [current, setCurrent] = useState(0)
@@ -43,7 +37,6 @@ export function MainCarousel({
   // The list changes with the selected series: keep the index in range
   const index = current % total
   const article = articles[index]
-  const match = allMatches?.[index]
 
   return (
     <div className="relative group">
@@ -62,14 +55,8 @@ export function MainCarousel({
               {article.title}
             </h3>
 
-            {match && (
-              <div className="mt-2 md:mt-3 flex items-center gap-2 md:gap-3 text-white flex-wrap">
-                <span className="text-xs md:text-sm font-medium">{getTeamName(match.homeTeamId)}</span>
-                <span className="text-lg md:text-2xl font-bold tabular-nums shrink-0">{match.homeScore ?? "-"}</span>
-                <span className="text-xs text-white/60 shrink-0">vs</span>
-                <span className="text-lg md:text-2xl font-bold tabular-nums shrink-0">{match.awayScore ?? "-"}</span>
-                <span className="text-xs md:text-sm font-medium">{getTeamName(match.awayTeamId)}</span>
-              </div>
+            {article.excerpt && (
+              <p className="mt-2 hidden max-w-2xl text-sm text-white/80 line-clamp-2 md:block">{article.excerpt}</p>
             )}
 
             <p className="text-[10px] md:text-xs text-white/50 mt-1">{formatDate(article.date)}</p>

@@ -103,7 +103,7 @@ export function FixturePanel({
               >
                 {/* Venue + Date */}
                 <div className="text-center text-[10px] text-muted-foreground mb-3">
-                  {match.venue ?? "Por definir"} · {formatDate(match.date)} {match.time ? `${match.time}` : ""}
+                  {match.venue ?? "Por definir"} · {formatDate(match.date)} {match.time ? `${match.time.slice(0, 5)} hs` : ""}
                 </div>
 
                 {/* Match centered columns */}

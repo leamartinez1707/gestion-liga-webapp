@@ -64,7 +64,7 @@ export default async function ArticuloPage({
         <Badge variant="secondary" className="text-xs font-medium">{article.category ?? "General"}</Badge>
         <time className="text-sm text-muted-foreground">{formatDate(article.date)}</time>
       </div>
-      <h1 className="mt-4 text-balance text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
+      <h1 className="mt-4 text-balance font-display text-4xl font-bold uppercase leading-none tracking-tight md:text-5xl">
         {article.title}
       </h1>
       {article.author && <p className="mt-3 text-sm font-medium text-muted-foreground">Por {article.author}</p>}

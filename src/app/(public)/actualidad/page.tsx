@@ -8,6 +8,7 @@ import { CoverImage } from "@/components/cover-image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/page-header"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -39,18 +40,14 @@ export default async function ActualidadPage({ searchParams }: Props) {
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
-    <div className="page-container py-10 md:py-14">
-      <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-        Actualidad{series && <span className="text-primary"> · {series.name}</span>}
-      </h1>
-      <p className="mt-3 text-muted-foreground max-w-lg">
-        Noticias, artículos y novedades de la Liga Metropolitana de Futsal.
-      </p>
+    <>
+      <PageHeader eyebrow={series?.name} title="Actualidad" subtitle="Noticias y novedades de la liga" />
+      <div className="page-container py-8 md:py-10">
 
       {sortedArticles.length === 0 ? (
-        <p className="mt-12 text-muted-foreground text-center py-12">No hay noticias publicadas.</p>
+        <p className="text-muted-foreground text-center py-12">No hay noticias publicadas.</p>
       ) : (
-        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {sortedArticles.map((article) => (
             <Card key={article.id} className="flex flex-col border-border transition-all hover:shadow-md overflow-hidden">
               <div className="relative aspect-[16/9]">
@@ -86,6 +83,7 @@ export default async function ActualidadPage({ searchParams }: Props) {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

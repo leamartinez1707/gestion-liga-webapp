@@ -122,11 +122,11 @@ export function FixturePanel({
                       <MatchStatusBadge match={match} />
                     ) : match.status === "finished" || match.status === "ongoing" ? (
                       <>
-                        <span className="text-2xl font-bold tabular-nums text-foreground">
+                        <span className="font-display text-3xl font-bold tabular-nums text-foreground">
                           {match.homeScore}
                         </span>
                         <span className="text-sm text-muted-foreground">-</span>
-                        <span className="text-2xl font-bold tabular-nums text-foreground">
+                        <span className="font-display text-3xl font-bold tabular-nums text-foreground">
                           {match.awayScore}
                         </span>
                       </>

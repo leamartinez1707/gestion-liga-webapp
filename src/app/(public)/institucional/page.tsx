@@ -1,16 +1,15 @@
 import { FileText, MapPin, HelpCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/page-header"
 
 export default function InstitucionalPage() {
   return (
-    <div className="page-container py-10 md:py-14">
-      <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Institucional</h1>
-      <p className="mt-3 text-muted-foreground max-w-lg">
-        Información institucional de la Liga Metropolitana de Futsal.
-      </p>
+    <>
+      <PageHeader title="Institucional" subtitle="Información institucional de la Liga Metropolitana de Futsal" />
+      <div className="page-container py-8 md:py-10">
 
-      <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* League history */}
         <Card className="lg:col-span-2 border-border">
           <CardHeader>
@@ -101,6 +100,7 @@ export default function InstitucionalPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

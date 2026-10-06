@@ -31,8 +31,8 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
             <TableHead className="w-8 text-center">G</TableHead>
             <TableHead className="w-8 text-center">E</TableHead>
             <TableHead className="w-8 text-center">P</TableHead>
-            <TableHead className="w-10 text-center">GF</TableHead>
-            <TableHead className="w-10 text-center">GC</TableHead>
+            <TableHead className="hidden w-10 text-center sm:table-cell">GF</TableHead>
+            <TableHead className="hidden w-10 text-center sm:table-cell">GC</TableHead>
             <TableHead className="w-10 text-center">DG</TableHead>
             <TableHead className="w-10 text-center font-bold">Pts</TableHead>
           </TableRow>
@@ -85,10 +85,10 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
                 <TableCell className="text-center tabular-nums text-muted-foreground">
                   {s.lost}
                 </TableCell>
-                <TableCell className="text-center tabular-nums text-muted-foreground">
+                <TableCell className="hidden text-center tabular-nums text-muted-foreground sm:table-cell">
                   {s.goalsFor}
                 </TableCell>
-                <TableCell className="text-center tabular-nums text-muted-foreground">
+                <TableCell className="hidden text-center tabular-nums text-muted-foreground sm:table-cell">
                   {s.goalsAgainst}
                 </TableCell>
                 <TableCell
@@ -104,7 +104,7 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
                   {s.goalDifference > 0 ? "+" : ""}
                   {s.goalDifference}
                 </TableCell>
-                <TableCell className="text-center font-bold tabular-nums">
+                <TableCell className="text-center font-display text-lg font-bold tabular-nums">
                   {s.points}
                 </TableCell>
               </TableRow>

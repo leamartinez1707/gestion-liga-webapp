@@ -1,6 +1,8 @@
 import { Suspense } from "react"
 import { Plus, Trash2 } from "lucide-react"
-import { getSanctionsPaginated } from "@/lib/db/sanctions"
+import { getSanctions, getSanctionsPaginated } from "@/lib/db/sanctions"
+import { normalize } from "@/lib/text"
+import { ListFilters } from "@/components/admin/list-filters"
 import { getTeams } from "@/lib/db/teams"
 import { getPlayers } from "@/lib/db/players"
 import { getMatches } from "@/lib/db/matches"
@@ -15,17 +17,36 @@ import { Pagination } from "@/components/ui/pagination"
 
 const LIMIT = 10
 
-interface Props { searchParams: Promise<{ page?: string }> }
+interface Props { searchParams: Promise<{ page?: string; q?: string; equipo?: string; tipo?: string; estado?: string }> }
 
 export default async function SancionesPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: sanctions, error, totalPages }, { data: teams }, { data: players }, { data: matches }] = await Promise.all([
-    getSanctionsPaginated(page, LIMIT),
+  const [{ data: teams }, { data: players }, { data: matches }, { data: allSanctions }] = await Promise.all([
     getTeams(),
     getPlayers(),
     getMatches(),
+    params.estado === "vigentes" ? getSanctions() : Promise.resolve({ data: null }),
   ])
+
+  // Player name and team narrow the players
+  const term = normalize(params.q ?? "")
+  const playerIds =
+    term || params.equipo
+      ? (players ?? [])
+          .filter((p) => (!params.equipo || p.teamId === params.equipo) && (!term || normalize(p.name).includes(term)))
+          .map((p) => p.id)
+      : undefined
+  // "Vigentes": suspensions that still apply to the next matchday
+  const ids = allSanctions
+    ? allSanctions.filter((s) => s.matchesSuspended > 0 && activeSuspensions([s], matches ?? []).has(s.playerId)).map((s) => s.id)
+    : undefined
+  const { data: sanctions, error, total, totalPages } = await getSanctionsPaginated(page, LIMIT, {
+    playerIds,
+    ids,
+    cardType: params.tipo,
+  })
+  const filtering = !!(params.q || params.equipo || params.tipo || params.estado)
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
 
@@ -37,11 +58,22 @@ export default async function SancionesPage({ searchParams }: Props) {
           <Button className="gap-1.5"><Plus className="h-4 w-4" />Nueva Sanción</Button>
         </SanctionDialog>
       </div>
+      <Suspense>
+        <ListFilters
+          searchPlaceholder="Buscar por jugador"
+          selects={[
+            { param: "equipo", allLabel: "Todos los equipos", options: [...(teams ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ value: t.id, label: t.name })) },
+            { param: "tipo", allLabel: "Todas las tarjetas", options: [{ value: "yellow", label: "Amarillas" }, { value: "red", label: "Rojas" }, { value: "accumulation", label: "Acumulación" }] },
+            { param: "estado", allLabel: "Vigentes y cumplidas", options: [{ value: "vigentes", label: "Solo vigentes" }] },
+          ]}
+          resultLabel={`${total} ${total === 1 ? "sanción" : "sanciones"}`}
+        />
+      </Suspense>
       <div className="rounded-xl border border-border">
         <Table>
           <TableHeader><TableRow><TableHead>Jugador</TableHead><TableHead>Partido</TableHead><TableHead>Tarjeta</TableHead><TableHead>Fecha</TableHead><TableHead>Suspensión</TableHead><TableHead className="w-20 text-right">Acciones</TableHead></TableRow></TableHeader>
           <TableBody>
-            {sanctions.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No hay sanciones.</TableCell></TableRow>}
+            {sanctions.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">{filtering ? "Ninguna sanción coincide con la búsqueda." : "No hay sanciones."}</TableCell></TableRow>}
             {sanctions.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.playerName}</TableCell>

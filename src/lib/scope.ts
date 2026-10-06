@@ -123,3 +123,13 @@ export function scopeLabel(options: SeriesOption[], seriesId?: string, divisionI
 export function tournamentLabel(t: { name: string; season: string }): string {
   return t.name.includes(t.season) ? t.name : `${t.name} · Temporada ${t.season}`
 }
+
+/** Options for a tournament filter: "Clausura 2026 · Serie 1 · División A", newest season first. */
+export function tournamentOptions(tournaments: Tournament[], options: SeriesOption[]): { value: string; label: string }[] {
+  return [...tournaments]
+    .sort((a, b) => b.season.localeCompare(a.season) || a.name.localeCompare(b.name))
+    .map((t) => ({
+      value: t.id,
+      label: `${tournamentLabel(t)} · ${scopeLabel(options, t.seriesId, t.divisionId)}`,
+    }))
+}

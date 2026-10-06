@@ -1,6 +1,10 @@
 import { Suspense } from "react"
 import { Plus, Pencil, Trash2, CalendarX } from "lucide-react"
-import { getMatchesPaginated } from "@/lib/db/matches"
+import { getMatches, getMatchesPaginated } from "@/lib/db/matches"
+import { getSeriesOptions } from "@/lib/db/series"
+import { tournamentOptions } from "@/lib/scope"
+import { normalize } from "@/lib/text"
+import { ListFilters, type FilterSelect } from "@/components/admin/list-filters"
 import { getTeams } from "@/lib/db/teams"
 import { getRegistrations } from "@/lib/db/registrations"
 import { getGoalsByMatch } from "@/lib/db/goals"
@@ -21,18 +25,51 @@ import { PartidosViewToggle } from "./view-toggle"
 
 const LIMIT = 10
 
-interface Props { searchParams: Promise<{ page?: string }> }
+interface Props { searchParams: Promise<{ page?: string; q?: string; torneo?: string; equipo?: string; fecha?: string; estado?: string }> }
 
 export default async function PartidosPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: matches, error, totalPages }, { data: teams }, { data: tournaments }, { data: players }, { data: registrations }] = await Promise.all([
-    getMatchesPaginated(page, LIMIT),
+  const [{ data: teams }, { data: tournaments }, { data: players }, { data: registrations }, series] = await Promise.all([
     getTeams(),
     getTournaments(),
     getPlayers(),
     getRegistrations(),
+    getSeriesOptions(),
   ])
+
+  // Search by team name (home or away); combined with the team filter
+  const term = normalize(params.q ?? "")
+  let teamIds: string[] | undefined = params.equipo ? [params.equipo] : undefined
+  if (term) {
+    const named = (teams ?? []).filter((t) => normalize(`${t.name} ${t.shortName}`).includes(term)).map((t) => t.id)
+    teamIds = teamIds ? teamIds.filter((id) => named.includes(id)) : named
+  }
+  const matchday = parseInt(params.fecha ?? "", 10) || undefined
+  const { data: matches, error, total, totalPages } = await getMatchesPaginated(page, LIMIT, {
+    tournamentId: params.torneo,
+    teamIds,
+    matchday,
+    status: params.estado,
+  })
+  const STATUS_OPTIONS = [
+    { value: "scheduled", label: "Programados" },
+    { value: "ongoing", label: "En juego" },
+    { value: "finished", label: "Finalizados" },
+    { value: "postponed", label: "Suspendidos" },
+    { value: "cancelled", label: "Cancelados" },
+  ]
+  const filtering = !!(params.q || params.torneo || params.equipo || params.fecha || params.estado)
+  // "Fecha" filter: the matchdays of the chosen tournament
+  const matchdays = params.torneo
+    ? [...new Set(((await getMatches(params.torneo)).data ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
+    : []
+  const filterSelects: FilterSelect[] = [
+    { param: "torneo", allLabel: "Todos los torneos", options: tournamentOptions(tournaments ?? [], series) },
+    { param: "equipo", allLabel: "Todos los equipos", options: [...(teams ?? [])].sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ value: t.id, label: t.name })) },
+    ...(matchdays.length ? [{ param: "fecha", allLabel: "Todas las fechas", options: matchdays.map((md) => ({ value: String(md), label: `Fecha ${md}` })) }] : []),
+    { param: "estado", allLabel: "Todos los estados", options: STATUS_OPTIONS },
+  ]
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
@@ -54,7 +91,7 @@ export default async function PartidosPage({ searchParams }: Props) {
       <Table>
         <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Local</TableHead><TableHead>Resultado</TableHead><TableHead>Visitante</TableHead><TableHead>Estado</TableHead><TableHead className="w-24 text-right">Acciones</TableHead></TableRow></TableHeader>
         <TableBody>
-          {matchesList.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No hay partidos.</TableCell></TableRow>}
+          {matchesList.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">{filtering ? "Ningún partido coincide con la búsqueda." : "No hay partidos."}</TableCell></TableRow>}
           {matchesList.map((m) => (
             <TableRow key={m.id}>
               <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{m.date || "Sin fecha"} · F{m.matchday}</TableCell>
@@ -90,6 +127,14 @@ export default async function PartidosPage({ searchParams }: Props) {
           </SuspendMatchdayDialog>
         </div>
       </div>
+
+      <Suspense>
+        <ListFilters
+          searchPlaceholder="Buscar por equipo"
+          selects={filterSelects}
+          resultLabel={`${total} ${total === 1 ? "partido" : "partidos"}`}
+        />
+      </Suspense>
 
       <PartidosViewToggle matches={matchesList} shortNames={shortNames} listView={listView} />
 

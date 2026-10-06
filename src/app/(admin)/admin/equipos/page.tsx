@@ -6,7 +6,8 @@ import { getTeamsPaginated } from "@/lib/db/teams"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getRegistrations } from "@/lib/db/registrations"
-import { scopeLabel } from "@/lib/scope"
+import { scopeLabel, tournamentOptions } from "@/lib/scope"
+import { ListFilters } from "@/components/admin/list-filters"
 import { createTeamAction, updateTeamAction, deleteTeamAction } from "@/lib/actions/admin"
 import {
   Table,
@@ -24,15 +25,21 @@ import { Pagination } from "@/components/ui/pagination"
 const LIMIT = 10
 
 interface Props {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; q?: string; torneo?: string }>
 }
 
 export default async function EquiposPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
 
-  const [{ data: teams, error, totalPages }, series, { data: tournaments }, { data: registrations }] =
-    await Promise.all([getTeamsPaginated(page, LIMIT), getSeriesOptions(), getTournaments(), getRegistrations()])
+  const [series, { data: tournaments }, { data: registrations }] = await Promise.all([
+    getSeriesOptions(),
+    getTournaments(),
+    getRegistrations(),
+  ])
+  // Tournament filter: the teams entered in it
+  const ids = params.torneo ? (registrations ?? []).filter((r) => r.tournamentId === params.torneo).map((r) => r.teamId) : undefined
+  const { data: teams, error, total, totalPages } = await getTeamsPaginated(page, LIMIT, { q: params.q, ids })
 
   const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
   // "Serie 1 · División A (2026)" for each tournament the team is entered in
@@ -65,6 +72,14 @@ export default async function EquiposPage({ searchParams }: Props) {
         </TeamDialog>
       </div>
 
+      <Suspense>
+        <ListFilters
+          searchPlaceholder="Buscar equipo por nombre"
+          selects={[{ param: "torneo", allLabel: "Todos los torneos", options: tournamentOptions(tournaments ?? [], series) }]}
+          resultLabel={`${total} ${total === 1 ? "equipo" : "equipos"}`}
+        />
+      </Suspense>
+
       <div className="rounded-xl border border-border">
         <Table>
           <TableHeader>
@@ -79,7 +94,7 @@ export default async function EquiposPage({ searchParams }: Props) {
             {teams.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                  No hay equipos. Creá el primero.
+                  {params.q || params.torneo ? "Ningún equipo coincide con la búsqueda." : "No hay equipos. Creá el primero."}
                 </TableCell>
               </TableRow>
             )}

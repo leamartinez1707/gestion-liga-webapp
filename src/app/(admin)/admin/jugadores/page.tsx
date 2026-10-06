@@ -2,6 +2,11 @@ import { Suspense } from "react"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { getPlayersPaginated } from "@/lib/db/players"
 import { getTeams } from "@/lib/db/teams"
+import { getTournaments } from "@/lib/db/tournaments"
+import { getRegistrations } from "@/lib/db/registrations"
+import { getSeriesOptions } from "@/lib/db/series"
+import { tournamentOptions } from "@/lib/scope"
+import { ListFilters } from "@/components/admin/list-filters"
 import { createPlayerAction, updatePlayerAction, deletePlayerAction } from "@/lib/actions/admin"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -13,18 +18,29 @@ import { Pagination } from "@/components/ui/pagination"
 const LIMIT = 10
 const positionLabels: Record<string, string> = { arquero: "Arquero", defensa: "Defensa", mediocampista: "Mediocampista", delantero: "Delantero" }
 
-interface Props { searchParams: Promise<{ page?: string }> }
+interface Props { searchParams: Promise<{ page?: string; q?: string; equipo?: string; torneo?: string; estado?: string }> }
 
 export default async function JugadoresPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: players, error, totalPages }, { data: teams }] = await Promise.all([
-    getPlayersPaginated(page, LIMIT),
+  const [{ data: teams }, { data: tournaments }, { data: registrations }, series] = await Promise.all([
     getTeams(),
+    getTournaments(),
+    getRegistrations(),
+    getSeriesOptions(),
   ])
+  const teamsList = teams ?? []
+  // Team and tournament filters narrow the teams; both together intersect
+  let teamIds: string[] | undefined = params.equipo ? [params.equipo] : undefined
+  if (params.torneo) {
+    const inTournament = new Set((registrations ?? []).filter((r) => r.tournamentId === params.torneo).map((r) => r.teamId))
+    teamIds = (teamIds ?? [...inTournament]).filter((id) => inTournament.has(id))
+  }
+  const active = params.estado === "activos" ? true : params.estado === "inactivos" ? false : undefined
+  const { data: players, error, total, totalPages } = await getPlayersPaginated(page, LIMIT, { q: params.q, teamIds, active })
+  const filtering = !!(params.q || params.equipo || params.torneo || params.estado)
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
-  const teamsList = teams ?? []
   const teamMap = new Map(teamsList.map((t) => [t.id, t]))
 
   return (
@@ -35,11 +51,22 @@ export default async function JugadoresPage({ searchParams }: Props) {
           <Button className="gap-1.5"><Plus className="h-4 w-4" />Nuevo Jugador</Button>
         </PlayerDialog>
       </div>
+      <Suspense>
+        <ListFilters
+          searchPlaceholder="Buscar jugador por nombre"
+          selects={[
+            { param: "equipo", allLabel: "Todos los equipos", options: [...teamsList].sort((a, b) => a.name.localeCompare(b.name)).map((t) => ({ value: t.id, label: t.name })) },
+            { param: "torneo", allLabel: "Todos los torneos", options: tournamentOptions(tournaments ?? [], series) },
+            { param: "estado", allLabel: "Activos e inactivos", options: [{ value: "activos", label: "Activos" }, { value: "inactivos", label: "Inactivos / refuerzos" }] },
+          ]}
+          resultLabel={`${total} ${total === 1 ? "jugador" : "jugadores"}`}
+        />
+      </Suspense>
       <div className="rounded-xl border border-border">
         <Table>
           <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Equipo</TableHead><TableHead>Posición</TableHead><TableHead>N°</TableHead><TableHead className="w-24 text-right">Acciones</TableHead></TableRow></TableHeader>
           <TableBody>
-            {players.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No hay jugadores.</TableCell></TableRow>}
+            {players.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">{filtering ? "Ningún jugador coincide con la búsqueda." : "No hay jugadores."}</TableCell></TableRow>}
             {players.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.name}</TableCell>

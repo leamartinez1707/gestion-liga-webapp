@@ -1,19 +1,35 @@
+import { likeTerm } from "@/lib/db/filters"
 import type { NewsArticle, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
 /** Admin listing: uses the session client so staff also see drafts (RLS). */
+export interface ArticleFilter {
+  q?: string
+  /** "general" = news for the whole league (no series) */
+  seriesId?: string
+  published?: boolean
+}
+
 export async function getArticlesPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: ArticleFilter = {}
 ): Promise<PaginatedResult<ArticleRow>> {
   try {
     const supabase = await createClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("news_articles")
       .select("*", { count: "exact" })
+    const term = likeTerm(filter.q)
+    if (term) query = query.ilike("title", term)
+    if (filter.seriesId === "general") query = query.is("series_id", null)
+    else if (filter.seriesId) query = query.eq("series_id", filter.seriesId)
+    if (filter.published !== undefined) query = query.eq("published", filter.published)
+
+    const { data, error, count } = await query
       .order("date", { ascending: false })
       .range(from, to)
 

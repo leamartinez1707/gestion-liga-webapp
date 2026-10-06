@@ -133,7 +133,7 @@ export type Database = {
         ]
       }
       players: {
-        Row: {
+        Row: { search_name: string | null;
           active: boolean | null; created_at: string | null; id: string; name: string; number: number | null
           photo_url: string | null; position: string | null; team_id: string | null
         }
@@ -218,7 +218,7 @@ export type Database = {
         ]
       }
       teams: {
-        Row: {
+        Row: { search_name: string | null;
           assistant_coach: string | null; category: string | null; coach: string | null; created_at: string | null
           division_id: string | null; id: string; name: string; series_id: string | null; shield_url: string | null
           short_name: string; tournament_id: string | null

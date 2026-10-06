@@ -1,18 +1,33 @@
 import type { Sanction, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
+export interface SanctionFilter {
+  playerIds?: string[]
+  ids?: string[]
+  cardType?: string
+}
+
 export async function getSanctionsPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: SanctionFilter = {}
 ): Promise<PaginatedResult<SanctionWithDetails>> {
   try {
+    // Filtering by an empty set (e.g. a search with no match) finds nothing
+    if (filter.ids && filter.ids.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
+    if (filter.playerIds && filter.playerIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("sanctions")
       .select(`*, player:player_id(name, team_id), match:match_id(home_team_id, away_team_id, home_score, away_score, matchday)`, { count: "exact" })
+    if (filter.playerIds) query = query.in("player_id", filter.playerIds)
+    if (filter.ids) query = query.in("id", filter.ids)
+    if (filter.cardType) query = query.eq("card_type", filter.cardType)
+
+    const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .range(from, to)
 

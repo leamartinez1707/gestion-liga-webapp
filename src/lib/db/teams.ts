@@ -1,6 +1,9 @@
 import type { Team, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
-import { fetchAll } from "./fetch-all"
+import { isUuid } from "./ids"
+import { fetchAll, fetchAllIn } from "./fetch-all"
+
+const TEAM_COLUMNS = "id, name, short_name, shield_url, category, series_id, division_id, coach, assistant_coach, tournament_id"
 
 export async function getTeamsPaginated(
   page = 1,
@@ -34,7 +37,7 @@ export async function getTeamsByTournament(tournamentId: string): Promise<{ data
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await fetchAll((from, to) =>
-      supabase.from("teams").select("*").eq("tournament_id", tournamentId).order("name", { ascending: true }).order("id").range(from, to)
+      supabase.from("teams").select(TEAM_COLUMNS).eq("tournament_id", tournamentId).order("name", { ascending: true }).order("id").range(from, to)
     )
     if (error) return { data: null, error }
     return { data: data.map(mapRow), error: null }
@@ -47,7 +50,23 @@ export async function getTeams(): Promise<{ data: Team[] | null; error: string |
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await fetchAll((from, to) =>
-      supabase.from("teams").select("*").order("created_at", { ascending: false }).order("id").range(from, to)
+      supabase.from("teams").select(TEAM_COLUMNS).order("created_at", { ascending: false }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
+  } catch {
+    return { data: null, error: "No se pudo conectar con la base de datos." }
+  }
+}
+
+/** Only these teams (e.g. the ones that appear on a page). */
+export async function getTeamsByIds(ids: string[]): Promise<{ data: Team[] | null; error: string | null }> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return { data: [], error: null }
+  try {
+    const supabase = createReadOnlyClient()
+    const { data, error } = await fetchAllIn(unique, (ids, from, to) =>
+      supabase.from("teams").select(TEAM_COLUMNS).in("id", ids).order("name").order("id").range(from, to)
     )
     if (error) return { data: null, error }
     return { data: data.map(mapRow), error: null }
@@ -57,6 +76,8 @@ export async function getTeams(): Promise<{ data: Team[] | null; error: string |
 }
 
 export async function getTeam(id: string): Promise<{ data: Team | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase

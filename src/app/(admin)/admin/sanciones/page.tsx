@@ -3,8 +3,8 @@ import { Plus, Trash2 } from "lucide-react"
 import { getSanctionsPaginated } from "@/lib/db/sanctions"
 import { getTeams } from "@/lib/db/teams"
 import { getPlayers } from "@/lib/db/players"
-import { getMatches } from "@/lib/db/matches"
-import { activeSuspensions } from "@/lib/suspensions"
+import { getMatches, getNextMatchdays } from "@/lib/db/matches"
+import { activeSuspensions, sanctionTournamentIds } from "@/lib/suspensions"
 import { createSanctionAction, deleteSanctionAction } from "@/lib/actions/admin"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -24,8 +24,10 @@ export default async function SancionesPage({ searchParams }: Props) {
     getSanctionsPaginated(page, LIMIT),
     getTeams(),
     getPlayers(),
-    getMatches(),
+    // A card comes from a match that was played: the dialog only lists those
+    getMatches({ statuses: ["finished", "ongoing"] }),
   ])
+  const nextMatchdays = await getNextMatchdays(sanctionTournamentIds(sanctions))
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
 
@@ -52,7 +54,7 @@ export default async function SancionesPage({ searchParams }: Props) {
                   {s.matchesSuspended > 0 ? (
                     <>
                       {s.matchesSuspended} {s.matchesSuspended === 1 ? "fecha" : "fechas"}
-                      {activeSuspensions([s], matches ?? []).has(s.playerId) ? (
+                      {activeSuspensions([s], nextMatchdays).has(s.playerId) ? (
                         <Badge variant="destructive" className="ml-2 text-[10px]">Vigente</Badge>
                       ) : s.matchId ? (
                         <Badge variant="outline" className="ml-2 text-[10px]">Cumplida</Badge>

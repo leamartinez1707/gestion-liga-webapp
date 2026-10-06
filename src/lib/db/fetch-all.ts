@@ -21,3 +21,21 @@ export async function fetchAll<T>(
     if (!data || data.length < PAGE_SIZE) return { data: rows, error: null }
   }
 }
+
+/** Ids per `.in()` filter: they travel in the URL, which has a size limit (~150 uuids ≈ 5.5 KB). */
+export const IN_CHUNK = 150
+
+/**
+ * fetchAll for a filter on a list of ids: splits the list in chunks of
+ * IN_CHUNK, reads them in parallel and joins the rows (order is per chunk).
+ */
+export async function fetchAllIn<T>(
+  ids: string[],
+  page: (ids: string[], from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<{ data: T[]; error: string | null }> {
+  const unique = [...new Set(ids)]
+  const parts: string[][] = []
+  for (let i = 0; i < unique.length; i += IN_CHUNK) parts.push(unique.slice(i, i + IN_CHUNK))
+  const results = await Promise.all(parts.map((part) => fetchAll<T>((from, to) => page(part, from, to))))
+  return { data: results.flatMap((r) => r.data), error: results.find((r) => r.error)?.error ?? null }
+}

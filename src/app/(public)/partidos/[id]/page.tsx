@@ -3,8 +3,8 @@ import { notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import type { Player, Team } from "@/lib/types"
-import { getMatch, getMatches } from "@/lib/db/matches"
-import { getTeams } from "@/lib/db/teams"
+import { getHeadToHead, getMatch } from "@/lib/db/matches"
+import { getTeamsByIds } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getPlayersByTeam } from "@/lib/db/players"
@@ -48,17 +48,18 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
   const { data: match } = await getMatch(id)
   if (!match) notFound()
 
-  const [{ data: teams }, { data: tournaments }, seriesOptions, { data: allMatches }, events, goalsByMatch, { data: sanctions }, { data: albums }, { data: articles }, { data: homePlayers }, { data: awayPlayers }, refereeName] =
+  const [{ data: teams }, { data: tournaments }, seriesOptions, headToHead, events, goalsByMatch, { data: sanctions }, { data: albums }, { data: articles }, { data: homePlayers }, { data: awayPlayers }, refereeName] =
     await Promise.all([
-      getTeams(),
+      getTeamsByIds([match.homeTeamId, match.awayTeamId]),
       getTournaments(),
       getSeriesOptions(),
-      getMatches(),
+      // Previous meetings between both teams (any tournament), straight from the DB
+      getHeadToHead(match.homeTeamId, match.awayTeamId, { excludeId: id, limit: 6 }),
       getMatchEvents(id),
       getGoalsByMatch([id]),
       getSanctions({ matchIds: [id] }),
       getAlbums({ matchIds: [id] }),
-      getArticles(),
+      getArticles({ matchId: id }),
       getPlayersByTeam(match.homeTeamId),
       getPlayersByTeam(match.awayTeamId),
       getMatchRefereeName(id),
@@ -130,19 +131,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
     { label: "Rojas", home: cardsOf(home?.id, "Roja"), away: cardsOf(away?.id, "Roja") },
   ]
 
-  // Previous meetings between both teams (any tournament)
-  const headToHead = (allMatches ?? [])
-    .filter(
-      (m) =>
-        m.id !== id &&
-        m.status === "finished" &&
-        ((m.homeTeamId === match.homeTeamId && m.awayTeamId === match.awayTeamId) ||
-          (m.homeTeamId === match.awayTeamId && m.awayTeamId === match.homeTeamId))
-    )
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 6)
-
-  const news = (articles ?? []).filter((a) => a.matchId === id)
+  const news = articles ?? []
   const album = (albums ?? []).find((a) => a.photoCount > 0)
 
   const played = match.status === "finished" || match.status === "ongoing"

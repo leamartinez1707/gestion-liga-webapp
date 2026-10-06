@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { CoverImage } from "@/components/cover-image"
 import { ArticleMatch } from "@/components/article-match"
 import { getMatch } from "@/lib/db/matches"
-import { getTeams } from "@/lib/db/teams"
+import { getTeamsByIds } from "@/lib/db/teams"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -43,14 +43,15 @@ export default async function ArticuloPage({
   }
 
   // Related reading: latest news of the same series (or general ones)
-  const [{ data: others }, { data: match }, { data: teams }] = await Promise.all([
-    getArticles(),
+  const [{ data: others }, { data: match }] = await Promise.all([
+    // 5: the article itself may be among them
+    getArticles({ seriesId: article.seriesId ?? undefined, limit: 5 }),
     article.matchId ? getMatch(article.matchId) : Promise.resolve({ data: null }),
-    article.matchId ? getTeams() : Promise.resolve({ data: null }),
   ])
+  const { data: teams } = match ? await getTeamsByIds([match.homeTeamId, match.awayTeamId]) : { data: null }
   const teamById = (id: string) => (teams ?? []).find((t) => t.id === id)
   const related = (others ?? [])
-    .filter((a) => a.id !== article.id && (!article.seriesId || !a.seriesId || a.seriesId === article.seriesId))
+    .filter((a) => a.id !== article.id)
     .slice(0, 4)
 
   const body = (

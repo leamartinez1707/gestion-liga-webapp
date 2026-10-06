@@ -1,5 +1,6 @@
 import type { Series, Division } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { isUuid } from "./ids"
 import { fetchAll } from "./fetch-all"
 import { buildSeriesOptions, type SeriesOption } from "@/lib/scope"
 
@@ -19,6 +20,8 @@ export async function getSeries(): Promise<{ data: Series[] | null; error: strin
 }
 
 export async function getSeriesById(id: string): Promise<{ data: Series | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase.from("series").select("*").eq("id", id).single()

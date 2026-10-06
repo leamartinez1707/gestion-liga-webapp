@@ -9,6 +9,9 @@ export interface SanctionLike {
   matchId: string | null
   matchesSuspended: number
   expiresAfterMatch: number | null
+  /** Tournament and matchday of the match the sanction comes from */
+  tournamentId: string | null
+  matchday: number | null
 }
 
 export interface ActiveSuspension {
@@ -17,7 +20,7 @@ export interface ActiveSuspension {
   untilMatchday: number
 }
 
-/** Next matchday still to be played in each tournament. */
+/** Next matchday still to be played in each tournament (see getNextMatchdays for the DB version). */
 export function nextMatchdays(matches: Match[]): Map<string, number> {
   const next = new Map<string, number>()
   for (const m of matches) {
@@ -28,26 +31,27 @@ export function nextMatchdays(matches: Match[]): Map<string, number> {
   return next
 }
 
+/** Tournaments the sanctions come from (to ask for their next matchday). */
+export function sanctionTournamentIds(sanctions: SanctionLike[]): string[] {
+  return [...new Set(sanctions.flatMap((s) => (s.tournamentId && s.matchesSuspended > 0 ? [s.tournamentId] : [])))]
+}
+
 /** playerId → suspension that applies to the next matchday of its tournament. */
 export function activeSuspensions(
   sanctions: SanctionLike[],
-  matches: Match[]
+  next: Map<string, number>
 ): Map<string, ActiveSuspension> {
-  const matchMap = new Map(matches.map((m) => [m.id, m]))
-  const next = nextMatchdays(matches)
   const active = new Map<string, ActiveSuspension>()
 
   for (const s of sanctions) {
-    if (!s.matchId || s.matchesSuspended <= 0) continue
-    const match = matchMap.get(s.matchId)
-    if (!match) continue
-    const until = s.expiresAfterMatch ?? match.matchday + s.matchesSuspended
-    const upcoming = next.get(match.tournamentId)
+    if (!s.matchId || s.matchesSuspended <= 0 || !s.tournamentId || s.matchday == null) continue
+    const until = s.expiresAfterMatch ?? s.matchday + s.matchesSuspended
+    const upcoming = next.get(s.tournamentId)
     if (upcoming === undefined || upcoming > until) continue
 
     const existing = active.get(s.playerId)
     if (!existing || until > existing.untilMatchday) {
-      active.set(s.playerId, { tournamentId: match.tournamentId, untilMatchday: until })
+      active.set(s.playerId, { tournamentId: s.tournamentId, untilMatchday: until })
     }
   }
   return active

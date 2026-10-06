@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { getTeams } from "@/lib/db/teams"
+import { getTeamsByIds } from "@/lib/db/teams"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getRegistrations } from "@/lib/db/registrations"
@@ -15,8 +15,12 @@ interface Props {
 export default async function EquiposPage({ searchParams }: Props) {
   const params = await searchParams
 
-  const [{ data: teams, error }, seriesOptions, { data: tournaments }, { data: registrations }] =
-    await Promise.all([getTeams(), getSeriesOptions(), getTournaments(), getRegistrations()])
+  const [seriesOptions, { data: tournaments }] = await Promise.all([getSeriesOptions(), getTournaments()])
+  const scope = resolveScope(seriesOptions, params.serie, params.div)
+  // Teams entered in the division's current tournament: only those are read
+  const currentTournament = tournamentsInScope(tournaments ?? [], scope)[0]
+  const { data: registrations } = await getRegistrations({ tournamentIds: currentTournament ? [currentTournament.id] : [] })
+  const { data: teams, error } = await getTeamsByIds((registrations ?? []).map((r) => r.teamId))
 
   if (error) {
     return (
@@ -26,9 +30,6 @@ export default async function EquiposPage({ searchParams }: Props) {
     )
   }
 
-  const scope = resolveScope(seriesOptions, params.serie, params.div)
-  // Teams entered in the division's current tournament
-  const currentTournament = tournamentsInScope(tournaments ?? [], scope)[0]
   const teamsList = teamsInTournament(teams ?? [], registrations ?? [], currentTournament?.id)
     .sort((a, b) => a.name.localeCompare(b.name))
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")

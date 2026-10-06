@@ -1,6 +1,7 @@
 import type { Registration } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
-import { fetchAll } from "./fetch-all"
+import { isUuid } from "./ids"
+import { fetchAll, fetchAllIn } from "./fetch-all"
 
 function mapRow(row: { id: string; tournament_id: string; team_id: string; withdrawn_at: string | null }): Registration {
   return {
@@ -12,13 +13,15 @@ function mapRow(row: { id: string; tournament_id: string; team_id: string; withd
 }
 
 export async function getRegistrations(
-  filter: { tournamentId?: string; teamId?: string } = {}
+  filter: { tournamentId?: string; tournamentIds?: string[]; teamId?: string } = {}
 ): Promise<{ data: Registration[] | null; error: string | null }> {
+  if (filter.tournamentIds?.length === 0) return { data: [], error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await fetchAll((from, to) => {
       let query = supabase.from("registrations").select("id, tournament_id, team_id, withdrawn_at")
       if (filter.tournamentId) query = query.eq("tournament_id", filter.tournamentId)
+      if (filter.tournamentIds) query = query.in("tournament_id", filter.tournamentIds)
       if (filter.teamId) query = query.eq("team_id", filter.teamId)
       return query.order("id").range(from, to)
     })
@@ -30,6 +33,8 @@ export async function getRegistrations(
 }
 
 export async function getRegistration(id: string): Promise<{ data: Registration | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase
@@ -52,11 +57,11 @@ export async function getRosters(
   if (registrationIds.length === 0) return { data: rosters, error: null }
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await fetchAll((from, to) =>
+    const { data, error } = await fetchAllIn(registrationIds, (ids, from, to) =>
       supabase
         .from("registration_players")
         .select("registration_id, player_id")
-        .in("registration_id", registrationIds)
+        .in("registration_id", ids)
         .order("registration_id")
         .order("player_id")
         .range(from, to)

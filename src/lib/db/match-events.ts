@@ -1,6 +1,6 @@
 import type { Match, MatchEvent } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
-import { fetchAll } from "./fetch-all"
+import { fetchAllIn } from "./fetch-all"
 
 export async function getMatchEvents(matchId: string): Promise<MatchEvent[]> {
   try {
@@ -31,8 +31,8 @@ export async function getMatchIdsWithEvents(matchIds: string[]): Promise<Set<str
   try {
     const supabase = createReadOnlyClient()
     // One row per event: a season's matches already have more than the API row cap
-    const { data } = await fetchAll((from, to) =>
-      supabase.from("match_events").select("match_id").in("match_id", matchIds).order("id").range(from, to)
+    const { data } = await fetchAllIn(matchIds, (ids, from, to) =>
+      supabase.from("match_events").select("match_id").in("match_id", ids).order("id").range(from, to)
     )
     return new Set(data.map((r) => r.match_id))
   } catch {

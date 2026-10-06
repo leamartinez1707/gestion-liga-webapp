@@ -1,6 +1,7 @@
 import type { Photo, PhotoAlbum } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { fetchAll } from "./fetch-all"
+import { isUuid } from "./ids"
 
 export const GALLERY_BUCKET = "public-images"
 
@@ -53,21 +54,34 @@ function mapPhoto(row: {
  * `asStaff` from the admin to read drafts with the session.
  */
 export async function getAlbums(
-  filter: { matchIds?: string[]; asStaff?: boolean } = {}
+  filter: {
+    matchIds?: string[]
+    asStaff?: boolean
+    /** Albums of this series plus the general ones (no series) */
+    seriesId?: string
+    /** Newest first, at most this many */
+    limit?: number
+  } = {}
 ): Promise<{ data: PhotoAlbum[] | null; error: string | null }> {
+  const matchIds = filter.matchIds
+  if (matchIds?.length === 0) return { data: [], error: null }
+  if (filter.seriesId !== undefined && !isUuid(filter.seriesId)) return { data: [], error: null }
   try {
     const supabase = filter.asStaff ? await createClient() : createReadOnlyClient()
-    const matchIds = filter.matchIds
-    if (matchIds?.length === 0) return { data: [], error: null }
-    const { data, error } = await fetchAll((from, to) => {
-      let query = supabase.from("photo_albums").select("*, photos(count)")
+    const build = () => {
+      let query = supabase
+        .from("photo_albums")
+        .select("id, title, description, date, series_id, match_id, cover_url, published, photos(count)")
       if (matchIds) query = query.in("match_id", matchIds)
-      return query
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("id")
-        .range(from, to)
-    })
+      if (filter.seriesId) query = query.or(`series_id.is.null,series_id.eq.${filter.seriesId}`)
+      return query.order("date", { ascending: false }).order("created_at", { ascending: false }).order("id")
+    }
+    const { data, error } =
+      filter.limit !== undefined
+        ? await build()
+            .limit(filter.limit)
+            .then((r) => ({ data: r.data ?? [], error: r.error?.message ?? null }))
+        : await fetchAll((from, to) => build().range(from, to))
     if (error) return { data: null, error }
     return { data: (data as AlbumRow[]).map(mapAlbum), error: null }
   } catch {
@@ -79,6 +93,8 @@ export async function getAlbum(
   id: string,
   asStaff = false
 ): Promise<{ data: PhotoAlbum | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = asStaff ? await createClient() : createReadOnlyClient()
     const { data, error } = await supabase

@@ -1,5 +1,6 @@
 import type { Tournament, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { isUuid } from "./ids"
 import { fetchAll } from "./fetch-all"
 
 export async function getTournamentsPaginated(
@@ -44,6 +45,8 @@ export async function getTournaments(): Promise<{ data: Tournament[] | null; err
 }
 
 export async function getTournament(id: string): Promise<{ data: Tournament | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase

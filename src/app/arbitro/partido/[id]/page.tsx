@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react"
 
 import type { Player } from "@/lib/types"
 import { requireMatchEditor } from "@/lib/auth"
-import { getMatch, getMatches } from "@/lib/db/matches"
+import { getMatch, getNextMatchdays } from "@/lib/db/matches"
 import { getTeam } from "@/lib/db/teams"
 import { getPlayersByTeam } from "@/lib/db/players"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
@@ -29,7 +29,7 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
   const { data: match } = await getMatch(id)
   if (!match) notFound()
 
-  const [{ data: home }, { data: away }, { data: homePlayers }, { data: awayPlayers }, { data: registrations }, events, { data: allMatches }, { data: sanctions }] =
+  const [{ data: home }, { data: away }, { data: homePlayers }, { data: awayPlayers }, { data: registrations }, events, nextMatchdays, { data: sanctions }] =
     await Promise.all([
       getTeam(match.homeTeamId),
       getTeam(match.awayTeamId),
@@ -37,7 +37,7 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
       getPlayersByTeam(match.awayTeamId),
       getRegistrations({ tournamentId: match.tournamentId }),
       getMatchEvents(id),
-      getMatches(match.tournamentId),
+      getNextMatchdays([match.tournamentId]),
       getSanctions({ tournamentIds: [match.tournamentId] }),
     ])
   if (!home || !away) notFound()
@@ -52,7 +52,7 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
     return list.sort((a, b) => a.number - b.number || a.name.localeCompare(b.name))
   }
 
-  const suspended = activeSuspensions(sanctions ?? [], allMatches ?? [])
+  const suspended = activeSuspensions(sanctions ?? [], nextMatchdays)
 
   return (
     <div className="flex flex-col gap-4">

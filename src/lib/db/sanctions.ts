@@ -1,6 +1,19 @@
 import type { Sanction, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { fetchAll } from "./fetch-all"
+import { isUuid } from "./ids"
+
+const SANCTION_DETAILS = `
+  id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
+  player:player_id (name),
+  match:match_id (matchday, tournament_id)
+`
+// Same columns, but only sanctions whose match passes the filters on `match`
+const SANCTION_DETAILS_INNER = `
+  id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
+  player:player_id (name),
+  match:match_id!inner (matchday, tournament_id, home_team_id, away_team_id)
+`
 
 export async function getSanctionsPaginated(
   page = 1,
@@ -13,7 +26,7 @@ export async function getSanctionsPaginated(
 
     const { data, error, count } = await supabase
       .from("sanctions")
-      .select(`*, player:player_id(name, team_id), match:match_id(home_team_id, away_team_id, home_score, away_score, matchday)`, { count: "exact" })
+      .select(SANCTION_DETAILS, { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to)
 
@@ -45,6 +58,9 @@ export interface SanctionRow {
 }
 
 export interface SanctionWithDetails extends SanctionRow {
+  /** Tournament and matchday of the match it comes from */
+  tournamentId: string | null
+  matchday: number | null
   playerName: string
   teamName: string
   matchLabel: string | null
@@ -136,18 +152,6 @@ export async function syncMatchRedCards(
 // CRUD operations
 // ---------------------------------------------------------------------------
 
-const SANCTION_DETAILS = `
-  *,
-  player:player_id (name, team_id),
-  match:match_id (home_team_id, away_team_id, home_score, away_score, matchday)
-`
-// Same columns, but only sanctions whose match passes the filters on `match`
-const SANCTION_DETAILS_INNER = `
-  *,
-  player:player_id (name, team_id),
-  match:match_id!inner (home_team_id, away_team_id, home_score, away_score, matchday, tournament_id)
-`
-
 /**
  * Sanctions with player and match, newest first. Pass a filter so the query
  * only returns what the page needs:
@@ -162,6 +166,8 @@ export async function getSanctions(
   if (filter.playerIds?.length === 0 || filter.matchIds?.length === 0 || filter.tournamentIds?.length === 0) {
     return { data: [], error: null }
   }
+  // Goes inside an .or() string
+  if (filter.teamId !== undefined && !isUuid(filter.teamId)) return { data: [], error: null }
   try {
     const supabase = createReadOnlyClient()
     const byMatch = !!filter.tournamentIds || !!filter.teamId
@@ -183,15 +189,13 @@ export async function getSanctions(
 }
 
 export async function getSanction(id: string): Promise<{ data: SanctionWithDetails | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase
       .from("sanctions")
-      .select(`
-        *,
-        player:player_id (name, team_id),
-        match:match_id (home_team_id, away_team_id, home_score, away_score, matchday)
-      `)
+      .select(SANCTION_DETAILS)
       .eq("id", id)
       .single()
     if (error) return { data: null, error: error.message }
@@ -268,6 +272,8 @@ function mapRowWithDetails(row: Record<string, unknown>): SanctionWithDetails {
     matchDate: (row.match_date as string) ?? null,
     matchesSuspended: (row.matches_suspended as number) ?? 0,
     expiresAfterMatch: (row.expires_after_match as number) ?? null,
+    tournamentId: (match?.tournament_id as string) ?? null,
+    matchday: (match?.matchday as number) ?? null,
     playerName: (player?.name as string) ?? "Desconocido",
     teamName: "", // Will be filled from teams data
     matchLabel: match

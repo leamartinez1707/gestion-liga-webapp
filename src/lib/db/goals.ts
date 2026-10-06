@@ -1,5 +1,5 @@
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
-import { fetchAll } from "./fetch-all"
+import { fetchAllIn } from "./fetch-all"
 
 export interface GoalScorer {
   playerId: string
@@ -86,8 +86,8 @@ export async function getGoalsByMatch(
   if (matchIds.length === 0) return byMatch
   try {
     const supabase = createReadOnlyClient()
-    const { data } = await fetchAll((from, to) =>
-      supabase.from("goals").select("match_id, player_id, goals").in("match_id", matchIds).order("id").range(from, to)
+    const { data } = await fetchAllIn(matchIds, (ids, from, to) =>
+      supabase.from("goals").select("match_id, player_id, goals").in("match_id", ids).order("id").range(from, to)
     )
     for (const row of data) {
       if (!row.match_id || !row.player_id) continue

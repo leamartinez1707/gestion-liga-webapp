@@ -8,11 +8,11 @@ export interface MatchOption {
 
 /** Played or scheduled matches, newest first, to link an album or a news article. */
 export async function getMatchOptions(): Promise<MatchOption[]> {
-  const { data: matches } = await getMatches()
+  const { data: matches } = await getMatches({
+    statuses: ["scheduled", "ongoing", "finished", "postponed"],
+    latest: 200,
+  })
   return (matches ?? [])
-    .filter((m) => m.status !== "cancelled")
-    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-    .slice(0, 200)
     .map((m) => ({
       value: m.id,
       label: m.status === "finished"

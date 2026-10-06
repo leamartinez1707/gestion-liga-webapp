@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react"
 import { getArticlesPaginated } from "@/lib/db/news"
 import { getSeries } from "@/lib/db/series"
+import { getMatchOptions } from "@/lib/db/match-options"
 import { createArticleAction, updateArticleAction, deleteArticleAction, publishArticleFormAction, unpublishArticleFormAction } from "@/lib/actions/admin"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -17,9 +18,10 @@ interface Props { searchParams: Promise<{ page?: string }> }
 export default async function NoticiasPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: articles, error, totalPages }, { data: seriesList }] = await Promise.all([
+  const [{ data: articles, error, totalPages }, { data: seriesList }, matches] = await Promise.all([
     getArticlesPaginated(page, LIMIT),
     getSeries(),
+    getMatchOptions(),
   ])
   const series = seriesList ?? []
 
@@ -29,7 +31,7 @@ export default async function NoticiasPage({ searchParams }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold">Noticias</h1><p className="mt-1 text-sm text-muted-foreground">Gestioná las noticias de la liga</p></div>
-        <ArticleDialog action={createArticleAction} series={series}>
+        <ArticleDialog action={createArticleAction} series={series} matches={matches}>
           <Button className="gap-1.5"><Plus className="h-4 w-4" />Nueva Noticia</Button>
         </ArticleDialog>
       </div>
@@ -48,7 +50,7 @@ export default async function NoticiasPage({ searchParams }: Props) {
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <form action={a.published ? unpublishArticleFormAction : publishArticleFormAction}><input type="hidden" name="id" value={a.id} /><Button variant="ghost" size="icon-sm">{a.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></form>
-                    <ArticleDialog action={updateArticleAction.bind(null, a.id)} article={a} series={series}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></ArticleDialog>
+                    <ArticleDialog action={updateArticleAction.bind(null, a.id)} article={a} series={series} matches={matches}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></ArticleDialog>
                     <DeleteConfirmDialog itemName={a.title} onConfirm={deleteArticleAction.bind(null, a.id)}><Button variant="ghost" size="icon-sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></DeleteConfirmDialog>
                   </div>
                 </TableCell>

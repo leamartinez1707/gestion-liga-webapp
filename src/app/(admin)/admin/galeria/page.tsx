@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CoverImage } from "@/components/cover-image"
 import { AlbumDialog } from "./album-dialog"
-import { getMatchOptions } from "./match-options"
+import { getMatchOptions } from "@/lib/db/match-options"
 
 export default async function GaleriaAdminPage() {
   const [{ data: albums, error }, { data: series }, matches] = await Promise.all([

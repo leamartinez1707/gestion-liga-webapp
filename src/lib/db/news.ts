@@ -34,10 +34,12 @@ export interface ArticleRow {
   id: string
   title: string
   excerpt: string | null
+  author: string | null
   content: string | null
   imageUrl: string | null
   category: string | null
   seriesId: string | null
+  matchId: string | null
   published: boolean
   date: string
 }
@@ -82,10 +84,12 @@ export async function createArticle(
   data: {
     title: string
     excerpt?: string | null
+    author?: string | null
     content?: string | null
     imageUrl?: string | null
     category?: string | null
     seriesId?: string | null
+    matchId?: string | null
     published?: boolean
   }
 ): Promise<{ error?: string; id?: string }> {
@@ -95,10 +99,12 @@ export async function createArticle(
       .insert({
         title: data.title,
         excerpt: data.excerpt ?? null,
+        author: data.author ?? null,
         content: data.content ?? null,
         image_url: data.imageUrl ?? null,
         category: data.category ?? null,
         series_id: data.seriesId ?? null,
+        match_id: data.matchId ?? null,
         published: data.published ?? false,
         date: new Date().toISOString().split("T")[0],
       })
@@ -117,10 +123,12 @@ export async function updateArticle(
   data: Partial<{
     title: string
     excerpt: string | null
+    author: string | null
     content: string | null
     imageUrl: string | null
     category: string | null
     seriesId: string | null
+    matchId: string | null
     published: boolean
   }>
 ): Promise<{ error?: string }> {
@@ -129,10 +137,12 @@ export async function updateArticle(
     const payload: Record<string, unknown> = {}
     if (data.title !== undefined) payload.title = data.title
     if (data.excerpt !== undefined) payload.excerpt = data.excerpt
+    if (data.author !== undefined) payload.author = data.author
     if (data.content !== undefined) payload.content = data.content
     if (data.imageUrl !== undefined) payload.image_url = data.imageUrl
     if (data.category !== undefined) payload.category = data.category
     if (data.seriesId !== undefined) payload.series_id = data.seriesId
+    if (data.matchId !== undefined) payload.match_id = data.matchId
     if (data.published !== undefined) payload.published = data.published
 
     const { error } = await (supabase.from("news_articles") as any)
@@ -177,10 +187,12 @@ function mapRow(row: Record<string, unknown>): ArticleRow {
     id: row.id as string,
     title: row.title as string,
     excerpt: (row.excerpt as string) ?? null,
+    author: (row.author as string) ?? null,
     content: (row.content as string) ?? null,
     imageUrl: (row.image_url as string) ?? null,
     category: (row.category as string) ?? null,
     seriesId: (row.series_id as string) ?? null,
+    matchId: (row.match_id as string) ?? null,
     published: (row.published as boolean) ?? false,
     date: (row.date as string) ?? "",
   }

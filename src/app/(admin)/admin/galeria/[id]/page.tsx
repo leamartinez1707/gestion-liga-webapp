@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { AlbumDialog } from "../album-dialog"
-import { getMatchOptions } from "../match-options"
+import { getMatchOptions } from "@/lib/db/match-options"
 import { PhotoUploader } from "./photo-uploader"
 import { AdminPhotoGrid } from "./photo-grid"
 

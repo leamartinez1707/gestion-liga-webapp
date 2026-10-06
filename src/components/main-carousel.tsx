@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
-import type { NewsArticle } from "@/lib/types"
+import type { Match, NewsArticle } from "@/lib/types"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -10,11 +10,15 @@ import { CoverImage } from "@/components/cover-image"
 
 interface MainCarouselProps {
   articles: NewsArticle[]
+  matches?: Match[]
+  getTeamName: (id: string) => string
   formatDate: (date: string) => string
 }
 
 export function MainCarousel({
   articles,
+  matches,
+  getTeamName,
   formatDate,
 }: MainCarouselProps) {
   const [current, setCurrent] = useState(0)
@@ -37,6 +41,9 @@ export function MainCarousel({
   // The list changes with the selected series: keep the index in range
   const index = current % total
   const article = articles[index]
+  const match = article.matchId
+    ? matches?.find((m) => m.id === article.matchId && m.status === "finished")
+    : undefined
 
   return (
     <div className="relative group">
@@ -55,7 +62,16 @@ export function MainCarousel({
               {article.title}
             </h3>
 
-            {article.excerpt && (
+            {match && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-white md:mt-3 md:gap-3">
+                <span className="text-xs font-medium md:text-sm">{getTeamName(match.homeTeamId)}</span>
+                <span className="shrink-0 text-lg font-bold tabular-nums md:text-2xl">{match.homeScore ?? 0}</span>
+                <span className="shrink-0 text-xs text-white/60">-</span>
+                <span className="shrink-0 text-lg font-bold tabular-nums md:text-2xl">{match.awayScore ?? 0}</span>
+                <span className="text-xs font-medium md:text-sm">{getTeamName(match.awayTeamId)}</span>
+              </div>
+            )}
+            {!match && article.excerpt && (
               <p className="mt-2 hidden max-w-2xl text-sm text-white/80 line-clamp-2 md:block">{article.excerpt}</p>
             )}
 

@@ -128,6 +128,8 @@ export function HomePageClient({
           {seriesNews.length > 0 ? (
             <MainCarousel
               articles={seriesNews.slice(0, 5)}
+              matches={matches}
+              getTeamName={getTeamName}
               formatDate={formatDate}
             />
           ) : (
@@ -145,7 +147,7 @@ export function HomePageClient({
               </h2>
               <ScrollableBanners
                 articles={news}
-                matches={finishedMatches}
+                matches={matches}
                 teams={teams}
                 getTeamName={getTeamName}
                 formatDate={formatDate}

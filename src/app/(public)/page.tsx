@@ -22,6 +22,7 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
     date: row.date,
     category: row.category ?? "General",
     seriesId: row.seriesId ?? undefined,
+    matchId: row.matchId ?? undefined,
     published: row.published,
   }
 }

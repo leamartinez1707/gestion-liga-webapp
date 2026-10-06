@@ -119,6 +119,8 @@ export interface NewsArticle {
   date: string
   category: string
   seriesId?: string
+  /** Match the article is about: its result is shown with the story */
+  matchId?: string
   published?: boolean
 }
 

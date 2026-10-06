@@ -7,10 +7,11 @@ import { createClient } from "@/lib/supabase/server"
  */
 export async function bulkCreateMatches(
   tournamentId: string,
-  teamIds: string[]
+  teamIds: string[],
+  options: { doubleRound?: boolean } = {}
 ): Promise<{ error?: string; count?: number }> {
   try {
-    const fixtures = generateRoundRobin(teamIds)
+    const fixtures = generateRoundRobin(teamIds, options)
     const supabase = await createClient()
 
     const rows = fixtures.map((f) => ({
@@ -21,7 +22,7 @@ export async function bulkCreateMatches(
       status: "scheduled" as const,
     }))
 
-    const { error } = await (supabase.from("matches") as any).insert(rows)
+    const { error } = await supabase.from("matches").insert(rows)
     if (error) return { error: error.message }
     return { count: rows.length }
   } catch {

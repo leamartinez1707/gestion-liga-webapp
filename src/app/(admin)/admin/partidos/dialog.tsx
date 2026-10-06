@@ -59,6 +59,10 @@ interface MatchDialogProps {
   players: Player[]
   /** Preselect the tournament when adding a match from a tournament page */
   defaultTournamentId?: string
+  /** Saved scorers of this match (edit mode) */
+  existingGoals?: { playerId: string; goals: number }[]
+  /** Players with a red card in this match (edit mode) */
+  redCardPlayerIds?: string[]
 }
 
 export function MatchDialog({
@@ -70,6 +74,8 @@ export function MatchDialog({
   registrations,
   players,
   defaultTournamentId,
+  existingGoals = [],
+  redCardPlayerIds = [],
 }: MatchDialogProps) {
   const [open, setOpen] = useState(false)
   const [tournamentId, setTournamentId] = useState(
@@ -102,6 +108,15 @@ export function MatchDialog({
     registrations.filter((r) => r.tournamentId === tournamentId && !r.withdrawnAt).map((r) => r.teamId)
   )
   const teams = tournamentId ? allTeams.filter((t) => registeredIds.has(t.id)) : allTeams
+  const matchTeams = [homeTeamId, awayTeamId]
+    .map((id) => allTeams.find((t) => t.id === id))
+    .filter((t) => t !== undefined)
+
+  // Saved scorers + a few empty rows
+  const goalRows = [
+    ...existingGoals,
+    ...Array.from({ length: Math.max(3, 5 - existingGoals.length) }, () => ({ playerId: "none", goals: 1 })),
+  ]
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -344,19 +359,26 @@ export function MatchDialog({
               <p className="text-xs text-muted-foreground">
                 Seleccioná los jugadores que recibieron tarjeta roja
               </p>
+              <input type="hidden" name="redCardsField" value="1" />
               <select
                 multiple
                 name="redCards"
+                defaultValue={redCardPlayerIds}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[80px]"
               >
-                {players
-                  .filter((p) => p.teamId === homeTeamId || p.teamId === awayTeamId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} (#{p.number}) — {teams.find((t) => t.id === p.teamId)?.shortName}
-                    </option>
-                  ))}
+                {matchTeams.map((team) => (
+                  <optgroup key={team.id} label={team.name}>
+                    {players.filter((p) => p.teamId === team.id).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}{p.number > 0 ? ` (#${p.number})` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                Ctrl/Cmd + clic para elegir varios. Cada roja suma 1 fecha de suspensión; para cambiarla, editala en Sanciones.
+              </p>
             </div>
           )}
 
@@ -368,34 +390,39 @@ export function MatchDialog({
                 Registrar quiénes hicieron los goles y cuántos
               </p>
               <div className="space-y-2">
-                {[0, 1, 2, 3, 4].map((i) => (
+                {goalRows.map((row, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <select
                       name="goalPlayer"
-                      defaultValue="none"
+                      defaultValue={row.playerId}
                       className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
                     >
                       <option value="none">— Sin jugador —</option>
-                      {players
-                        .filter((p) => p.teamId === homeTeamId || p.teamId === awayTeamId)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (#{p.number})
-                          </option>
-                        ))}
+                      {matchTeams.map((team) => (
+                        <optgroup key={team.id} label={team.name}>
+                          {players.filter((p) => p.teamId === team.id).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}{p.number > 0 ? ` (#${p.number})` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
                     </select>
                     <input
                       type="number"
                       name="goalCount"
-                      defaultValue={i === 0 ? 1 : 0}
+                      defaultValue={row.goals}
                       min={0}
-                      max={10}
+                      max={30}
                       className="w-16 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-center"
-                      placeholder="Goles"
+                      aria-label="Goles"
                     />
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Para quitar un goleador elegí &quot;Sin jugador&quot;. Pueden ser menos que el resultado (goles en contra).
+              </p>
             </div>
           )}
 

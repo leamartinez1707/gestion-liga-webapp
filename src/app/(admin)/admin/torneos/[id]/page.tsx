@@ -8,6 +8,8 @@ import { getPlayers } from "@/lib/db/players"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getMatches } from "@/lib/db/matches"
+import { getGoalsByMatch } from "@/lib/db/goals"
+import { getSanctions } from "@/lib/db/sanctions"
 import { scopeLabel } from "@/lib/scope"
 import {
   registerTeamAction,
@@ -53,6 +55,12 @@ export default async function TorneoInscripcionesPage({
     getMatches(id),
   ])
   const matchdays = [...new Set((matches ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
+  const [goalsByMatch, { data: sanctions }] = await Promise.all([
+    getGoalsByMatch((matches ?? []).map((m) => m.id)),
+    getSanctions(),
+  ])
+  const redCardsOf = (matchId: string) =>
+    (sanctions ?? []).filter((s) => s.matchId === matchId && s.cardType === "red").map((s) => s.playerId)
   const registrationList = registrations ?? []
   const { data: rosters } = await getRosters(registrationList.map((r) => r.id))
 
@@ -211,6 +219,8 @@ export default async function TorneoInscripcionesPage({
                         <MatchDialog
                           action={updateMatchAction.bind(null, m.id)}
                           match={m}
+                          existingGoals={goalsByMatch.get(m.id)}
+                          redCardPlayerIds={redCardsOf(m.id)}
                           teams={teams ?? []}
                           registrations={registrationList}
                           tournaments={[tournament]}

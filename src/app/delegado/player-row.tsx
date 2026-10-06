@@ -52,7 +52,7 @@ function SubmitButton() {
   )
 }
 
-export function PlayerRow({ player }: { player: Player }) {
+export function PlayerRow({ player, suspendedUntil }: { player: Player; suspendedUntil?: number }) {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState(player.position)
   const action = delegateUpdatePlayerAction.bind(null, player.id)
@@ -76,6 +76,11 @@ export function PlayerRow({ player }: { player: Player }) {
             {player.name}
           </p>
           <p className="text-xs text-muted-foreground capitalize">{player.position}</p>
+          {suspendedUntil !== undefined && (
+            <p className="text-[11px] font-semibold text-destructive">
+              Suspendido · vuelve en la fecha {suspendedUntil + 1}
+            </p>
+          )}
         </div>
       </div>
 

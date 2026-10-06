@@ -33,6 +33,7 @@ import {
   deleteTeam,
 } from "@/lib/db/teams"
 import {
+  getPlayersByTeam,
   createPlayer,
   updatePlayer,
   deletePlayer,
@@ -47,7 +48,7 @@ import {
 import {
   createSanction,
   deleteSanction,
-  processMatchSanctions,
+  syncMatchRedCards,
 } from "@/lib/db/sanctions"
 import {
   createArticle,
@@ -470,33 +471,54 @@ export async function updateMatchAction(
     }
   }
 
+  // Scorers from the form, merged by player; checked against the score
+  let goals: { playerId: string; goals: number }[] | null = null
+  if (!walkover && formData.has("goalPlayer")) {
+    const goalPlayers = formData.getAll("goalPlayer") as string[]
+    const goalCounts = formData.getAll("goalCount") as string[]
+    const byPlayer = new Map<string, number>()
+    goalPlayers.forEach((pid, i) => {
+      const count = parseInt(goalCounts[i] || "0", 10)
+      if (pid && pid !== "none" && count > 0) byPlayer.set(pid, (byPlayer.get(pid) ?? 0) + count)
+    })
+    const list = [...byPlayer].map(([playerId, count]) => ({ playerId, goals: count }))
+    goals = list
+
+    if (list.length > 0) {
+      const [{ data: homePlayers }, { data: awayPlayers }] = await Promise.all([
+        getPlayersByTeam(homeTeamId),
+        getPlayersByTeam(awayTeamId),
+      ])
+      const homeIds = new Set((homePlayers ?? []).map((p) => p.id))
+      const awayIds = new Set((awayPlayers ?? []).map((p) => p.id))
+      const sum = (ids: Set<string>) => list.filter((g) => ids.has(g.playerId)).reduce((a, g) => a + g.goals, 0)
+      const homeScoreFinal = payload.homeScore ?? match.homeScore ?? 0
+      const awayScoreFinal = payload.awayScore ?? match.awayScore ?? 0
+      if (list.some((g) => !homeIds.has(g.playerId) && !awayIds.has(g.playerId))) {
+        return { error: "Hay goleadores que no son de ninguno de los dos equipos." }
+      }
+      // Fewer is allowed (own goals); more is a typo
+      if (sum(homeIds) > homeScoreFinal || sum(awayIds) > awayScoreFinal) {
+        return { error: "Los goles cargados por jugador superan el resultado del partido." }
+      }
+    }
+  }
+
   const update = await updateMatch(id, payload)
   if (update.error) return { error: update.error }
 
-  // Auto-process red cards
-  const redCards = formData.getAll("redCards") as string[]
-  const validRedCards = redCards.filter((p) => p && p !== "none")
-  if (validRedCards.length > 0) {
-    await processMatchSanctions(id, validRedCards)
+  // Red cards: the form's selection is the source of truth (no duplicates)
+  if (formData.has("redCardsField")) {
+    const redCards = (formData.getAll("redCards") as string[]).filter((p) => p && p !== "none")
+    const sync = await syncMatchRedCards(id, redCards)
+    if (sync.error) return { error: sync.error }
   }
 
-  if (walkover) {
-    // A W.O. has no scorers
-    await saveMatchGoals(id, [])
-  } else {
-    const goalPlayers = formData.getAll("goalPlayer") as string[]
-    const goalCounts = formData.getAll("goalCount") as string[]
-    const scorers: { playerId: string; goals: number }[] = []
-    for (let i = 0; i < goalPlayers.length; i++) {
-      const pid = goalPlayers[i]
-      const count = parseInt(goalCounts[i] || "1", 10)
-      if (pid && pid !== "none" && count > 0) {
-        scorers.push({ playerId: pid, goals: count })
-      }
-    }
-    if (scorers.length > 0) {
-      await saveMatchGoals(id, scorers)
-    }
+  // Scorers: replace what was saved (so they can also be removed)
+  const scorers = walkover ? [] : (goals ?? [])
+  if (walkover || goals) {
+    const saved = await saveMatchGoals(id, scorers)
+    if (saved.error) return { error: saved.error }
   }
 
   revalidateSite()
@@ -553,7 +575,9 @@ export async function generateFixtureAction(
     return { error: "Este torneo ya tiene partidos cargados. Borralos antes de generar el fixture de nuevo." }
   }
 
-  const result = await bulkCreateMatches(tournamentId, teamIds)
+  const result = await bulkCreateMatches(tournamentId, teamIds, {
+    doubleRound: formData.get("doubleRound") === "true",
+  })
   if (result.error) return { error: result.error }
 
   revalidateSite()
@@ -579,13 +603,16 @@ export async function createSanctionAction(
 
   if (!playerId) return { error: "El jugador es obligatorio." }
   if (!cardType) return { error: "El tipo de tarjeta es obligatorio." }
-  if (!matchDate) return { error: "La fecha del partido es obligatoria." }
+  if (!matchId) return { error: "Elegí el partido de la sanción." }
+
+  const { data: match } = await getMatch(matchId)
+  if (!match) return { error: "El partido no existe." }
 
   const result = await createSanction({
     playerId,
     matchId: matchId || undefined,
     cardType: cardType as "yellow" | "red",
-    matchDate,
+    matchDate: matchDate || match.date,
     matchesSuspended: matchesSuspended ? parseInt(matchesSuspended, 10) : cardType === "red" ? 1 : 0,
   })
 

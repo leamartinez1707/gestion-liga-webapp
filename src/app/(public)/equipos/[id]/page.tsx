@@ -10,6 +10,8 @@ import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations } from "@/lib/db/registrations"
 import { getMatches } from "@/lib/db/matches"
 import { getAlbums } from "@/lib/db/gallery"
+import { getSanctions } from "@/lib/db/sanctions"
+import { activeSuspensions } from "@/lib/suspensions"
 import { AlbumCard } from "@/components/album-card"
 import { resolveScope, scopeLabel, scopeQuery } from "@/lib/scope"
 import { Button } from "@/components/ui/button"
@@ -48,7 +50,11 @@ export default async function EquipoDetailPage({
   const teamMatchIds = (matches ?? [])
     .filter((m) => m.homeTeamId === id || m.awayTeamId === id)
     .map((m) => m.id)
-  const { data: albums } = await getAlbums({ matchIds: teamMatchIds })
+  const [{ data: albums }, { data: sanctions }] = await Promise.all([
+    getAlbums({ matchIds: teamMatchIds }),
+    getSanctions(),
+  ])
+  const suspended = activeSuspensions(sanctions ?? [], matches ?? [])
   const teamAlbums = (albums ?? []).filter((a) => a.photoCount > 0).slice(0, 8)
 
   // A club can play in several series (e.g. F8 and F11): show every tournament
@@ -131,6 +137,7 @@ export default async function EquipoDetailPage({
             <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {teamPlayers.map((player) => {
                 const goals = goalsByPlayer.get(player.id) ?? 0
+                const suspendedUntil = suspended.get(player.id)?.untilMatchday
                 return (
                   <li
                     key={player.id}
@@ -147,6 +154,11 @@ export default async function EquipoDetailPage({
                       <p className="text-xs text-muted-foreground">
                         {positionLabels[player.position] ?? player.position}
                       </p>
+                      {suspendedUntil !== undefined && (
+                        <p className="text-[11px] font-semibold text-destructive">
+                          Suspendido · vuelve en la fecha {suspendedUntil + 1}
+                        </p>
+                      )}
                     </div>
                     {goals > 0 && (
                       <div className="text-right shrink-0">

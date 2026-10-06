@@ -4,6 +4,7 @@ import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 
 import type { Player, Team } from "@/lib/types"
+import type { MatchWithTeams } from "@/lib/db/matches"
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,8 @@ interface SanctionDialogProps {
   ) => Promise<{ error?: string; success?: boolean }>
   players: Player[]
   teams: Team[]
+  /** Matches to attach the sanction to (needed to know when it ends) */
+  matches: MatchWithTeams[]
 }
 
 export function SanctionDialog({
@@ -46,6 +49,7 @@ export function SanctionDialog({
   action,
   players,
   teams,
+  matches,
 }: SanctionDialogProps) {
   const [open, setOpen] = useState(false)
   const [playerId, setPlayerId] = useState("")
@@ -54,9 +58,20 @@ export function SanctionDialog({
 
   // Filter players by selected team
   const [teamFilter, setTeamFilter] = useState("")
-  const filteredPlayers = teamFilter
+  const filteredPlayers = teamFilter && teamFilter !== "all"
     ? players.filter((p) => p.teamId === teamFilter)
     : players
+  const [matchId, setMatchId] = useState("")
+
+  // Matches of the selected player's team, latest first
+  const playerTeamId = players.find((p) => p.id === playerId)?.teamId
+  const matchItems = matches
+    .filter((m) => playerTeamId && (m.homeTeamId === playerTeamId || m.awayTeamId === playerTeamId))
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .map((m) => ({
+      value: m.id,
+      label: `Fecha ${m.matchday} · ${m.homeTeamName} vs ${m.awayTeamName}${m.date ? ` (${m.date})` : ""}`,
+    }))
 
   const teamMap = new Map(teams.map((t) => [t.id, t.name]))
 
@@ -102,7 +117,11 @@ export function SanctionDialog({
             <Label>Jugador</Label>
             <Select
               value={playerId}
-              onValueChange={(v) => v && setPlayerId(v)}
+              onValueChange={(v) => {
+                if (!v) return
+                setPlayerId(v)
+                setMatchId("")
+              }}
               name="playerId"
             >
               <SelectTrigger className="w-full">
@@ -136,15 +155,22 @@ export function SanctionDialog({
             </Select>
           </div>
 
-          {/* Match Date */}
+          {/* Match: decides the tournament and until which matchday it lasts */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="matchDate">Fecha del Partido</Label>
-            <Input
-              id="matchDate"
-              name="matchDate"
-              type="date"
-              required
-            />
+            <Label>Partido</Label>
+            <Select items={matchItems} value={matchId} onValueChange={(v) => v && setMatchId(v)} name="matchId" disabled={!playerId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={playerId ? "Elegí el partido" : "Primero elegí el jugador"} />
+              </SelectTrigger>
+              <SelectContent>
+                {matchItems.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Las fechas de suspensión se cuentan desde este partido, en su torneo.
+            </p>
           </div>
 
           {/* Matches Suspended */}

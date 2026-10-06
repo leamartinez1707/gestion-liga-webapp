@@ -4,6 +4,9 @@ import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { scopeLabel } from "@/lib/scope"
+import { getMatches } from "@/lib/db/matches"
+import { getSanctions } from "@/lib/db/sanctions"
+import { activeSuspensions } from "@/lib/suspensions"
 import { delegateSetRosterAction } from "@/lib/actions/delegate"
 import { RosterDialog } from "@/components/roster-dialog"
 import { Button } from "@/components/ui/button"
@@ -43,12 +46,15 @@ export default async function DelegadoDashboard() {
     )
   }
 
-  const [{ data: players }, { data: registrations }, { data: tournaments }, series] = await Promise.all([
+  const [{ data: players }, { data: registrations }, { data: tournaments }, series, { data: matches }, { data: sanctions }] = await Promise.all([
     getPlayersByTeam(team.id),
     getRegistrations({ teamId: team.id }),
     getTournaments(),
     getSeriesOptions(),
+    getMatches(),
+    getSanctions(),
   ])
+  const suspended = activeSuspensions(sanctions ?? [], matches ?? [])
   const playersList = players ?? []
   const { data: rosters } = await getRosters((registrations ?? []).map((r) => r.id))
   const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
@@ -146,7 +152,7 @@ export default async function DelegadoDashboard() {
           ) : (
             <div className="divide-y divide-border">
               {playersList.map((p) => (
-                <PlayerRow key={p.id} player={p} />
+                <PlayerRow key={p.id} player={p} suspendedUntil={suspended.get(p.id)?.untilMatchday} />
               ))}
             </div>
           )}

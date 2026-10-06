@@ -101,3 +101,22 @@ export async function saveMatchGoals(
     return { error: "No se pudieron guardar los goles." }
   }
 }
+
+/** Scorers of each match (for prefilling the result form). */
+export async function getGoalsByMatch(
+  matchIds: string[]
+): Promise<Map<string, { playerId: string; goals: number }[]>> {
+  const byMatch = new Map<string, { playerId: string; goals: number }[]>()
+  if (matchIds.length === 0) return byMatch
+  try {
+    const supabase = createReadOnlyClient()
+    const { data } = await supabase.from("goals").select("match_id, player_id, goals").in("match_id", matchIds)
+    for (const row of data ?? []) {
+      if (!row.match_id || !row.player_id) continue
+      byMatch.set(row.match_id, [...(byMatch.get(row.match_id) ?? []), { playerId: row.player_id, goals: row.goals }])
+    }
+  } catch {
+    // Prefill is best effort
+  }
+  return byMatch
+}

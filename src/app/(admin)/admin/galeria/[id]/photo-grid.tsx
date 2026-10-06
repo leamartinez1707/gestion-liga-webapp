@@ -37,10 +37,11 @@ export function AdminPhotoGrid({
       {error && <p className="text-sm text-destructive">{error}</p>}
       <ul className={cn("grid gap-2 grid-cols-3 sm:grid-cols-4 lg:grid-cols-6", pending && "opacity-60")}>
         {photos.map((photo) => {
-          const isCover = photo.url === coverUrl
+          const thumb = photo.thumbUrl ?? photo.url
+          const isCover = coverUrl === thumb || coverUrl === photo.url
           return (
             <li key={photo.id} className="group relative aspect-square overflow-hidden rounded-md border border-border">
-              <Image src={photo.url} alt={photo.caption ?? ""} fill sizes="(min-width: 1024px) 16vw, 33vw" className="object-cover" />
+              <Image src={thumb} alt={photo.caption ?? ""} fill sizes="(min-width: 1024px) 16vw, 33vw" className="object-cover" />
               {isCover && (
                 <span className="absolute top-1 left-1 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-white">Portada</span>
               )}
@@ -53,7 +54,7 @@ export function AdminPhotoGrid({
                     className="text-white hover:bg-white/20"
                     aria-label="Usar como portada"
                     disabled={pending}
-                    onClick={() => run(() => setAlbumCoverAction(albumId, photo.url))}
+                    onClick={() => run(() => setAlbumCoverAction(albumId, thumb))}
                   >
                     <Star className="h-3.5 w-3.5" />
                   </Button>

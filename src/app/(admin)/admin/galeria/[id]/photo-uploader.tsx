@@ -36,19 +36,25 @@ export function PhotoUploader({ albumId }: { albumId: string }) {
     setError(null)
     setProgress({ done: 0, total: files.length })
     const supabase = createClient()
-    const urls: string[] = new Array(files.length)
+    const uploaded: ({ url: string; thumbUrl: string | null } | undefined)[] = new Array(files.length)
     let failed = 0
     let done = 0
 
-    async function uploadOne(file: File, index: number) {
-      const resized = await resizeImage(file, 2000)
-      const ext = resized.type === "image/webp" ? "webp" : resized.type === "image/png" ? "png" : "jpg"
-      const path = `gallery/${albumId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    async function put(file: File, path: string): Promise<string | null> {
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(path, resized, { cacheControl: "31536000", contentType: resized.type })
-      if (uploadError) failed++
-      else urls[index] = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+        .upload(path, file, { cacheControl: "31536000", contentType: file.type })
+      return uploadError ? null : supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+    }
+
+    // Two sizes per photo: full for the viewer, thumbnail for the grids
+    async function uploadOne(file: File, index: number) {
+      const [full, thumb] = await Promise.all([resizeImage(file, 2000), resizeImage(file, 480)])
+      const ext = (f: File) => (f.type === "image/webp" ? "webp" : f.type === "image/png" ? "png" : "jpg")
+      const base = `gallery/${albumId}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`
+      const [url, thumbUrl] = await Promise.all([put(full, `${base}.${ext(full)}`), put(thumb, `${base}-thumb.${ext(thumb)}`)])
+      if (!url) failed++
+      else uploaded[index] = { url, thumbUrl }
       done++
       setProgress({ done, total: files.length })
     }
@@ -64,9 +70,9 @@ export function PhotoUploader({ albumId }: { albumId: string }) {
       })
     )
 
-    const uploaded = urls.filter(Boolean)
-    if (uploaded.length > 0) {
-      const result = await addPhotosAction(albumId, uploaded)
+    const photos = uploaded.filter((p) => p !== undefined)
+    if (photos.length > 0) {
+      const result = await addPhotosAction(albumId, photos)
       if (result.error) setError(result.error)
     }
     if (failed > 0) setError(`No se pudieron subir ${failed} ${failed === 1 ? "foto" : "fotos"}. Probá de nuevo.`)

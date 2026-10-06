@@ -196,6 +196,7 @@ create table photos (
   id uuid default gen_random_uuid() primary key,
   album_id uuid not null references photo_albums on delete cascade,
   url text not null,
+  thumb_url text,             -- miniatura 480px generada al subir
   caption text,
   display_order integer not null default 0,
   created_at timestamptz default now()

@@ -49,3 +49,7 @@ create policy lectura_publicados on public.photos for select
   );
 create policy staff_write on public.photos for all to authenticated
   using ((select public.is_staff())) with check ((select public.is_staff()));
+
+-- Miniatura (480px) generada en el navegador al subir; la grilla usa esta y el
+-- visor la original (2000px). Las imágenes no pasan por el optimizador de Vercel.
+alter table public.photos add column if not exists thumb_url text;

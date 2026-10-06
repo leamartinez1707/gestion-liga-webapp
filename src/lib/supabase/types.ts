@@ -97,9 +97,9 @@ export type Database = {
         ]
       }
       photos: {
-        Row: { album_id: string; caption: string | null; created_at: string | null; display_order: number; id: string; url: string }
-        Insert: { album_id: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; url: string }
-        Update: { album_id?: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; url?: string }
+        Row: { album_id: string; caption: string | null; created_at: string | null; display_order: number; id: string; thumb_url: string | null; url: string }
+        Insert: { album_id: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; thumb_url?: string | null; url: string }
+        Update: { album_id?: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; thumb_url?: string | null; url?: string }
         Relationships: [
           { foreignKeyName: "photos_album_id_fkey"; columns: ["album_id"]; isOneToOne: false; referencedRelation: "photo_albums"; referencedColumns: ["id"] },
         ]

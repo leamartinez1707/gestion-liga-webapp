@@ -29,11 +29,19 @@ function mapAlbum(row: AlbumRow): PhotoAlbum {
   }
 }
 
-function mapPhoto(row: { id: string; album_id: string; url: string; caption: string | null; display_order: number }): Photo {
+function mapPhoto(row: {
+  id: string
+  album_id: string
+  url: string
+  thumb_url: string | null
+  caption: string | null
+  display_order: number
+}): Photo {
   return {
     id: row.id,
     albumId: row.album_id,
     url: row.url,
+    thumbUrl: row.thumb_url ?? undefined,
     caption: row.caption ?? undefined,
     displayOrder: row.display_order,
   }
@@ -91,7 +99,7 @@ export async function getPhotos(
     const supabase = asStaff ? await createClient() : createReadOnlyClient()
     const { data, error } = await supabase
       .from("photos")
-      .select("id, album_id, url, caption, display_order")
+      .select("id, album_id, url, thumb_url, caption, display_order")
       .eq("album_id", albumId)
       .order("display_order")
       .order("created_at")
@@ -168,10 +176,13 @@ export function storagePathFromUrl(url: string): string | null {
 export async function deleteAlbum(id: string): Promise<{ error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: photos } = await supabase.from("photos").select("url").eq("album_id", id)
+    const { data: photos } = await supabase.from("photos").select("url, thumb_url").eq("album_id", id)
     const { error } = await supabase.from("photo_albums").delete().eq("id", id)
     if (error) return { error: error.message }
-    const paths = (photos ?? []).map((p) => storagePathFromUrl(p.url)).filter((p): p is string => !!p)
+    const paths = (photos ?? [])
+      .flatMap((p) => [p.url, p.thumb_url])
+      .map((url) => (url ? storagePathFromUrl(url) : null))
+      .filter((p): p is string => !!p)
     if (paths.length > 0) await supabase.storage.from(GALLERY_BUCKET).remove(paths)
     return {}
   } catch {
@@ -180,8 +191,11 @@ export async function deleteAlbum(id: string): Promise<{ error?: string }> {
 }
 
 /** Records photos already uploaded to Storage by the browser. */
-export async function addPhotos(albumId: string, urls: string[]): Promise<{ error?: string }> {
-  if (urls.length === 0) return {}
+export async function addPhotos(
+  albumId: string,
+  photos: { url: string; thumbUrl: string | null }[]
+): Promise<{ error?: string }> {
+  if (photos.length === 0) return {}
   try {
     const supabase = await createClient()
     const { count } = await supabase
@@ -191,7 +205,7 @@ export async function addPhotos(albumId: string, urls: string[]): Promise<{ erro
     const start = count ?? 0
     const { error } = await supabase
       .from("photos")
-      .insert(urls.map((url, i) => ({ album_id: albumId, url, display_order: start + i })))
+      .insert(photos.map((p, i) => ({ album_id: albumId, url: p.url, thumb_url: p.thumbUrl, display_order: start + i })))
     if (error) return { error: error.message }
     return {}
   } catch {
@@ -199,16 +213,19 @@ export async function addPhotos(albumId: string, urls: string[]): Promise<{ erro
   }
 }
 
-export async function deletePhoto(id: string): Promise<{ error?: string; albumId?: string; url?: string }> {
+export async function deletePhoto(
+  id: string
+): Promise<{ error?: string; albumId?: string; urls?: string[] }> {
   try {
     const supabase = await createClient()
-    const { data: photo } = await supabase.from("photos").select("album_id, url").eq("id", id).maybeSingle()
+    const { data: photo } = await supabase.from("photos").select("album_id, url, thumb_url").eq("id", id).maybeSingle()
     if (!photo) return { error: "La foto no existe." }
     const { error } = await supabase.from("photos").delete().eq("id", id)
     if (error) return { error: error.message }
-    const path = storagePathFromUrl(photo.url)
-    if (path) await supabase.storage.from(GALLERY_BUCKET).remove([path])
-    return { albumId: photo.album_id, url: photo.url }
+    const urls = [photo.url, photo.thumb_url].filter((u): u is string => !!u)
+    const paths = urls.map(storagePathFromUrl).filter((p): p is string => !!p)
+    if (paths.length > 0) await supabase.storage.from(GALLERY_BUCKET).remove(paths)
+    return { albumId: photo.album_id, urls }
   } catch {
     return { error: "No se pudo eliminar la foto." }
   }

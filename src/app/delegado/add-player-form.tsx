@@ -88,7 +88,7 @@ export function AddPlayerForm() {
 
           <div className="flex flex-col gap-1.5">
             <Label>Foto</Label>
-            <ImageUpload name="photo" />
+            <ImageUpload maxSize={512} name="photo" />
           </div>
 
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}

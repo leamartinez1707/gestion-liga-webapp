@@ -44,9 +44,10 @@ export function PhotoViewer({ photos, title }: { photos: Photo[]; title: string 
               aria-label={`Ver foto ${i + 1} de ${photos.length}`}
             >
               <Image
-                src={photo.url}
+                src={photo.thumbUrl ?? photo.url}
                 alt={photo.caption ?? `${title} — foto ${i + 1}`}
                 fill
+                loading="lazy"
                 sizes="(min-width: 1024px) 16vw, (min-width: 640px) 25vw, 33vw"
                 className="object-cover transition-transform hover:scale-105"
               />

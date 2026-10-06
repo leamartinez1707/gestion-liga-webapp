@@ -56,7 +56,7 @@ export function TeamDialog({ children, action, team }: TeamDialogProps) {
           {/* Shield */}
           <div className="flex flex-col gap-1.5">
             <Label>Escudo</Label>
-            <ImageUpload name="shield" currentUrl={team?.shield} />
+            <ImageUpload maxSize={512} name="shield" currentUrl={team?.shield} />
           </div>
 
           {/* Name */}

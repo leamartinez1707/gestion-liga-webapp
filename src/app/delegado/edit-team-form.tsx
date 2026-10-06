@@ -61,7 +61,7 @@ export function TeamEditForm({ team }: { team: Team }) {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Escudo</Label>
-            <ImageUpload name="shield" currentUrl={team.shield} />
+            <ImageUpload maxSize={512} name="shield" currentUrl={team.shield} />
           </div>
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
           <div className="flex justify-end pt-2">

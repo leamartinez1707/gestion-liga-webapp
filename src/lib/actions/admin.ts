@@ -978,11 +978,16 @@ export async function createSponsorAction(_prev: unknown, formData: FormData) {
   const displayOrder = formData.get("displayOrder") as string
 
   if (!name?.trim()) return { error: "El nombre es obligatorio." }
-  if (!logoUrl?.trim()) return { error: "La URL del logo es obligatoria." }
+
+  // An uploaded file wins over a pasted URL (the upload used to be ignored)
+  const { url: uploadedLogo, error: uploadError } = await uploadOptionalImage(formData, "logo", "sponsors")
+  if (uploadError) return { error: uploadError }
+  const logo = uploadedLogo ?? logoUrl?.trim()
+  if (!logo) return { error: "Subí el logo o pegá su URL." }
 
   const result = await createSponsor({
     name: name.trim(),
-    logoUrl: logoUrl.trim(),
+    logoUrl: logo,
     linkUrl: linkUrl?.trim() || undefined,
     displayOrder: displayOrder ? parseInt(displayOrder) : 0,
   })
@@ -1000,9 +1005,12 @@ export async function updateSponsorAction(id: string, _prev: unknown, formData: 
   const linkUrl = formData.get("linkUrl") as string
   const displayOrder = formData.get("displayOrder") as string
 
+  const { url: uploadedLogo, error: uploadError } = await uploadOptionalImage(formData, "logo", "sponsors")
+  if (uploadError) return { error: uploadError }
+
   const result = await updateSponsor(id, {
     name: name?.trim() || undefined,
-    logoUrl: logoUrl?.trim() || undefined,
+    logoUrl: uploadedLogo ?? (logoUrl?.trim() || undefined),
     linkUrl: linkUrl?.trim() || null,
     displayOrder: displayOrder ? parseInt(displayOrder) : undefined,
   })
@@ -1144,19 +1152,26 @@ export async function deleteAlbumAction(id: string): Promise<{ error?: string }>
  * The browser uploads the files straight to Storage (no body-size limit),
  * then sends the public URLs here. Only URLs inside this album's folder are accepted.
  */
-export async function addPhotosAction(albumId: string, urls: string[]): Promise<{ error?: string }> {
+export async function addPhotosAction(
+  albumId: string,
+  photos: { url: string; thumbUrl: string | null }[]
+): Promise<{ error?: string }> {
   const auth = await requireStaff()
   if (auth.error) return { error: auth.error }
 
-  const valid = urls.filter((url) => storagePathFromUrl(url)?.startsWith(`gallery/${albumId}/`))
-  if (valid.length !== urls.length) return { error: "Alguna foto no pertenece a este álbum." }
+  const inAlbum = (url: string | null) => !url || storagePathFromUrl(url)?.startsWith(`gallery/${albumId}/`)
+  if (!photos.every((p) => inAlbum(p.url) && inAlbum(p.thumbUrl))) {
+    return { error: "Alguna foto no pertenece a este álbum." }
+  }
 
   const { data: album } = await getAlbum(albumId, true)
   if (!album) return { error: "El álbum no existe." }
 
-  const result = await addPhotos(albumId, valid)
+  const result = await addPhotos(albumId, photos)
   if (result.error) return { error: result.error }
-  if (!album.coverUrl && valid[0]) await updateAlbum(albumId, { coverUrl: valid[0] })
+  // The cover is shown in cards: the thumbnail is enough
+  const first = photos[0]
+  if (!album.coverUrl && first) await updateAlbum(albumId, { coverUrl: first.thumbUrl ?? first.url })
 
   revalidateSite()
   return {}
@@ -1171,9 +1186,10 @@ export async function deletePhotoAction(photoId: string): Promise<{ error?: stri
 
   // Deleted the cover: use the next photo (or none)
   const { data: album } = await getAlbum(result.albumId, true)
-  if (album?.coverUrl === result.url) {
+  if (album?.coverUrl && result.urls?.includes(album.coverUrl)) {
     const { data: photos } = await getPhotos(result.albumId, true)
-    await updateAlbum(result.albumId, { coverUrl: photos?.[0]?.url ?? null })
+    const next = photos?.[0]
+    await updateAlbum(result.albumId, { coverUrl: next ? next.thumbUrl ?? next.url : null })
   }
 
   revalidateSite()

@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Images are resized in the browser when uploaded (avatars 512px, news
+    // 1600px, gallery 480px thumbnails + 2000px), so they're served as-is:
+    // no Vercel image-optimization quota or cost.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

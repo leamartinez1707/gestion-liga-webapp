@@ -138,7 +138,10 @@ export interface PhotoAlbum {
 export interface Photo {
   id: string
   albumId: string
+  /** Full size (≤2000px) for the viewer */
   url: string
+  /** 480px thumbnail for grids */
+  thumbUrl?: string
   caption?: string
   displayOrder: number
 }

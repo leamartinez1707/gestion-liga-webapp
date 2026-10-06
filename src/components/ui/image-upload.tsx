@@ -9,9 +9,11 @@ interface ImageUploadProps {
   name: string
   currentUrl?: string | null
   className?: string
+  /** Longest side after resizing: 512 for shields/photos/logos, 1600 for news */
+  maxSize?: number
 }
 
-export function ImageUpload({ name, currentUrl, className }: ImageUploadProps) {
+export function ImageUpload({ name, currentUrl, className, maxSize = 1600 }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -33,7 +35,7 @@ export function ImageUpload({ name, currentUrl, className }: ImageUploadProps) {
 
     // Shrink phone photos so the form stays under the upload limit
     setProcessing(true)
-    const file = await resizeImage(original)
+    const file = await resizeImage(original, maxSize)
     setProcessing(false)
 
     if (file.size > 4 * 1024 * 1024) {
@@ -49,7 +51,7 @@ export function ImageUpload({ name, currentUrl, className }: ImageUploadProps) {
     }
 
     setPreview(URL.createObjectURL(file))
-  }, [])
+  }, [maxSize])
 
   const handleRemove = useCallback(() => {
     setPreview(null)

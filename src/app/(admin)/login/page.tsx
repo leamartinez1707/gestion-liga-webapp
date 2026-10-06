@@ -1,24 +1,11 @@
 "use client"
 
 import { useActionState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { signIn } from "@/lib/actions/auth"
 
 function LoginForm() {
-  const router = useRouter()
-  const [state, formAction, pending] = useActionState(
-    async (_prev: { error: string | null } | null, formData: FormData) => {
-      try {
-        await signIn(formData)
-        router.push("/admin")
-        return { error: null }
-      } catch (e) {
-        return { error: (e as Error).message }
-      }
-    },
-    { error: null }
-  )
+  const [state, formAction, pending] = useActionState(signIn, { error: null })
 
   return (
     <form action={formAction} className="flex flex-col gap-5">

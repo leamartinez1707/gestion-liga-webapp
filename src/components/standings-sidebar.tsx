@@ -10,7 +10,7 @@ interface StandingsSidebarProps {
 export function StandingsSidebar({ standings, className }: StandingsSidebarProps) {
   return (
     <div className={cn("", className)}>
-      <h3 className="text-sm font-semibold text-foreground mb-3">Posiciones</h3>
+      <h3 className="mb-3 flex items-center gap-2 font-display text-xl font-bold uppercase tracking-wide text-foreground"><span aria-hidden className="h-5 w-1.5 rounded-sm bg-secondary" />Posiciones</h3>
       {standings.length === 0 ? (
         <p className="text-xs text-muted-foreground">Sin datos todavía.</p>
       ) : (
@@ -45,7 +45,7 @@ export function StandingsSidebar({ standings, className }: StandingsSidebarProps
               </span>
               <div className="flex items-center gap-x-2">
               {/* Points */}
-              <span className="font-bold text-base tabular-nums text-foreground text-center">
+              <span className="font-display font-bold text-xl tabular-nums text-foreground text-center">
                 {s.points}
               </span>
       <span className="text-[8px] text-center text-gray-600 font-semibold">PTS</span>

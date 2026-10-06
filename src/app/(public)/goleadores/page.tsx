@@ -9,6 +9,7 @@ import { getRegistrations } from "@/lib/db/registrations"
 import { resolveScope, scopeQuery, teamsInTournament, tournamentLabel, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PhotoAvatar } from "@/components/photo-avatar"
+import { PageHeader } from "@/components/page-header"
 
 function getMedalIcon(position: number) {
   if (position === 0) return <Trophy className="h-4 w-4 text-amber-500" />
@@ -40,32 +41,30 @@ export default async function GoleadoresPage({ searchParams }: Props) {
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")
 
   return (
-    <div className="page-container py-10 md:py-14">
-      <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-        Goleadores{scopeName && <span className="text-primary"> · {scopeName}</span>}
-      </h1>
-      <p className="mt-3 text-muted-foreground max-w-lg">
-        {currentTournament
-          ? tournamentLabel(currentTournament)
-          : "Tabla de goleadores de la división."}
-      </p>
+    <>
+      <PageHeader
+        eyebrow={scopeName}
+        title="Goleadores"
+        subtitle={currentTournament ? tournamentLabel(currentTournament) : "Tabla de goleadores de la división."}
+      />
+      <div className="page-container py-8 md:py-10">
 
       {error && (
-        <div className="mt-12 text-center">
+        <div className="text-center">
           <p className="text-destructive text-sm">{error}</p>
         </div>
       )}
 
       {scorers && scorers.length === 0 && (
-        <div className="mt-12 text-center py-12 text-muted-foreground">
+        <div className="text-center py-12 text-muted-foreground">
           Todavía no hay goles cargados en esta división.
         </div>
       )}
 
       {scorers && scorers.length > 0 && (
-        <Card className="mt-12 border-border">
+        <Card className="border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Tabla de goleadores</CardTitle>
+            <CardTitle className="font-display text-xl font-bold uppercase tracking-wide">Tabla de goleadores</CardTitle>
           </CardHeader>
           <CardContent>
             <ol className="divide-y divide-border">
@@ -95,6 +94,7 @@ export default async function GoleadoresPage({ searchParams }: Props) {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </>
   )
 }

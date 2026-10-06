@@ -8,7 +8,7 @@ export function Footer() {
       <div className="page-container py-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="text-base font-extrabold text-white tracking-tight">
+            <Link href="/" className="font-display text-2xl font-extrabold uppercase tracking-wide text-white">
               LIGA METROPOLITANA
             </Link>
             <p className="mt-2 text-sm text-white/60 max-w-xs">

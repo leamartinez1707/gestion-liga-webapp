@@ -16,7 +16,7 @@ import { AlbumCard } from "@/components/album-card"
 import { resolveScope, scopeLabel, scopeQuery } from "@/lib/scope"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { PageHeader, SectionTitle } from "@/components/page-header"
 import { PhotoAvatar } from "@/components/photo-avatar"
 
 const positionLabels: Record<string, string> = {
@@ -88,44 +88,24 @@ export default async function EquipoDetailPage({
   const backHref = `/equipos${scopeQuery(backScope)}`
 
   return (
-    <div className="page-container py-10 md:py-14">
-      <div className="bg-background border border-border rounded-lg p-6 md:p-8">
-        <Button variant="ghost" size="sm" className="mb-8" render={<Link href={backHref} />}>
+    <>
+      <PageHeader
+        eyebrow={currentTournaments.map((t) => scopeLabel(seriesOptions, t.seriesId, t.divisionId)).join(" / ")}
+        title={team.name}
+        subtitle={[team.coach && `DT: ${team.coach}`, team.assistantCoach && `Asistente: ${team.assistantCoach}`].filter(Boolean).join(" · ")}
+        media={<PhotoAvatar src={team.shield} name={team.name} className="size-16 bg-white md:size-24" fallbackClassName="text-xl md:text-2xl" />}
+      />
+      <div className="page-container py-6 md:py-8">
+        <Button variant="ghost" size="sm" className="-ml-2 mb-6" render={<Link href={backHref} />}>
           <ArrowLeft className="mr-1 h-4 w-4" />
           Volver a equipos
         </Button>
 
-        {/* Team header */}
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-14">
-          <PhotoAvatar src={team.shield} name={team.name} className="size-24" fallbackClassName="text-2xl" />
-          <div className="text-center md:text-left">
-            <div className="mb-3 flex flex-wrap justify-center md:justify-start gap-1.5">
-              {currentTournaments.map((t) => (
-                <Badge key={t.id} variant="secondary" className="text-xs font-medium">
-                  {scopeLabel(seriesOptions, t.seriesId, t.divisionId)}
-                </Badge>
-              ))}
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">{team.name}</h1>
-            {team.coach && (
-              <p className="text-sm text-muted-foreground mt-2">
-                DT: <span className="text-foreground font-medium">{team.coach}</span>
-              </p>
-            )}
-            {team.assistantCoach && (
-              <p className="text-xs text-muted-foreground">Asistente: {team.assistantCoach}</p>
-            )}
-          </div>
-        </div>
-
         {/* Squad */}
         <section>
-          <div className="flex items-baseline gap-3 mb-6">
-            <h2 className="text-xl font-bold">Plantel</h2>
-            <span className="text-sm text-muted-foreground">
-              {teamPlayers.length} {teamPlayers.length === 1 ? "jugador" : "jugadores"}
-            </span>
-          </div>
+          <SectionTitle action={<span className="text-sm text-muted-foreground">{teamPlayers.length} {teamPlayers.length === 1 ? "jugador" : "jugadores"}</span>}>
+            Plantel
+          </SectionTitle>
 
           {teamPlayers.length === 0 ? (
             <Card className="border-border">
@@ -134,7 +114,7 @@ export default async function EquipoDetailPage({
               </CardContent>
             </Card>
           ) : (
-            <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {teamPlayers.map((player) => {
                 const goals = goalsByPlayer.get(player.id) ?? 0
                 const suspendedUntil = suspended.get(player.id)?.untilMatchday
@@ -177,13 +157,13 @@ export default async function EquipoDetailPage({
 
         {teamAlbums.length > 0 && (
           <section className="mt-14">
-            <h2 className="text-xl font-bold mb-6">Fotos</h2>
+            <SectionTitle>Fotos</SectionTitle>
             <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
               {teamAlbums.map((a) => <AlbumCard key={a.id} album={a} />)}
             </div>
           </section>
         )}
       </div>
-    </div>
+    </>
   )
 }

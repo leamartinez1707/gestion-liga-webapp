@@ -60,7 +60,7 @@ export function Header({ seriesOptions }: HeaderProps) {
       <div className="w-full bg-primary shadow-sm">
         <div className="page-container flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <span className="text-white font-extrabold text-base tracking-tight">
+            <span className="font-display text-2xl font-extrabold uppercase leading-none tracking-wide text-white">
               LIGA METROPOLITANA
             </span>
           </Link>
@@ -76,7 +76,7 @@ export function Header({ seriesOptions }: HeaderProps) {
                   key={link.href}
                   href={navHref}
                   className={cn(
-                    "px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors",
+                    "px-3 py-1 rounded-md font-display text-base font-semibold uppercase tracking-wider transition-colors",
                     isActive
                       ? "bg-white/15 text-white"
                       : "text-white/60 hover:text-white hover:bg-white/10"

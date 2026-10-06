@@ -42,7 +42,7 @@ export function FeaturedBanner({
           </Badge>
           <h3
             className={`font-bold text-white leading-tight group-hover:underline ${
-              isLarge ? "text-lg md:text-2xl" : "text-sm"
+              isLarge ? "font-display text-2xl md:text-3xl uppercase" : "font-display text-lg uppercase leading-none"
             }`}
           >
             {article.title}
@@ -54,11 +54,11 @@ export function FeaturedBanner({
               <span className="text-xs md:text-sm font-medium leading-snug">
                 {getTeamName(match.homeTeamId)}
               </span>
-              <span className="text-base md:text-xl font-bold tabular-nums shrink-0">
+              <span className="font-display text-xl md:text-2xl font-bold tabular-nums shrink-0">
                 {match.homeScore ?? "-"}
               </span>
               <span className="text-xs text-white/60 shrink-0">-</span>
-              <span className="text-base md:text-xl font-bold tabular-nums shrink-0">
+              <span className="font-display text-xl md:text-2xl font-bold tabular-nums shrink-0">
                 {match.awayScore ?? "-"}
               </span>
               <span className="text-xs md:text-sm font-medium leading-snug">

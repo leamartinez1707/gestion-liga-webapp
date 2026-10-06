@@ -17,6 +17,7 @@ import { MainCarousel } from "@/components/main-carousel"
 import { ScrollableBanners } from "@/components/scrollable-banners"
 import { FixturePanel } from "@/components/fixture-panel"
 import { Card, CardContent } from "@/components/ui/card"
+import { SectionTitle } from "@/components/page-header"
 
 interface HomePageClientProps {
   seriesOptions: SeriesOption[]
@@ -142,9 +143,7 @@ export function HomePageClient({
             .filter(({ news }) => news.length > 0)
             .map(({ serie, news }) => (
             <div key={serie.id}>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                {serie.name}
-              </h2>
+              <SectionTitle>{serie.name}</SectionTitle>
               <ScrollableBanners
                 articles={news}
                 matches={matches}
@@ -158,12 +157,15 @@ export function HomePageClient({
 
           {seriesAlbums.length > 0 && (
             <section>
-              <div className="flex items-baseline justify-between mb-3">
-                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Últimas fotos</h2>
-                <Link href={`/galeria?serie=${scope.series?.slug ?? ""}`} className="text-xs font-medium text-primary hover:underline">
-                  Ver todas
-                </Link>
-              </div>
+              <SectionTitle
+                action={
+                  <Link href={`/galeria?serie=${scope.series?.slug ?? ""}`} className="text-sm font-medium text-primary hover:underline">
+                    Ver todas
+                  </Link>
+                }
+              >
+                Últimas fotos
+              </SectionTitle>
               <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
                 {seriesAlbums.map((a) => <AlbumCard key={a.id} album={a} sizes="(min-width: 1280px) 15vw, 45vw" />)}
               </div>

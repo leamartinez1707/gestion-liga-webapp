@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import "@fontsource-variable/inter"
+import "@fontsource/barlow-condensed/600.css"
+import "@fontsource/barlow-condensed/700.css"
+import "@fontsource/barlow-condensed/800.css"
 import { Footer } from "@/components/layout/footer"
 
 export const metadata: Metadata = {

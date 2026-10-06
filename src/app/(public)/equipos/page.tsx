@@ -6,6 +6,7 @@ import { getRegistrations } from "@/lib/db/registrations"
 import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PhotoAvatar } from "@/components/photo-avatar"
+import { PageHeader } from "@/components/page-header"
 
 interface Props {
   searchParams: Promise<{ serie?: string; div?: string }>
@@ -33,20 +34,22 @@ export default async function EquiposPage({ searchParams }: Props) {
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")
 
   return (
-    <div className="page-container py-10 md:py-14">
-      <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-        Equipos{scopeName && <span className="text-primary"> · {scopeName}</span>}
-      </h1>
-      <p className="mt-3 text-muted-foreground max-w-lg">
-        {currentTournament
-          ? `${teamsList.length} ${teamsList.length === 1 ? "equipo inscripto" : "equipos inscriptos"} en ${currentTournament.name}.`
-          : "Esta división todavía no tiene torneo."}
-      </p>
+    <>
+      <PageHeader
+        eyebrow={scopeName}
+        title="Equipos"
+        subtitle={
+          currentTournament
+            ? `${teamsList.length} ${teamsList.length === 1 ? "equipo inscripto" : "equipos inscriptos"} en ${currentTournament.name}`
+            : "Esta división todavía no tiene torneo."
+        }
+      />
+      <div className="page-container py-8 md:py-10">
 
       {teamsList.length === 0 ? (
         <p className="text-muted-foreground text-center py-12">No hay equipos en esta división todavía.</p>
       ) : (
-        <div className="mt-10 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {teamsList.map((team) => (
             <Link key={team.id} href={`/equipos/${team.id}${scopeQuery(scope)}`}>
               <Card className="h-full border-border transition-all hover:shadow-md hover:border-primary/30">
@@ -64,6 +67,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

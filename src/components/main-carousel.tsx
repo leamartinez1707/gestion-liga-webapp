@@ -58,16 +58,16 @@ export function MainCarousel({
             <Badge className="mb-2 text-[10px] font-normal bg-white/20 text-white border-0 backdrop-blur-sm">
               {article.category}
             </Badge>
-            <h3 className="text-lg md:text-2xl font-bold text-white leading-tight max-w-xl">
+            <h3 className="font-display text-2xl md:text-5xl font-bold uppercase text-white leading-none max-w-3xl">
               {article.title}
             </h3>
 
             {match && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-white md:mt-3 md:gap-3">
                 <span className="text-xs font-medium md:text-sm">{getTeamName(match.homeTeamId)}</span>
-                <span className="shrink-0 text-lg font-bold tabular-nums md:text-2xl">{match.homeScore ?? 0}</span>
+                <span className="shrink-0 font-display text-2xl font-bold tabular-nums md:text-4xl">{match.homeScore ?? 0}</span>
                 <span className="shrink-0 text-xs text-white/60">-</span>
-                <span className="shrink-0 text-lg font-bold tabular-nums md:text-2xl">{match.awayScore ?? 0}</span>
+                <span className="shrink-0 font-display text-2xl font-bold tabular-nums md:text-4xl">{match.awayScore ?? 0}</span>
                 <span className="text-xs font-medium md:text-sm">{getTeamName(match.awayTeamId)}</span>
               </div>
             )}

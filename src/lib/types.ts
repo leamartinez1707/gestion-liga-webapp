@@ -101,6 +101,10 @@ export interface LeagueSettings {
   yellowSuspensionMatches: number
   /** Matches of suspension for a red card */
   redCardMatches: number
+  /** Refuerzos: players not on the lista de buena fe may play */
+  guestPlayersAllowed: boolean
+  /** Matches per tournament a refuerzo may play; 0 = no limit */
+  guestPlayerMaxMatches: number
 }
 
 export interface Sanction {

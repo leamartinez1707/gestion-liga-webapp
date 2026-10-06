@@ -11,6 +11,8 @@ import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getMatchEvents } from "@/lib/db/match-events"
 import { getSanctions } from "@/lib/db/sanctions"
 import { activeSuspensions } from "@/lib/suspensions"
+import { getLineup } from "@/lib/db/lineups"
+import { getLeagueSettings } from "@/lib/db/settings"
 import { LiveSheet } from "./live-sheet"
 
 export default async function PlanillaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +31,7 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
   const { data: match } = await getMatch(id)
   if (!match) notFound()
 
-  const [{ data: home }, { data: away }, { data: homePlayers }, { data: awayPlayers }, { data: registrations }, events, { data: allMatches }, { data: sanctions }] =
+  const [{ data: home }, { data: away }, { data: homePlayers }, { data: awayPlayers }, { data: registrations }, events, { data: allMatches }, { data: sanctions }, lineup, settings] =
     await Promise.all([
       getTeam(match.homeTeamId),
       getTeam(match.awayTeamId),
@@ -39,17 +41,31 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
       getMatchEvents(id),
       getMatches(match.tournamentId),
       getSanctions(),
+      getLineup(id),
+      getLeagueSettings(),
     ])
   if (!home || !away) notFound()
 
   // Players come from each team's lista de buena fe; if it's empty, its active players
   const regs = (registrations ?? []).filter((r) => r.teamId === home.id || r.teamId === away.id)
   const { data: rosters } = await getRosters(regs.map((r) => r.id))
-  const rosterOf = (teamId: string, players: Player[]): Player[] => {
-    const reg = regs.find((r) => r.teamId === teamId)
+  const byNumber = (a: Player, b: Player) => a.number - b.number || a.name.localeCompare(b.name)
+  const sheetTeam = (team: { id: string; name: string; shortName: string; shield: string }, players: Player[]) => {
+    const reg = regs.find((r) => r.teamId === team.id)
     const ids = new Set(reg ? rosters.get(reg.id) ?? [] : [])
-    const list = ids.size > 0 ? players.filter((p) => ids.has(p.id)) : players.filter((p) => p.active)
-    return list.sort((a, b) => a.number - b.number || a.name.localeCompare(b.name))
+    const hasList = ids.size > 0
+    const roster = (hasList ? players.filter((p) => ids.has(p.id)) : players.filter((p) => p.active)).sort(byNumber)
+    const rosterIds = new Set(roster.map((p) => p.id))
+    return {
+      id: team.id,
+      name: team.name,
+      shortName: team.shortName,
+      shield: team.shield,
+      players: roster,
+      // Refuerzo candidates: the club's players that aren't on the list
+      others: hasList ? players.filter((p) => !rosterIds.has(p.id)).sort(byNumber) : [],
+      hasList,
+    }
   }
 
   const suspended = activeSuspensions(sanctions ?? [], allMatches ?? [])
@@ -62,8 +78,10 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
       </Link>
       <LiveSheet
         match={match}
-        home={{ id: home.id, name: home.name, shortName: home.shortName, shield: home.shield, players: rosterOf(home.id, homePlayers ?? []) }}
-        away={{ id: away.id, name: away.name, shortName: away.shortName, shield: away.shield, players: rosterOf(away.id, awayPlayers ?? []) }}
+        home={sheetTeam(home, homePlayers ?? [])}
+        away={sheetTeam(away, awayPlayers ?? [])}
+        lineup={lineup}
+        guestRules={{ allowed: settings.guestPlayersAllowed, maxMatches: settings.guestPlayerMaxMatches }}
         events={events}
         suspendedPlayerIds={[...suspended.keys()]}
       />

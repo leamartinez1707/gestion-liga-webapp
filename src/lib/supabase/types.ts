@@ -34,10 +34,20 @@ export type Database = {
         ]
       }
       league_settings: {
-        Row: { id: boolean; red_card_matches: number; updated_at: string | null; yellow_cards_for_suspension: number; yellow_suspension_matches: number }
-        Insert: { id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
-        Update: { id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
+        Row: { guest_player_max_matches: number; guest_players_allowed: boolean; id: boolean; red_card_matches: number; updated_at: string | null; yellow_cards_for_suspension: number; yellow_suspension_matches: number }
+        Insert: { guest_player_max_matches?: number; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
+        Update: { guest_player_max_matches?: number; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
         Relationships: []
+      }
+      match_lineups: {
+        Row: { created_at: string | null; created_by: string | null; id: string; is_guest: boolean; match_id: string; player_id: string; team_id: string }
+        Insert: { created_at?: string | null; created_by?: string | null; id?: string; is_guest?: boolean; match_id: string; player_id: string; team_id: string }
+        Update: { created_at?: string | null; created_by?: string | null; id?: string; is_guest?: boolean; match_id?: string; player_id?: string; team_id?: string }
+        Relationships: [
+          { foreignKeyName: "match_lineups_match_id_fkey"; columns: ["match_id"]; isOneToOne: false; referencedRelation: "matches"; referencedColumns: ["id"] },
+          { foreignKeyName: "match_lineups_player_id_fkey"; columns: ["player_id"]; isOneToOne: false; referencedRelation: "players"; referencedColumns: ["id"] },
+          { foreignKeyName: "match_lineups_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
+        ]
       }
       match_events: {
         Row: { assist_player_id: string | null; created_at: string | null; created_by: string | null; id: string; match_id: string; period: string | null; player_id: string | null; team_id: string; type: string }

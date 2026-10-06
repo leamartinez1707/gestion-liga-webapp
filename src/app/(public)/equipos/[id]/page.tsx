@@ -14,6 +14,7 @@ import { getAlbums } from "@/lib/db/gallery"
 import { getSanctions } from "@/lib/db/sanctions"
 import { getTeamSeasonPhotos } from "@/lib/db/team-photos"
 import { getAssistCounts } from "@/lib/db/player-stats"
+import { getAppearanceCounts } from "@/lib/db/lineups"
 import { activeSuspensions } from "@/lib/suspensions"
 import { outcomeFor, percent, teamRecord } from "@/lib/team-stats"
 import { AlbumCard } from "@/components/album-card"
@@ -96,10 +97,11 @@ export default async function EquipoDetailPage({
   squad = [...squad].sort((a, b) => (a.number || 999) - (b.number || 999))
 
   const seasonMatchIds = new Set(seasonMatches.map((m) => m.id))
-  const [{ data: scorers }, { data: albums }, assistsByPlayer] = await Promise.all([
+  const [{ data: scorers }, { data: albums }, assistsByPlayer, playedByPlayer] = await Promise.all([
     getTopScorers(100, { teamIds: [id], tournamentIds: [...seasonTournamentIds] }),
     getAlbums({ matchIds: [...seasonMatchIds] }),
     getAssistCounts([...seasonMatchIds]),
+    getAppearanceCounts([...seasonMatchIds]),
   ])
   const goalsByPlayer = new Map((scorers ?? []).map((s) => [s.playerId, s.goals]))
   // Cards of the season, per player
@@ -219,9 +221,10 @@ export default async function EquipoDetailPage({
               </p>
             ) : (
               <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="grid grid-cols-[3rem_minmax(0,1fr)_repeat(4,2.25rem)] items-center gap-x-1 border-b border-border bg-muted py-2 pr-2 text-center font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground md:grid-cols-[3rem_minmax(0,1fr)_repeat(4,3rem)]">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)_repeat(5,2.1rem)] items-center gap-x-1 border-b border-border bg-muted py-2 pr-2 text-center font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground md:grid-cols-[3rem_minmax(0,1fr)_repeat(5,3rem)]">
                   <span>#</span>
                   <span className="pl-3 text-left">Jugador</span>
+                  <span title="Partidos jugados">PJ</span>
                   <span title="Goles">⚽</span>
                   <span title="Asistencias">👟</span>
                   <span title="Amarillas">🟨</span>
@@ -238,7 +241,7 @@ export default async function EquipoDetailPage({
                       <li key={player.id}>
                         <Link
                           href={`/jugadores/${player.id}${keep}`}
-                          className="grid grid-cols-[3rem_minmax(0,1fr)_repeat(4,2.25rem)] items-center gap-x-1 pr-2 transition hover:bg-muted md:grid-cols-[3rem_minmax(0,1fr)_repeat(4,3rem)]"
+                          className="grid grid-cols-[3rem_minmax(0,1fr)_repeat(5,2.1rem)] items-center gap-x-1 pr-2 transition hover:bg-muted md:grid-cols-[3rem_minmax(0,1fr)_repeat(5,3rem)]"
                         >
                           <span className="flex items-center justify-center self-stretch bg-primary font-display text-xl font-bold text-white tabular-nums">
                             {player.number > 0 ? player.number : "–"}
@@ -255,6 +258,7 @@ export default async function EquipoDetailPage({
                               </span>
                             </span>
                           </span>
+                          {cell(playedByPlayer.get(player.id) ?? 0)}
                           {cell(goalsByPlayer.get(player.id) ?? 0)}
                           {cell(assistsByPlayer.get(player.id) ?? 0)}
                           {cell(cards?.yellow ?? 0)}

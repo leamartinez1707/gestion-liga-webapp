@@ -157,6 +157,7 @@ export async function addNewGuestAction(
 
   const name = input.name.trim()
   if (name.length < 3) return { error: "Escribí nombre y apellido." }
+  if (name.length > 80) return { error: "El nombre es demasiado largo." }
   const number = Number.isFinite(input.number) && input.number > 0 && input.number < 100 ? Math.trunc(input.number) : 0
 
   // Referees can't create players through RLS: checked above, created with the service role
@@ -176,7 +177,11 @@ export async function addNewGuestAction(
     return { error: eligible.error }
   }
   const result = await addToLineup(matchId, { playerId: player.id, teamId, isGuest: !!eligible.isGuest })
-  if (result.error) return result
+  if (result.error) {
+    // Don't leave a player behind that never played
+    await admin.from("players").delete().eq("id", created.id)
+    return result
+  }
   refresh(matchId)
   return {}
 }

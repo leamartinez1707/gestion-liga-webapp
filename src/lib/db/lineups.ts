@@ -2,6 +2,7 @@ import type { Match, Player } from "@/lib/types"
 import { createClient, createReadOnlyClient } from "@/lib/supabase/server"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getLeagueSettings } from "@/lib/db/settings"
+import { getSanctions } from "@/lib/db/sanctions"
 import { fetchAllIn } from "./fetch-all"
 
 export interface LineupEntry {
@@ -50,13 +51,35 @@ export async function getPlayerMatchIds(playerId: string): Promise<Set<string>> 
   }
 }
 
-/** Ids of the team's lista de buena fe for a tournament (empty = the team has no list). */
-export async function getTournamentRoster(tournamentId: string, teamId: string): Promise<Set<string>> {
-  const { data: registrations } = await getRegistrations({ tournamentId, teamId })
+/**
+ * Ids of the team's lista de buena fe for a tournament (empty = the team has no list).
+ * A read error is returned as such, so eligibility never "fails open".
+ */
+export async function getTournamentRoster(
+  tournamentId: string,
+  teamId: string
+): Promise<{ data: Set<string>; error: string | null }> {
+  const { data: registrations, error } = await getRegistrations({ tournamentId, teamId })
+  if (error) return { data: new Set(), error }
   const registration = (registrations ?? [])[0]
-  if (!registration) return new Set()
-  const { data: rosters } = await getRosters([registration.id])
-  return new Set(rosters.get(registration.id) ?? [])
+  if (!registration) return { data: new Set(), error: null }
+  const { data: rosters, error: rosterError } = await getRosters([registration.id])
+  if (rosterError) return { data: new Set(), error: rosterError }
+  return { data: new Set(rosters.get(registration.id) ?? []), error: null }
+}
+
+/** Last matchday of a suspension that covers this match, or null if the player can play it. */
+async function suspendedUntil(playerId: string, match: Match): Promise<number | null | "error"> {
+  const { data, error } = await getSanctions({ playerIds: [playerId], tournamentIds: [match.tournamentId], suspendingOnly: true })
+  if (error) return "error"
+  let until: number | null = null
+  for (const s of data ?? []) {
+    if (s.matchday == null || s.matchesSuspended <= 0) continue
+    const last = s.expiresAfterMatch ?? s.matchday + s.matchesSuspended
+    // Sanction from matchday M covers M+1 … last
+    if (match.matchday > s.matchday && match.matchday <= last) until = Math.max(until ?? 0, last)
+  }
+  return until
 }
 
 /** Matches a player already played as refuerzo in a tournament (excluding one match). */
@@ -77,6 +100,7 @@ async function guestAppearances(playerId: string, tournamentId: string, exceptMa
  * Can this player play this match for this team? Players on the lista de buena
  * fe can; if the team has no list, any of its players can. Anyone else is a
  * refuerzo: only if the league allows them, up to its limit per tournament.
+ * A suspended player can't play at all.
  */
 export async function checkEligibility(
   match: Match,
@@ -85,7 +109,14 @@ export async function checkEligibility(
 ): Promise<{ error?: string; isGuest?: boolean }> {
   if (player.teamId !== teamId) return { error: `${player.name} no es de ese equipo.` }
 
-  const roster = await getTournamentRoster(match.tournamentId, teamId)
+  const suspension = await suspendedUntil(player.id, match)
+  if (suspension === "error") return { error: "No se pudieron revisar las sanciones. Probá de nuevo." }
+  if (suspension !== null) {
+    return { error: `${player.name} está suspendido hasta la fecha ${suspension}: no puede jugar este partido.` }
+  }
+
+  const { data: roster, error: rosterError } = await getTournamentRoster(match.tournamentId, teamId)
+  if (rosterError) return { error: "No se pudo revisar la lista de buena fe. Probá de nuevo." }
   if (roster.size === 0 || roster.has(player.id)) return { isGuest: false }
 
   const settings = await getLeagueSettings()

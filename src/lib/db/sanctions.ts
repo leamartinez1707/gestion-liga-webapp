@@ -4,6 +4,7 @@ import { fetchAll } from "./fetch-all"
 import { isUuid } from "./ids"
 import { likeTerm } from "./filters"
 import { normalize } from "@/lib/text"
+import { lastPageIfOutOfRange } from "./paginate"
 
 const SANCTION_DETAILS = `
   id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
@@ -67,7 +68,10 @@ export async function getSanctionsPaginated(
       .order("id")
       .range(from, to)
 
-    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    if (error) {
+      const last = await lastPageIfOutOfRange(error, page, (p) => getSanctionsPaginated(p, limit, filter))
+      return last ?? { data: [], total: 0, page, totalPages: 0, error: error.message }
+    }
     return {
       data: (data ?? []).map(mapRowWithDetails),
       total: count ?? 0,

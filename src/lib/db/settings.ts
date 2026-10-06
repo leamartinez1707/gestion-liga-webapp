@@ -7,6 +7,7 @@ const DEFAULTS: LeagueSettings = {
   redCardMatches: 1,
   guestPlayersAllowed: false,
   guestPlayerMaxMatches: 1,
+  refereeEditDays: null,
 }
 
 export async function getLeagueSettings(): Promise<LeagueSettings> {
@@ -20,6 +21,7 @@ export async function getLeagueSettings(): Promise<LeagueSettings> {
       redCardMatches: data.red_card_matches,
       guestPlayersAllowed: data.guest_players_allowed,
       guestPlayerMaxMatches: data.guest_player_max_matches,
+      refereeEditDays: data.referee_edit_days ?? null,
     }
   } catch {
     return DEFAULTS
@@ -38,6 +40,7 @@ export async function updateLeagueSettings(settings: LeagueSettings): Promise<{ 
         red_card_matches: settings.redCardMatches,
         guest_players_allowed: settings.guestPlayersAllowed,
         guest_player_max_matches: settings.guestPlayerMaxMatches,
+        referee_edit_days: settings.refereeEditDays,
         updated_at: new Date().toISOString(),
       })
       .eq("id", true)

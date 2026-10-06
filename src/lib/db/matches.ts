@@ -2,6 +2,7 @@ import type { Match, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { fetchAll, fetchAllIn } from "./fetch-all"
 import { isUuid, uuids } from "./ids"
+import { lastPageIfOutOfRange } from "./paginate"
 
 // Only the columns the app uses, plus the team names
 const MATCH_SELECT = `
@@ -33,6 +34,9 @@ export async function getMatchesPaginated(
   // Team ids go inside an .or() string and come from the URL
   const teamIds = filter.teamIds ? uuids(filter.teamIds) : undefined
   if (teamIds?.length === 0) return empty
+  // A malformed id in the URL (?torneo=abc) matches nothing instead of a DB error
+  if (filter.tournamentId !== undefined && !isUuid(filter.tournamentId)) return empty
+  if (filter.tournamentIds && !filter.tournamentIds.every(isUuid)) return empty
   try {
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
@@ -55,7 +59,10 @@ export async function getMatchesPaginated(
       .order("id")
       .range(from, to)
 
-    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    if (error) {
+      const last = await lastPageIfOutOfRange(error, page, (p) => getMatchesPaginated(p, limit, filter))
+      return last ?? { data: [], total: 0, page, totalPages: 0, error: error.message }
+    }
     return {
       data: (data ?? []).map(mapRowWithTeams),
       total: count ?? 0,

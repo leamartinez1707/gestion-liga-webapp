@@ -146,7 +146,7 @@ export interface SeasonScope {
 }
 
 /** Season filter of the admin lists: keeps what they load bounded to one season. */
-export function seasonScope(tournaments: Tournament[], param?: string, year = String(new Date().getFullYear())): SeasonScope {
+export function seasonScope(tournaments: Tournament[], param?: string, year = todayIso().slice(0, 4)): SeasonScope {
   const seasons = [...new Set(tournaments.map((t) => t.season))].sort((a, b) => b.localeCompare(a))
   const currentSeason = seasons.includes(year) ? year : seasons[0] ?? ""
   const season = param && seasons.includes(param) ? param : currentSeason

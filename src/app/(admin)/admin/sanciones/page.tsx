@@ -47,7 +47,7 @@ export default async function SancionesPage({ searchParams }: Props) {
       )
     : undefined
   // Player name and team are filtered in the query
-  const { data: sanctions, error, total, totalPages } = await getSanctionsPaginated(page, LIMIT, {
+  const { data: sanctions, error, total, totalPages, page: shownPage } = await getSanctionsPaginated(page, LIMIT, {
     q: params.q,
     teamId: params.equipo,
     ids: vigentes,
@@ -112,7 +112,7 @@ export default async function SancionesPage({ searchParams }: Props) {
           </TableBody>
         </Table>
       </div>
-      <Suspense><Pagination page={page} totalPages={totalPages} /></Suspense>
+      <Suspense><Pagination page={shownPage} totalPages={totalPages} /></Suspense>
     </div>
   )
 }

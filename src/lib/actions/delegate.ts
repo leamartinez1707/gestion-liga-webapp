@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { requireDelegateTeam } from "@/lib/auth"
 import { uploadOptionalImage } from "@/lib/actions/upload"
-import { getPlayer, createPlayer, updatePlayer, deletePlayer } from "@/lib/db/players"
+import { getPlayer, createPlayer, updatePlayer } from "@/lib/db/players"
 import { updateTeam } from "@/lib/db/teams"
 import { getRegistration, setRoster } from "@/lib/db/registrations"
 import type { Player } from "@/lib/types"
@@ -116,6 +116,10 @@ export async function delegateUpdatePlayerAction(
   return { success: true as const }
 }
 
+/**
+ * Delegates don't delete players (that would erase their goals and lineups):
+ * they take them off the squad (inactive). Deleting is for staff.
+ */
 export async function delegateDeletePlayerAction(
   playerId: string
 ): Promise<{ error?: string }> {
@@ -127,7 +131,7 @@ export async function delegateDeletePlayerAction(
     return { error: "Ese jugador no pertenece a tu equipo." }
   }
 
-  const result = await deletePlayer(playerId)
+  const result = await updatePlayer(playerId, { active: false })
   if (result.error) return { error: result.error }
   revalidateSite()
   return {}

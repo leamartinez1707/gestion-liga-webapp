@@ -10,6 +10,8 @@ export interface PlayerMatchLine {
   assists: number
   yellow: number
   red: number
+  /** Team he played this match for, when the sheet recorded it */
+  teamId?: string
 }
 
 /**
@@ -19,10 +21,11 @@ export interface PlayerMatchLine {
 export async function getPlayerMatchLines(playerId: string): Promise<PlayerMatchLine[]> {
   try {
     const supabase = createReadOnlyClient()
-    const [lineups, goals, assists, cards] = await Promise.all([
-      supabase.from("match_lineups").select("match_id").eq("player_id", playerId),
+    const [lineups, goals, assists, events, cards] = await Promise.all([
+      supabase.from("match_lineups").select("match_id, team_id").eq("player_id", playerId),
       supabase.from("goals").select("match_id, goals").eq("player_id", playerId),
-      supabase.from("match_events").select("match_id").eq("assist_player_id", playerId),
+      supabase.from("match_events").select("match_id, team_id").eq("assist_player_id", playerId),
+      supabase.from("match_events").select("match_id, team_id").eq("player_id", playerId),
       supabase.from("sanctions").select("match_id, card_type").eq("player_id", playerId).in("card_type", ["yellow", "red"]),
     ])
 
@@ -32,9 +35,19 @@ export async function getPlayerMatchLines(playerId: string): Promise<PlayerMatch
       if (!l) byMatch.set(matchId, (l = { matchId, played: false, goals: 0, assists: 0, yellow: 0, red: 0 }))
       return l
     }
-    for (const r of lineups.data ?? []) line(r.match_id).played = true
+    for (const r of lineups.data ?? []) {
+      const l = line(r.match_id)
+      l.played = true
+      l.teamId = r.team_id
+    }
     for (const g of goals.data ?? []) if (g.match_id) line(g.match_id).goals += g.goals ?? 0
-    for (const a of assists.data ?? []) line(a.match_id).assists += 1
+    for (const a of assists.data ?? []) {
+      const l = line(a.match_id)
+      l.assists += 1
+      l.teamId ??= a.team_id
+    }
+    // The team he played that match for (he may have changed clubs since)
+    for (const e of events.data ?? []) line(e.match_id).teamId ??= e.team_id
     for (const c of cards.data ?? []) {
       if (!c.match_id) continue
       if (c.card_type === "yellow") line(c.match_id).yellow += 1

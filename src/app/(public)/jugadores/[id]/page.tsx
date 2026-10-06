@@ -76,7 +76,8 @@ export default async function JugadorPage({
   const sum = (list: typeof rows) =>
     list.reduce(
       (t, r) => ({
-        played: t.played + (r.played ? 1 : 0),
+        // A lineup marked before a match that was then postponed doesn't count
+        played: t.played + (r.played && (r.match!.status === "finished" || r.match!.status === "ongoing") ? 1 : 0),
         goals: t.goals + r.goals,
         assists: t.assists + r.assists,
         yellow: t.yellow + r.yellow,
@@ -165,9 +166,11 @@ export default async function JugadorPage({
             </p>
           ) : (
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-              {rows.map(({ match, goals, assists, yellow, red }) => {
+              {rows.map(({ match, teamId, goals, assists, yellow, red }) => {
                 const m = match!
-                const isHome = m.homeTeamId === player.teamId
+                // The team he played for then (he may have changed clubs since)
+                const side = teamId ?? player.teamId
+                const isHome = m.homeTeamId === side
                 const rival = teamMap.get(isHome ? m.awayTeamId : m.homeTeamId)
                 const own = isHome ? m.homeScore : m.awayScore
                 const other = isHome ? m.awayScore : m.homeScore

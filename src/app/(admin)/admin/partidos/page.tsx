@@ -48,7 +48,7 @@ export default async function PartidosPage({ searchParams }: Props) {
     teamIds = teamIds ? teamIds.filter((id) => named.includes(id)) : named
   }
   const matchday = parseInt(params.fecha ?? "", 10) || undefined
-  const { data: matches, error, total, totalPages } = await getMatchesPaginated(page, LIMIT, {
+  const { data: matches, error, total, totalPages, page: shownPage } = await getMatchesPaginated(page, LIMIT, {
     tournamentIds,
     tournamentId: params.torneo,
     teamIds,
@@ -145,7 +145,7 @@ export default async function PartidosPage({ searchParams }: Props) {
 
       <PartidosViewToggle matches={matchesList} shortNames={shortNames} listView={listView} />
 
-      <Suspense><Pagination page={page} totalPages={totalPages} /></Suspense>
+      <Suspense><Pagination page={shownPage} totalPages={totalPages} /></Suspense>
     </div>
   )
 }

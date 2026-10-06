@@ -105,6 +105,8 @@ export interface LeagueSettings {
   guestPlayersAllowed: boolean
   /** Matches per tournament a refuerzo may play; 0 = no limit */
   guestPlayerMaxMatches: number
+  /** Days after a finished match its referee can still edit it; null = no limit */
+  refereeEditDays: number | null
 }
 
 export interface Sanction {

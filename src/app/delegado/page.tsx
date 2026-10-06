@@ -53,7 +53,8 @@ export default async function DelegadoDashboard() {
     getSeriesOptions(),
     getSanctions({ teamId: team.id }),
   ])
-  const playersList = players ?? []
+  // Players taken off the squad (and referee-created refuerzos) are inactive
+  const playersList = (players ?? []).filter((p) => p.active)
   const [{ data: rosters }, nextMatchdays] = await Promise.all([
     getRosters((registrations ?? []).map((r) => r.id)),
     getNextMatchdays(sanctionTournamentIds(sanctions ?? [])),

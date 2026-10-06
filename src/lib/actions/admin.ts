@@ -1279,11 +1279,18 @@ export async function updateSettingsAction(_prev: unknown, formData: FormData) {
   if (Number.isNaN(guestPlayerMaxMatches) || guestPlayerMaxMatches < 0 || guestPlayerMaxMatches > 50) {
     return { error: "Los partidos por refuerzo tienen que ser entre 0 y 50." }
   }
+  // Empty = no limit
+  const editDaysRaw = ((formData.get("refereeEditDays") as string | null) ?? "").trim()
+  const refereeEditDays = editDaysRaw === "" ? null : parseInt(editDaysRaw, 10)
+  if (refereeEditDays !== null && (Number.isNaN(refereeEditDays) || refereeEditDays < 0 || refereeEditDays > 365)) {
+    return { error: "Los días para editar tienen que ser entre 0 y 365, o vacío para sin límite." }
+  }
 
   const result = await updateLeagueSettings({
     ...settings,
     guestPlayersAllowed: formData.get("guestPlayersAllowed") === "on",
     guestPlayerMaxMatches,
+    refereeEditDays,
   })
   if (result.error) return { error: result.error }
   revalidateSite()

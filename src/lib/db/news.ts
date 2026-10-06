@@ -3,6 +3,7 @@ import type { NewsArticle, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { fetchAll } from "./fetch-all"
 import { isUuid } from "./ids"
+import { lastPageIfOutOfRange } from "./paginate"
 
 /** Admin listing: uses the session client so staff also see drafts (RLS). */
 export interface ArticleFilter {
@@ -17,6 +18,8 @@ export async function getArticlesPaginated(
   limit = 10,
   filter: ArticleFilter = {}
 ): Promise<PaginatedResult<ArticleRow>> {
+  // A malformed id in the URL matches nothing instead of a DB error
+  if (filter.seriesId && filter.seriesId !== "general" && !isUuid(filter.seriesId)) return { data: [], total: 0, page, totalPages: 0, error: null }
   try {
     const supabase = await createClient()
     const from = (page - 1) * limit
@@ -33,9 +36,13 @@ export async function getArticlesPaginated(
 
     const { data, error, count } = await query
       .order("date", { ascending: false })
+      .order("id")
       .range(from, to)
 
-    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    if (error) {
+      const last = await lastPageIfOutOfRange(error, page, (p) => getArticlesPaginated(p, limit, filter))
+      return last ?? { data: [], total: 0, page, totalPages: 0, error: error.message }
+    }
     return {
       data: (data ?? []).map(mapRow),
       total: count ?? 0,

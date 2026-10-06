@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import type { Player } from "@/lib/types"
 import { getTeam, getTeamsByIds } from "@/lib/db/teams"
 import { getPlayersByIds, getPlayersByTeam } from "@/lib/db/players"
-import { getTopScorers } from "@/lib/db/goals"
+import { getGoalsByMatch } from "@/lib/db/goals"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
@@ -75,7 +75,9 @@ export default async function EquipoDetailPage({
 
   // ---- All-time record in the league ----
   const record = teamRecord(teamMatches, id)
-  const playerIdsOfTeam = new Set((players ?? []).map((p) => p.id))
+  // Players of the club at any time: today's squad plus every lista de buena fe it registered
+  const { data: allRosters } = await getRosters((registrations ?? []).map((r) => r.id))
+  const playerIdsOfTeam = new Set([...(players ?? []).map((p) => p.id), ...[...allRosters.values()].flat()])
   const teamMatchIds = new Set(teamMatches.map((m) => m.id))
   const cards = (sanctions ?? []).filter((s) => playerIdsOfTeam.has(s.playerId) && s.matchId && teamMatchIds.has(s.matchId))
   const yellows = cards.filter((s) => s.cardType === "yellow").length
@@ -96,16 +98,21 @@ export default async function EquipoDetailPage({
   squad = [...squad].sort((a, b) => (a.number || 999) - (b.number || 999))
 
   const seasonMatchIds = new Set(seasonMatches.map((m) => m.id))
-  const [{ data: scorers }, { data: albums }, assistsByPlayer, playedByPlayer, { data: teams }, nextMatchdays] = await Promise.all([
-    getTopScorers(100, { teamIds: [id], tournamentIds: [...seasonTournamentIds] }),
+  const [goalsByMatch, { data: albums }, assistsByPlayer, playedByPlayer, { data: teams }, nextMatchdays] = await Promise.all([
+    // Goals in this club's matches of the season (by the player, wherever he plays now)
+    getGoalsByMatch([...seasonMatchIds]),
     getAlbums({ matchIds: [...seasonMatchIds] }),
     getAssistCounts([...seasonMatchIds]),
-    getAppearanceCounts([...seasonMatchIds]),
+    // PJ: only matches actually played (a lineup marked before a postponed match doesn't count)
+    getAppearanceCounts(seasonMatches.filter((m) => m.status === "finished" || m.status === "ongoing").map((m) => m.id)),
     getTeamsByIds(seasonMatches.flatMap((m) => [m.homeTeamId, m.awayTeamId])),
     getNextMatchdays(sanctionTournamentIds(sanctions ?? [])),
   ])
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
-  const goalsByPlayer = new Map((scorers ?? []).map((s) => [s.playerId, s.goals]))
+  const goalsByPlayer = new Map<string, number>()
+  for (const list of goalsByMatch.values()) {
+    for (const g of list) goalsByPlayer.set(g.playerId, (goalsByPlayer.get(g.playerId) ?? 0) + g.goals)
+  }
   // Cards of the season, per player
   const seasonCards = new Map<string, { yellow: number; red: number }>()
   for (const s of sanctions ?? []) {

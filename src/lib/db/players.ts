@@ -4,6 +4,7 @@ import type { Player, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { isUuid } from "./ids"
 import { fetchAll, fetchAllIn } from "./fetch-all"
+import { lastPageIfOutOfRange } from "./paginate"
 
 const PLAYER_COLUMNS = "id, name, number, position, photo_url, team_id, active"
 
@@ -20,7 +21,7 @@ export async function getPlayersPaginated(
 ): Promise<PaginatedResult<Player>> {
   try {
     // Filtering by an empty set (e.g. a search with no match) finds nothing
-    if (filter.teamIds && filter.teamIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
+    if (filter.teamIds && (filter.teamIds.length === 0 || !filter.teamIds.every(isUuid))) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
@@ -36,9 +37,13 @@ export async function getPlayersPaginated(
 
     const { data, error, count } = await query
       .order("created_at", { ascending: false })
+      .order("id")
       .range(from, to)
 
-    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    if (error) {
+      const last = await lastPageIfOutOfRange(error, page, (p) => getPlayersPaginated(p, limit, filter))
+      return last ?? { data: [], total: 0, page, totalPages: 0, error: error.message }
+    }
     return {
       data: (data ?? []).map(mapRow),
       total: count ?? 0,

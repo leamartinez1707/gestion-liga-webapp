@@ -2,24 +2,35 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { getSessionProfile, homeFor } from "@/lib/auth"
 
-export async function signIn(formData: FormData) {
+/**
+ * Returns the error instead of throwing it: in production Next.js hides the
+ * message of thrown errors, so a wrong password showed up as a generic 500.
+ */
+export async function signIn(
+  _prev: { error: string | null } | undefined,
+  formData: FormData
+): Promise<{ error: string | null }> {
   const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
+    email: ((formData.get("email") as string | null) ?? "").trim(),
+    password: (formData.get("password") as string | null) ?? "",
   })
 
   if (error) {
-    throw new Error(
-      error.code === "invalid_credentials"
-        ? "Email o contraseña incorrectos."
-        : "No se pudo iniciar sesión. Intentá de nuevo."
-    )
+    return {
+      error:
+        error.code === "invalid_credentials"
+          ? "Email o contraseña incorrectos."
+          : "No se pudo iniciar sesión. Intentá de nuevo.",
+    }
   }
 
-  redirect("/admin")
+  // Each role lands on its own panel
+  const profile = await getSessionProfile()
+  redirect(profile ? homeFor(profile) : "/admin")
 }
 
 export async function signOut() {

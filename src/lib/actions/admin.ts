@@ -64,6 +64,7 @@ import {
   setRoster,
 } from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
+import { deleteTeamSeasonPhoto, setTeamSeasonPhoto } from "@/lib/db/team-photos"
 import { updateLeagueSettings } from "@/lib/db/settings"
 import { createClient } from "@/lib/supabase/server"
 import {
@@ -265,6 +266,33 @@ export async function updateTeamAction(
   if (result.error) return { error: result.error }
   revalidateSite()
   return { success: true as const }
+}
+
+/** Squad photo of a season (one per team and season; uploading again replaces it). */
+export async function setTeamSeasonPhotoAction(teamId: string, _prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const season = (formData.get("season") as string | null)?.trim()
+  if (!season || !/^\d{4}$/.test(season)) return { error: "Elegí la temporada." }
+
+  const { url, error: uploadError } = await uploadOptionalImage(formData, "photo", "teams/squads")
+  if (uploadError) return { error: uploadError }
+  if (!url) return { error: "Elegí la foto del plantel." }
+
+  const result = await setTeamSeasonPhoto(teamId, season, url)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function deleteTeamSeasonPhotoAction(teamId: string, photoId: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+  const result = await deleteTeamSeasonPhoto(photoId, teamId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
 }
 
 export async function deleteTeamAction(

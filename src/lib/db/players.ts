@@ -60,6 +60,18 @@ export async function getPlayersByTeam(
   }
 }
 
+/** Players by id (e.g. a past season's lista de buena fe, even if some changed team). */
+export async function getPlayersByIds(ids: string[]): Promise<Player[]> {
+  if (ids.length === 0) return []
+  try {
+    const supabase = createReadOnlyClient()
+    const { data } = await supabase.from("players").select("*").in("id", ids).order("number", { ascending: true })
+    return (data ?? []).map(mapRow)
+  } catch {
+    return []
+  }
+}
+
 export async function getPlayer(
   id: string
 ): Promise<{ data: Player | null; error: string | null }> {

@@ -199,6 +199,14 @@ export type Database = {
         Update: { created_at?: string | null; display_order?: number | null; id?: string; link_url?: string | null; logo_url?: string; name?: string }
         Relationships: []
       }
+      team_season_photos: {
+        Row: { created_at: string | null; id: string; season: string; team_id: string; url: string }
+        Insert: { created_at?: string | null; id?: string; season: string; team_id: string; url: string }
+        Update: { created_at?: string | null; id?: string; season?: string; team_id?: string; url?: string }
+        Relationships: [
+          { foreignKeyName: "team_season_photos_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
+        ]
+      }
       teams: {
         Row: {
           assistant_coach: string | null; category: string | null; coach: string | null; created_at: string | null

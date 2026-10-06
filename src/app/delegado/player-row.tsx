@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom"
 import { Pencil, Trash2 } from "lucide-react"
 
 import type { Player } from "@/lib/types"
-import { updatePlayerAction, deletePlayerAction } from "@/lib/actions/admin"
+import { delegateUpdatePlayerAction, delegateDeletePlayerAction } from "@/lib/actions/delegate"
 import {
   Dialog,
   DialogContent,
@@ -52,10 +52,10 @@ function SubmitButton() {
   )
 }
 
-export function PlayerRow({ player, teamId }: { player: Player; teamId: string }) {
+export function PlayerRow({ player }: { player: Player }) {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState(player.position)
-  const action = updatePlayerAction.bind(null, player.id)
+  const action = delegateUpdatePlayerAction.bind(null, player.id)
   const [state, formAction] = useActionState(action, undefined)
 
   if (state?.success && open) setOpen(false)
@@ -92,7 +92,6 @@ export function PlayerRow({ player, teamId }: { player: Player; teamId: string }
               <DialogTitle>Editar {player.name}</DialogTitle>
             </DialogHeader>
             <form action={formAction} className="flex flex-col gap-4">
-              <input type="hidden" name="teamId" value={teamId} />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="name">Nombre</Label>
                 <Input id="name" name="name" defaultValue={player.name} required />
@@ -129,7 +128,7 @@ export function PlayerRow({ player, teamId }: { player: Player; teamId: string }
         {/* Delete */}
         <DeleteConfirmDialog
           itemName={player.name}
-          onConfirm={deletePlayerAction.bind(null, player.id)}
+          onConfirm={delegateDeletePlayerAction.bind(null, player.id)}
         >
           <Button variant="ghost" size="icon-sm" aria-label="Eliminar" className="text-destructive hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />

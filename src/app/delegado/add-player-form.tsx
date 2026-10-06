@@ -4,7 +4,7 @@ import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 import { Plus } from "lucide-react"
 
-import { createPlayerAction } from "@/lib/actions/admin"
+import { delegateCreatePlayerAction } from "@/lib/actions/delegate"
 import {
   Dialog,
   DialogContent,
@@ -40,10 +40,10 @@ function SubmitButton() {
   )
 }
 
-export function AddPlayerForm({ teamId }: { teamId: string }) {
+export function AddPlayerForm() {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState("delantero")
-  const [state, formAction] = useActionState(createPlayerAction, undefined)
+  const [state, formAction] = useActionState(delegateCreatePlayerAction, undefined)
 
   if (state?.success && open) {
     setOpen(false)
@@ -62,7 +62,6 @@ export function AddPlayerForm({ teamId }: { teamId: string }) {
           <DialogTitle>Nuevo Jugador</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
-          <input type="hidden" name="teamId" value={teamId} />
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nombre</Label>

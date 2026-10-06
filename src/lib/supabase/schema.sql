@@ -3,15 +3,20 @@
 -- Description: Core tables for tournament, team, player, match, sanction, and
 --              news management. Designed to extend Supabase auth.users via the
 --              profiles table.
+--
+-- Roles, RLS policies, helper functions and triggers live in
+-- supabase/migrations/ (apply them after this file on a fresh project).
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
 -- Profiles (extends auth.users)
 -- -----------------------------------------------------------------------------
+-- role: superadmin / editor = staff (panel /admin); delegate = gestiona su equipo (team_id)
 create table profiles (
   id uuid references auth.users primary key,
   email text unique not null,
-  role text not null check (role in ('superadmin', 'editor')),
+  role text not null default 'delegate' check (role in ('superadmin', 'editor', 'delegate')),
+  team_id uuid,              -- FK a teams agregada más abajo (teams se crea después)
   created_at timestamptz default now()
 );
 
@@ -144,6 +149,33 @@ create table news_articles (
 );
 
 -- -----------------------------------------------------------------------------
+-- Goals (goleadores por partido)
+-- -----------------------------------------------------------------------------
+create table goals (
+  id uuid default gen_random_uuid() primary key,
+  match_id uuid references matches on delete cascade,
+  player_id uuid references players on delete cascade,
+  goals integer not null default 1,
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Sponsors
+-- -----------------------------------------------------------------------------
+create table sponsors (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  logo_url text not null,
+  link_url text,
+  display_order integer default 0,
+  created_at timestamptz default now()
+);
+
+alter table profiles
+  add constraint profiles_team_id_fkey
+  foreign key (team_id) references teams(id) on delete set null;
+
+-- -----------------------------------------------------------------------------
 -- Indexes
 -- -----------------------------------------------------------------------------
 create index idx_teams_tournament on teams(tournament_id);
@@ -154,3 +186,4 @@ create index idx_sanctions_player on sanctions(player_id);
 create index idx_sanctions_match on sanctions(match_id);
 create index idx_news_published on news_articles(published);
 create index idx_news_series on news_articles(series_id);
+create index idx_profiles_team on profiles(team_id);

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { Shield, LogOut } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/server"
+import { getSessionProfile, isStaff } from "@/lib/auth"
 import { signOut } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,19 +14,19 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSessionProfile()
 
   if (!user) {
     redirect("/login")
+  }
+  if (!isStaff(user)) {
+    redirect("/delegado")
   }
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <AdminDesktopSidebar userEmail={user.email ?? undefined} />
+      <AdminDesktopSidebar userEmail={user.email} />
 
       {/* Main area */}
       <div className="flex flex-1 flex-col">
@@ -34,7 +34,7 @@ export default async function AdminLayout({
         <header className="flex h-16 items-center justify-between border-b border-border px-4 md:px-6">
           {/* Mobile: hamburger + logo */}
           <div className="flex items-center gap-2 md:hidden">
-            <AdminMobileSidebar userEmail={user.email ?? undefined} />
+            <AdminMobileSidebar userEmail={user.email} />
             <span className="text-sm font-semibold text-foreground">Admin</span>
           </div>
 

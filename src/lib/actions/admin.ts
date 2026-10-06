@@ -55,6 +55,7 @@ import {
 } from "@/lib/db/news"
 import { bulkCreateMatches } from "@/lib/db/fixture-actions"
 import { uploadOptionalImage } from "@/lib/actions/upload"
+import { requireStaff } from "@/lib/auth"
 import type { Player, Match } from "@/lib/types"
 
 // ---------------------------------------------------------------------------
@@ -65,6 +66,9 @@ export async function createTournamentAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const category = formData.get("category") as string
   const season = formData.get("season") as string
@@ -96,6 +100,9 @@ export async function updateTournamentAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const category = formData.get("category") as string
   const season = formData.get("season") as string
@@ -122,6 +129,9 @@ export async function updateTournamentAction(
 export async function deleteTournamentAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteTournament(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/torneos")
@@ -133,6 +143,9 @@ export async function deleteTournamentAction(
 // ---------------------------------------------------------------------------
 
 export async function createTeamAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const shortName = formData.get("shortName") as string
   const category = formData.get("category") as string
@@ -167,6 +180,9 @@ export async function updateTeamAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const shortName = formData.get("shortName") as string
   const category = formData.get("category") as string
@@ -198,6 +214,9 @@ export async function updateTeamAction(
 export async function deleteTeamAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteTeam(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/equipos")
@@ -209,6 +228,9 @@ export async function deleteTeamAction(
 // ---------------------------------------------------------------------------
 
 export async function createPlayerAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const number = formData.get("number") as string
   const position = formData.get("position") as string
@@ -238,11 +260,14 @@ export async function updatePlayerAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const number = formData.get("number") as string
   const position = formData.get("position") as string
   const teamId = formData.get("teamId") as string
-  const active = formData.get("active") as string
+  const active = formData.get("active") as string | null
 
   if (!name?.trim()) return { error: "El nombre del jugador es obligatorio." }
 
@@ -254,8 +279,8 @@ export async function updatePlayerAction(
     number: number ? parseInt(number, 10) : undefined,
     position: (position as Player["position"]) || undefined,
     teamId: teamId || undefined,
-    active: active === "true",
-    photo: photoUrl ?? null,
+    active: active === null ? undefined : active === "true",
+    photo: photoUrl ?? undefined,
   })
 
   if (result.error) return { error: result.error }
@@ -266,6 +291,9 @@ export async function updatePlayerAction(
 export async function deletePlayerAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deletePlayer(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/jugadores")
@@ -280,6 +308,9 @@ export async function createMatchAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const tournamentId = formData.get("tournamentId") as string
   const homeTeamId = formData.get("homeTeamId") as string
   const awayTeamId = formData.get("awayTeamId") as string
@@ -317,6 +348,9 @@ export async function updateMatchAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const homeScore = formData.get("homeScore") as string
   const awayScore = formData.get("awayScore") as string
   const status = formData.get("status") as string
@@ -380,6 +414,9 @@ export async function updateMatchAction(
 export async function deleteMatchAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteMatch(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/partidos")
@@ -394,6 +431,9 @@ export async function generateFixtureAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const tournamentId = formData.get("tournamentId") as string
   const teamIdsJson = formData.get("teamIds") as string
 
@@ -425,6 +465,9 @@ export async function createSanctionAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const playerId = formData.get("playerId") as string
   const matchId = formData.get("matchId") as string | null
   const cardType = formData.get("cardType") as string
@@ -451,6 +494,9 @@ export async function createSanctionAction(
 export async function deleteSanctionAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteSanction(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/sanciones")
@@ -465,6 +511,9 @@ export async function createArticleAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const title = formData.get("title") as string
   const excerpt = formData.get("excerpt") as string
   const content = formData.get("content") as string
@@ -497,6 +546,9 @@ export async function updateArticleAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const title = formData.get("title") as string
   const excerpt = formData.get("excerpt") as string
   const content = formData.get("content") as string
@@ -525,6 +577,9 @@ export async function updateArticleAction(
 export async function deleteArticleAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteArticle(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/noticias")
@@ -532,6 +587,9 @@ export async function deleteArticleAction(
 }
 
 export async function publishArticleAction(id: string) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await publishArticle(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/noticias")
@@ -539,6 +597,9 @@ export async function publishArticleAction(id: string) {
 }
 
 export async function unpublishArticleAction(id: string) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await unpublishArticle(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/noticias")
@@ -547,6 +608,8 @@ export async function unpublishArticleAction(id: string) {
 
 /** Form action wrapper for publish — accepts FormData, returns void */
 export async function publishArticleFormAction(formData: FormData) {
+  if ((await requireStaff()).error) return
+
   const id = formData.get("id") as string
   if (!id) return
   await publishArticle(id)
@@ -555,6 +618,8 @@ export async function publishArticleFormAction(formData: FormData) {
 
 /** Form action wrapper for unpublish — accepts FormData, returns void */
 export async function unpublishArticleFormAction(formData: FormData) {
+  if ((await requireStaff()).error) return
+
   const id = formData.get("id") as string
   if (!id) return
   await unpublishArticle(id)
@@ -569,6 +634,9 @@ export async function createSeriesAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const description = formData.get("description") as string
 
@@ -589,6 +657,9 @@ export async function updateSeriesAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const description = formData.get("description") as string
 
@@ -606,6 +677,9 @@ export async function updateSeriesAction(
 export async function deleteSeriesAction(
   id: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteSeries(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/series")
@@ -621,6 +695,9 @@ export async function createDivisionAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
 
   if (!name?.trim()) return { error: "El nombre de la división es obligatorio." }
@@ -641,6 +718,9 @@ export async function updateDivisionAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const displayOrder = formData.get("displayOrder") as string
 
@@ -658,6 +738,9 @@ export async function deleteDivisionAction(
   id: string,
   seriesId: string
 ): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteDivision(id)
   if (result.error) return { error: result.error }
   revalidatePath(`/admin/series/${seriesId}`)
@@ -673,6 +756,9 @@ export async function assignDelegateAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const email = formData.get("email") as string
   if (!email?.trim()) return { error: "El email es obligatorio." }
 
@@ -684,6 +770,9 @@ export async function assignDelegateAction(
 
 /** Form-compatible wrapper for assignDelegate */
 export async function assignDelegateFormAction(formData: FormData): Promise<void> {
+  const auth = await requireStaff()
+  if (auth.error) throw new Error(auth.error)
+
   const teamId = formData.get("teamId") as string
   const email = formData.get("email") as string
   if (!email?.trim()) throw new Error("El email es obligatorio.")
@@ -694,7 +783,9 @@ export async function assignDelegateFormAction(formData: FormData): Promise<void
 }
 
 export async function revokeDelegateAction(teamId: string) {
-  "use server"
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await revokeDelegate(teamId)
   if (result.error) return { error: result.error }
   revalidatePath(`/admin/equipos/${teamId}`)
@@ -703,6 +794,9 @@ export async function revokeDelegateAction(teamId: string) {
 
 /** Form-compatible wrapper for revokeDelegate */
 export async function revokeDelegateFormAction(formData: FormData): Promise<void> {
+  const auth = await requireStaff()
+  if (auth.error) throw new Error(auth.error)
+
   const teamId = formData.get("teamId") as string
   const result = await revokeDelegate(teamId)
   if (result.error) throw new Error(result.error)
@@ -717,6 +811,9 @@ export async function suspendMatchdayAction(
   _prev: unknown,
   formData: FormData
 ) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const matchday = formData.get("matchday") as string
   const days = formData.get("days") as string
 
@@ -729,7 +826,7 @@ export async function suspendMatchdayAction(
     const supabase = await createClient()
 
     // Get all matches from this matchday onward
-    const { data: matches } = await (supabase.from("matches") as any)
+    const { data: matches } = await supabase.from("matches")
       .select("id, date, matchday")
       .gte("matchday", matchdayNum)
       .order("matchday")
@@ -743,7 +840,7 @@ export async function suspendMatchdayAction(
       const newDate = new Date(m.date as string)
       newDate.setDate(newDate.getDate() + daysNum * (matchdayDiff + 1))
 
-      await (supabase.from("matches") as any)
+      await supabase.from("matches")
         .update({ date: newDate.toISOString().split("T")[0] })
         .eq("id", m.id)
     }
@@ -760,6 +857,9 @@ export async function suspendMatchdayAction(
 // ---------------------------------------------------------------------------
 
 export async function createSponsorAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const logoUrl = formData.get("logoUrl") as string
   const linkUrl = formData.get("linkUrl") as string
@@ -780,6 +880,9 @@ export async function createSponsorAction(_prev: unknown, formData: FormData) {
 }
 
 export async function updateSponsorAction(id: string, _prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const name = formData.get("name") as string
   const logoUrl = formData.get("logoUrl") as string
   const linkUrl = formData.get("linkUrl") as string
@@ -797,6 +900,9 @@ export async function updateSponsorAction(id: string, _prev: unknown, formData: 
 }
 
 export async function deleteSponsorAction(id: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
   const result = await deleteSponsor(id)
   if (result.error) return { error: result.error }
   revalidatePath("/admin/sponsors")

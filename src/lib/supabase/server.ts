@@ -16,9 +16,10 @@ export function createReadOnlyClient() {
 }
 
 /**
- * Creates a Supabase client with full cookie management.
- * ONLY use in Server Actions or Route Handlers — NOT in Server Components.
- * Required for: login, logout, session refresh.
+ * Supabase client bound to the signed-in user's session (RLS applies as that user).
+ * Usable in Server Actions, Route Handlers and Server Components. In Server
+ * Components cookies are read-only, so refreshed tokens can't be written there;
+ * that's fine because the proxy (src/proxy.ts) refreshes the session first.
  */
 export async function createClient() {
   const cookieStore = await cookies()
@@ -32,35 +33,13 @@ export async function createClient() {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-}
-
-/**
- * Creates a Supabase admin client using the service_role key.
- * Used for admin operations that bypass RLS. ONLY in Server Actions.
- * NEVER expose this client to the browser.
- */
-export async function createAdminClient() {
-  const cookieStore = await cookies()
-
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Called from a Server Component — ignore (see comment above).
+          }
         },
       },
     }

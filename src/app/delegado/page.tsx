@@ -76,7 +76,7 @@ export default async function DelegadoDashboard() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Plantel</CardTitle>
-            <AddPlayerForm teamId={team.id} />
+            <AddPlayerForm />
           </div>
         </CardHeader>
         <CardContent>
@@ -87,7 +87,7 @@ export default async function DelegadoDashboard() {
           ) : (
             <div className="divide-y divide-border">
               {playersList.map((p) => (
-                <PlayerRow key={p.id} player={p} teamId={team.id} />
+                <PlayerRow key={p.id} player={p} />
               ))}
             </div>
           )}

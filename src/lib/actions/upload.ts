@@ -1,35 +1,39 @@
-"use server"
+// Server-only helpers used by the Server Actions in admin.ts / delegate.ts.
+// Intentionally NOT a "use server" module: exporting these as Server Actions
+// would make them callable by anyone via a direct POST.
 
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 
 const BUCKET = "public-images"
+const MAX_BYTES = 5 * 1024 * 1024
+const ALLOWED_TYPES: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+}
 
 /**
- * Uploads an image file to Supabase Storage and returns the public URL.
- * Uses the service_role key to bypass RLS (server-only, never exposed to client).
+ * Uploads an image to Supabase Storage with the signed-in user's session,
+ * so the storage RLS policies decide who may upload. Returns the public URL.
  */
 export async function uploadImage(
   file: File,
   folder: string
 ): Promise<{ url?: string; error?: string }> {
-  try {
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+  const ext = ALLOWED_TYPES[file.type]
+  if (!ext) return { error: "Formato de imagen no permitido. Usá PNG, JPG o WEBP." }
+  if (file.size > MAX_BYTES) return { error: "La imagen no puede superar los 5 MB." }
 
-    const ext = file.name.split(".").pop() ?? "jpg"
+  try {
+    const supabase = await createClient()
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const path = `${folder}/${fileName}`
 
     const { error } = await supabase.storage
       .from(BUCKET)
-      .upload(path, file, {
-        cacheControl: "3600",
-        upsert: true,
-      })
+      .upload(path, file, { cacheControl: "3600", contentType: file.type })
 
-    if (error) return { error: error.message }
+    if (error) return { error: "No se pudo subir la imagen." }
 
     const {
       data: { publicUrl },
@@ -50,9 +54,9 @@ export async function uploadOptionalImage(
   fieldName: string,
   folder: string
 ): Promise<{ url?: string | null; error?: string }> {
-  const file = formData.get(fieldName) as File | null
+  const file = formData.get(fieldName)
 
-  if (!file || file.size === 0) {
+  if (!(file instanceof File) || file.size === 0) {
     return { url: null }
   }
 

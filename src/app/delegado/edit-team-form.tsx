@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom"
 import { Pencil } from "lucide-react"
 
 import type { Team } from "@/lib/types"
-import { updateTeamAction } from "@/lib/actions/admin"
+import { delegateUpdateTeamAction } from "@/lib/actions/delegate"
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ function SubmitButton() {
 export function TeamEditForm({ team }: { team: Team }) {
   const [open, setOpen] = useState(false)
   const [state, formAction] = useActionState(
-    updateTeamAction.bind(null, team.id),
+    delegateUpdateTeamAction,
     undefined
   )
 

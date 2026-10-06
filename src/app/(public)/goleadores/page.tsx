@@ -73,7 +73,7 @@ export default async function GoleadoresPage({ searchParams }: Props) {
                   <div className="w-6 flex justify-center shrink-0">{getMedalIcon(i)}</div>
                   <PhotoAvatar src={s.playerPhoto} name={s.playerName} className="size-11" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{s.playerName}</p>
+                    <Link href={`/jugadores/${s.playerId}${scopeQuery(scope)}`} className="block truncate text-sm font-semibold hover:text-primary">{s.playerName}</Link>
                     <Link
                       href={`/equipos/${s.teamId}${scopeQuery(scope)}`}
                       className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"

@@ -34,7 +34,8 @@ const EVENT_LABEL: Record<MatchEvent["type"], string> = {
 }
 const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: "⚽", yellow: "🟨", red: "🟥" }
 
-type Picking = { team: SheetTeam; type: MatchEvent["type"] } | null
+// For a goal, a second step asks who assisted (scorerId set)
+type Picking = { team: SheetTeam; type: MatchEvent["type"]; scorerId?: string } | null
 
 export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: LiveSheetProps) {
   const [pending, startTransition] = useTransition()
@@ -51,8 +52,15 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
       else after?.()
     })
 
-  const addEvent = (team: SheetTeam, type: MatchEvent["type"], playerId: string | null) =>
-    run(() => addEventAction(match.id, { teamId: team.id, playerId, type }), () => setPicking(null))
+  const addEvent = (team: SheetTeam, type: MatchEvent["type"], playerId: string | null, assistPlayerId: string | null = null) =>
+    run(() => addEventAction(match.id, { teamId: team.id, playerId, assistPlayerId, type }), () => setPicking(null))
+
+  const pickPlayer = (playerId: string) => {
+    if (!picking) return
+    if (picking.scorerId) addEvent(picking.team, "goal", picking.scorerId, playerId)
+    else if (picking.type === "goal") setPicking({ ...picking, scorerId: playerId })
+    else addEvent(picking.team, picking.type, playerId)
+  }
 
   const setState = (status: "scheduled" | "ongoing" | "finished", period: Match["livePeriod"] | null) =>
     run(() => setLiveStateAction(match.id, status, period), () => setConfirmFinish(false))
@@ -157,6 +165,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
                   <p className="truncate text-sm font-medium">{playerName(e.playerId)}</p>
                   <p className="text-xs text-muted-foreground">
                     {EVENT_LABEL[e.type]} · {teamOf(e.teamId).shortName}{e.period && ` · ${e.period}`}
+                    {e.assistPlayerId && ` · Asist.: ${playerName(e.assistPlayerId)}`}
                   </p>
                 </div>
                 <Button
@@ -179,24 +188,45 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
       </section>
 
       {/* Player picker */}
-      <Dialog open={picking !== null} onOpenChange={(open) => !open && setPicking(null)}>
+      {/* Closing on the assist step keeps the goal (without assist): never lose a goal */}
+      <Dialog
+        open={picking !== null}
+        onOpenChange={(open) => {
+          if (open || !picking) return
+          if (picking.scorerId && !pending) addEvent(picking.team, "goal", picking.scorerId, null)
+          else setPicking(null)
+        }}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {picking && `${EVENT_ICON[picking.type]} ${EVENT_LABEL[picking.type]} · ${picking.team.shortName}`}
+              {picking &&
+                (picking.scorerId
+                  ? `¿Quién asistió a ${playerName(picking.scorerId)}?`
+                  : `${EVENT_ICON[picking.type]} ${EVENT_LABEL[picking.type]} · ${picking.team.shortName}`)}
             </DialogTitle>
           </DialogHeader>
           {picking && (
             <div className="flex flex-col gap-1.5">
+              {picking.scorerId && (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => addEvent(picking.team, "goal", picking.scorerId ?? null, null)}
+                  className="mb-1 min-h-14 rounded-xl bg-primary px-3 text-base font-bold text-white disabled:opacity-60"
+                >
+                  Sin asistencia · guardar gol
+                </button>
+              )}
               {picking.type === "own_goal" && (
                 <p className="text-xs text-muted-foreground">Elegí el jugador de {picking.team.shortName} que la metió en contra: el gol suma para el rival.</p>
               )}
-              {picking.team.players.map((p) => (
+              {picking.team.players.filter((p) => p.id !== picking.scorerId).map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   disabled={pending}
-                  onClick={() => addEvent(picking.team, picking.type, p.id)}
+                  onClick={() => pickPlayer(p.id)}
                   className="flex items-center gap-3 rounded-lg border border-border px-3 py-3 text-left active:bg-muted-bg disabled:opacity-60"
                 >
                   <span className="w-8 text-center text-lg font-black tabular-nums text-muted-foreground">
@@ -212,7 +242,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
               {picking.team.players.length === 0 && (
                 <p className="py-4 text-center text-sm text-muted-foreground">El equipo no tiene jugadores cargados.</p>
               )}
-              {(picking.type === "goal" || picking.type === "own_goal") && (
+              {!picking.scorerId && (picking.type === "goal" || picking.type === "own_goal") && (
                 <button
                   type="button"
                   disabled={pending}

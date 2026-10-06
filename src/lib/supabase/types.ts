@@ -271,6 +271,19 @@ export type Database = {
       unassign_delegate: { Args: { p_profile_id: string }; Returns: undefined }
       recompute_accumulation: { Args: { p_player_id: string; p_tournament_id: string }; Returns: undefined }
       recompute_match: { Args: { p_match_id: string }; Returns: undefined }
+      top_scorers: {
+        Args: { p_limit?: number; p_tournament_ids?: string[]; p_team_ids?: string[] }
+        Returns: {
+          player_id: string
+          player_name: string
+          player_photo: string | null
+          team_id: string
+          team_name: string | null
+          team_short_name: string | null
+          team_shield: string | null
+          goals: number
+        }[]
+      }
       set_match_live_state: { Args: { p_match_id: string; p_status: string; p_period: string | null }; Returns: undefined }
     }
     Enums: { [_ in never]: never }

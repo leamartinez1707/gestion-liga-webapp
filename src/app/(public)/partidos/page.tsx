@@ -2,7 +2,7 @@ import Link from "next/link"
 
 import type { Team } from "@/lib/types"
 import { getMatches } from "@/lib/db/matches"
-import { getTeams } from "@/lib/db/teams"
+import { getTeamsByIds } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { calculateStandings } from "@/lib/db/standings"
@@ -59,21 +59,29 @@ export default async function PartidosPage({ searchParams }: Props) {
   const params = await searchParams
   const fechaParam = parseInt(params.fecha ?? "0")
 
-  const [{ data: matches, error }, { data: teams }, { data: tournaments }, seriesOptions, { data: registrations }] =
-    await Promise.all([getMatches(), getTeams(), getTournaments(), getSeriesOptions(), getRegistrations()])
-
-  if (error) return <div className="page-container py-16 text-center"><p className="text-destructive">{error}</p></div>
-
+  const [{ data: tournaments }, seriesOptions] = await Promise.all([getTournaments(), getSeriesOptions()])
   const scope = resolveScope(seriesOptions, params.serie, params.div)
-  const teamsList = teams ?? []
-  const teamMap = new Map(teamsList.map((t) => [t.id, t]))
 
   // Tournaments of the selected division (latest first)
   const divisionTournaments = tournamentsInScope(tournaments ?? [], scope)
   const selectedTorneo =
     divisionTournaments.find((t) => t.id === params.torneo) ?? divisionTournaments[0]
 
-  const matchesList = (matches ?? []).filter((m) => m.tournamentId === selectedTorneo?.id)
+  // Only the selected tournament's matches and entries, and the teams in them
+  const torneoIds = selectedTorneo ? [selectedTorneo.id] : []
+  const [{ data: matches, error }, { data: registrations }] = await Promise.all([
+    getMatches({ tournamentIds: torneoIds }),
+    getRegistrations({ tournamentIds: torneoIds }),
+  ])
+  if (error) return <div className="page-container py-16 text-center"><p className="text-destructive">{error}</p></div>
+
+  const matchesList = matches ?? []
+  const { data: teams } = await getTeamsByIds([
+    ...(registrations ?? []).map((r) => r.teamId),
+    ...matchesList.flatMap((m) => [m.homeTeamId, m.awayTeamId]),
+  ])
+  const teamsList = teams ?? []
+  const teamMap = new Map(teamsList.map((t) => [t.id, t]))
   const standings = calculateStandings(
     matchesList,
     teamsInTournament(teamsList, registrations ?? [], selectedTorneo?.id),

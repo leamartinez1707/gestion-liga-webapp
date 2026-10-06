@@ -1,4 +1,5 @@
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAllIn } from "./fetch-all"
 
 export interface GoalScorer {
   playerId: string
@@ -24,49 +25,24 @@ export async function getTopScorers(
 
     if (filter.teamIds && filter.teamIds.length === 0) return { data: [], error: null }
 
-    const { data, error } = await supabase
-      .from("goals")
-      .select(`
-        player_id,
-        goals,
-        match:match_id(tournament_id),
-        player:player_id(name, photo_url, team_id, team:team_id(name, short_name, shield_url))
-      `)
-
+    // Aggregated in SQL (public.top_scorers): reading all goals rows would hit the API row cap
+    const { data, error } = await supabase.rpc("top_scorers", {
+      p_limit: limit,
+      p_tournament_ids: filter.tournamentIds,
+      p_team_ids: filter.teamIds,
+    })
     if (error) return { data: null, error: error.message }
 
-    const teamIds = filter.teamIds ? new Set(filter.teamIds) : null
-    const tournamentIds = filter.tournamentIds ? new Set(filter.tournamentIds) : null
-
-    // Aggregate in JS: PostgREST has no GROUP BY across embedded resources
-    const byPlayer = new Map<string, GoalScorer>()
-    for (const row of data ?? []) {
-      const player = row.player
-      if (!row.player_id || !player?.team_id) continue
-      if (teamIds && !teamIds.has(player.team_id)) continue
-      if (tournamentIds && !(row.match?.tournament_id && tournamentIds.has(row.match.tournament_id))) continue
-
-      const existing = byPlayer.get(row.player_id)
-      if (existing) {
-        existing.goals += row.goals ?? 0
-        continue
-      }
-      byPlayer.set(row.player_id, {
-        playerId: row.player_id,
-        playerName: player.name,
-        playerPhoto: player.photo_url,
-        teamId: player.team_id,
-        teamName: player.team?.name ?? "—",
-        teamShortName: player.team?.short_name ?? "—",
-        teamShield: player.team?.shield_url ?? null,
-        goals: row.goals ?? 0,
-      })
-    }
-
-    const scorers = [...byPlayer.values()]
-      .filter((s) => s.goals > 0)
-      .sort((a, b) => b.goals - a.goals || a.playerName.localeCompare(b.playerName))
-      .slice(0, limit)
+    const scorers: GoalScorer[] = (data ?? []).map((row) => ({
+      playerId: row.player_id,
+      playerName: row.player_name,
+      playerPhoto: row.player_photo,
+      teamId: row.team_id,
+      teamName: row.team_name ?? "—",
+      teamShortName: row.team_short_name ?? "—",
+      teamShield: row.team_shield,
+      goals: Number(row.goals),
+    }))
 
     return { data: scorers, error: null }
   } catch {
@@ -110,8 +86,10 @@ export async function getGoalsByMatch(
   if (matchIds.length === 0) return byMatch
   try {
     const supabase = createReadOnlyClient()
-    const { data } = await supabase.from("goals").select("match_id, player_id, goals").in("match_id", matchIds)
-    for (const row of data ?? []) {
+    const { data } = await fetchAllIn(matchIds, (ids, from, to) =>
+      supabase.from("goals").select("match_id, player_id, goals").in("match_id", ids).order("id").range(from, to)
+    )
+    for (const row of data) {
       if (!row.match_id || !row.player_id) continue
       byMatch.set(row.match_id, [...(byMatch.get(row.match_id) ?? []), { playerId: row.player_id, goals: row.goals }])
     }

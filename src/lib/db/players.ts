@@ -2,6 +2,10 @@ import { likeTerm } from "@/lib/db/filters"
 import { normalize } from "@/lib/text"
 import type { Player, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { isUuid } from "./ids"
+import { fetchAll, fetchAllIn } from "./fetch-all"
+
+const PLAYER_COLUMNS = "id, name, number, position, photo_url, team_id, active"
 
 export interface PlayerFilter {
   q?: string
@@ -50,12 +54,11 @@ export async function getPlayersPaginated(
 export async function getPlayers(): Promise<{ data: Player[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("players")
-      .select("*")
-      .order("created_at", { ascending: false })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("players").select(PLAYER_COLUMNS).order("created_at", { ascending: false }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
@@ -66,13 +69,27 @@ export async function getPlayersByTeam(
 ): Promise<{ data: Player[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("players")
-      .select("*")
-      .eq("team_id", teamId)
-      .order("number", { ascending: true })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("players").select(PLAYER_COLUMNS).eq("team_id", teamId).order("number", { ascending: true }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
+  } catch {
+    return { data: null, error: "No se pudo conectar con la base de datos." }
+  }
+}
+
+/** Players of these teams (e.g. the teams entered in a tournament). */
+export async function getPlayersByTeams(teamIds: string[]): Promise<{ data: Player[] | null; error: string | null }> {
+  const unique = [...new Set(teamIds)]
+  if (unique.length === 0) return { data: [], error: null }
+  try {
+    const supabase = createReadOnlyClient()
+    const { data, error } = await fetchAllIn(unique, (ids, from, to) =>
+      supabase.from("players").select(PLAYER_COLUMNS).in("team_id", ids).order("number", { ascending: true }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
@@ -83,8 +100,10 @@ export async function getPlayersByIds(ids: string[]): Promise<Player[]> {
   if (ids.length === 0) return []
   try {
     const supabase = createReadOnlyClient()
-    const { data } = await supabase.from("players").select("*").in("id", ids).order("number", { ascending: true })
-    return (data ?? []).map(mapRow)
+    const { data } = await fetchAllIn(ids, (chunk, from, to) =>
+      supabase.from("players").select(PLAYER_COLUMNS).in("id", chunk).order("number", { ascending: true }).order("id").range(from, to)
+    )
+    return data.map(mapRow)
   } catch {
     return []
   }
@@ -93,11 +112,13 @@ export async function getPlayersByIds(ids: string[]): Promise<Player[]> {
 export async function getPlayer(
   id: string
 ): Promise<{ data: Player | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase
       .from("players")
-      .select("*")
+      .select(PLAYER_COLUMNS)
       .eq("id", id)
       .single()
     if (error) return { data: null, error: error.message }

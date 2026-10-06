@@ -1,6 +1,8 @@
 import { likeTerm } from "@/lib/db/filters"
 import type { NewsArticle, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
+import { isUuid } from "./ids"
 
 /** Admin listing: uses the session client so staff also see drafts (RLS). */
 export interface ArticleFilter {
@@ -60,27 +62,73 @@ export interface ArticleRow {
   date: string
 }
 
-/** Public listing: published articles only (RLS also hides drafts from anon). */
-export async function getArticles(seriesId?: string): Promise<{ data: ArticleRow[] | null; error: string | null }> {
+// Listings never need the body (`content`, the heaviest column): only the article page reads it
+const ARTICLE_LIST_COLUMNS = "id, title, excerpt, author, image_url, category, series_id, match_id, published, date"
+
+export interface ArticleFilter {
+  /** News of this series plus the general ones (no series) */
+  seriesId?: string
+  matchId?: string
+  /** Newest first, at most this many */
+  limit?: number
+}
+
+/** Public listing: published articles only (RLS also hides drafts from anon), without the body. */
+export async function getArticles(filter: ArticleFilter = {}): Promise<{ data: ArticleRow[] | null; error: string | null }> {
+  if (filter.seriesId !== undefined && !isUuid(filter.seriesId)) return { data: [], error: null }
   try {
     const supabase = createReadOnlyClient()
-    let query = supabase
-      .from("news_articles")
-      .select("*")
-      .eq("published", true)
-      .order("date", { ascending: false })
-    if (seriesId) {
-      query = query.eq("series_id", seriesId)
+    const build = () => {
+      let query = supabase.from("news_articles").select(ARTICLE_LIST_COLUMNS).eq("published", true)
+      if (filter.seriesId) query = query.or(`series_id.is.null,series_id.eq.${filter.seriesId}`)
+      if (filter.matchId) query = query.eq("match_id", filter.matchId)
+      return query.order("date", { ascending: false }).order("id")
     }
-    const { data, error } = await query
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    if (filter.limit !== undefined) {
+      const { data, error } = await build().limit(filter.limit)
+      if (error) return { data: null, error: error.message }
+      return { data: data.map(mapRow), error: null }
+    }
+    const { data, error } = await fetchAll((from, to) => build().range(from, to))
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
+/** Public listing page by page (series news plus general ones). */
+export async function getArticlesPage(
+  page = 1,
+  limit = 24,
+  seriesId?: string
+): Promise<PaginatedResult<ArticleRow>> {
+  if (seriesId !== undefined && !isUuid(seriesId)) return { data: [], total: 0, page, totalPages: 0, error: null }
+  try {
+    const supabase = createReadOnlyClient()
+    const from = (page - 1) * limit
+    let query = supabase.from("news_articles").select(ARTICLE_LIST_COLUMNS, { count: "exact" }).eq("published", true)
+    if (seriesId) query = query.or(`series_id.is.null,series_id.eq.${seriesId}`)
+    const { data, error, count } = await query
+      .order("date", { ascending: false })
+      .order("id")
+      .range(from, from + limit - 1)
+    if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
+    return {
+      data: data.map(mapRow),
+      total: count ?? 0,
+      page,
+      totalPages: Math.ceil((count ?? 0) / limit),
+      error: null,
+    }
+  } catch {
+    return { data: [], total: 0, page, totalPages: 0, error: "No se pudo conectar con la base de datos." }
+  }
+}
+
 export async function getArticle(id: string): Promise<{ data: ArticleRow | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase

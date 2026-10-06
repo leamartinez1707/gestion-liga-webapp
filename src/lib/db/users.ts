@@ -1,5 +1,6 @@
 import type { Role } from "@/lib/auth"
 import { createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 import { createServiceClient } from "@/lib/supabase/admin"
 
 export interface LeagueUser {
@@ -15,11 +16,15 @@ export interface LeagueUser {
 export async function getUsers(): Promise<{ data: LeagueUser[]; error: string | null }> {
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, email, display_name, role, team_id, team:team_id(name)")
-      .order("email")
-    if (error) return { data: [], error: error.message }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase
+        .from("profiles")
+        .select("id, email, display_name, role, team_id, team:team_id(name)")
+        .order("email")
+        .order("id")
+        .range(from, to)
+    )
+    if (error) return { data: [], error }
     return {
       data: data.map((row) => ({
         id: row.id,

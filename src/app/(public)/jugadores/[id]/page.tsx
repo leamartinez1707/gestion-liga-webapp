@@ -3,13 +3,13 @@ import { notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import { getPlayer } from "@/lib/db/players"
-import { getTeam, getTeams } from "@/lib/db/teams"
-import { getMatches } from "@/lib/db/matches"
+import { getTeam, getTeamsByIds } from "@/lib/db/teams"
+import { getMatches, getNextMatchdays } from "@/lib/db/matches"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSanctions } from "@/lib/db/sanctions"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getPlayerMatchLines } from "@/lib/db/player-stats"
-import { activeSuspensions } from "@/lib/suspensions"
+import { activeSuspensions, sanctionTournamentIds } from "@/lib/suspensions"
 import { resolveScope, scopeQuery, tournamentLabel } from "@/lib/scope"
 import { Button } from "@/components/ui/button"
 import { PageHeader, SectionTitle } from "@/components/page-header"
@@ -45,16 +45,19 @@ export default async function JugadorPage({
   const { data: player } = await getPlayer(id)
   if (!player) notFound()
 
-  const [{ data: team }, { data: teams }, { data: matches }, { data: tournaments }, { data: sanctions }, seriesOptions, lines] =
-    await Promise.all([
-      getTeam(player.teamId),
-      getTeams(),
-      getMatches(),
-      getTournaments(),
-      getSanctions(),
-      getSeriesOptions(),
-      getPlayerMatchLines(id),
-    ])
+  const [{ data: team }, { data: tournaments }, { data: sanctions }, seriesOptions, lines] = await Promise.all([
+    getTeam(player.teamId),
+    getTournaments(),
+    getSanctions({ playerIds: [id] }),
+    getSeriesOptions(),
+    getPlayerMatchLines(id),
+  ])
+  // Only the matches the player has activity in, and the teams that played them
+  const [{ data: matches }, nextMatchdays] = await Promise.all([
+    getMatches({ ids: lines.map((l) => l.matchId) }),
+    getNextMatchdays(sanctionTournamentIds(sanctions ?? [])),
+  ])
+  const { data: teams } = await getTeamsByIds((matches ?? []).flatMap((m) => [m.homeTeamId, m.awayTeamId]))
 
   const matchMap = new Map((matches ?? []).map((m) => [m.id, m]))
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
@@ -85,7 +88,7 @@ export default async function JugadorPage({
   const totals = sum(seasonRows)
   const career = sum(rows)
 
-  const suspension = activeSuspensions((sanctions ?? []).filter((s) => s.playerId === id), matches ?? []).get(id)
+  const suspension = activeSuspensions(sanctions ?? [], nextMatchdays).get(id)
 
   const scope = resolveScope(seriesOptions, query.serie, query.div)
   const q = query.serie ? scopeQuery(scope) : ""

@@ -4,7 +4,7 @@ import { ArrowLeft, ListChecks, Trash2, UserMinus, Pencil, Plus, ClipboardList }
 
 import { getTournament } from "@/lib/db/tournaments"
 import { getTeams } from "@/lib/db/teams"
-import { getPlayers } from "@/lib/db/players"
+import { getPlayersByTeams } from "@/lib/db/players"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getMatches } from "@/lib/db/matches"
@@ -51,19 +51,23 @@ export default async function TorneoInscripcionesPage({
   const { data: tournament } = await getTournament(id)
   if (!tournament) notFound()
 
-  const [{ data: teams }, { data: players }, { data: registrations }, series, { data: matches }] = await Promise.all([
+  const [{ data: teams }, { data: registrations }, series, { data: matches }] = await Promise.all([
     getTeams(),
-    getPlayers(),
     getRegistrations({ tournamentId: id }),
     getSeriesOptions(),
     getMatches(id),
   ])
   const matchdays = [...new Set((matches ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
-  const [goalsByMatch, { data: sanctions }, referees, withSheet] = await Promise.all([
+  const [goalsByMatch, { data: sanctions }, referees, withSheet, { data: players }] = await Promise.all([
     getGoalsByMatch((matches ?? []).map((m) => m.id)),
-    getSanctions(),
+    getSanctions({ tournamentIds: [id] }),
     getReferees(),
     getMatchIdsWithEvents((matches ?? []).map((m) => m.id)),
+    // Only players of the teams entered in this tournament (its matches are between them)
+    getPlayersByTeams([
+      ...(registrations ?? []).map((r) => r.teamId),
+      ...(matches ?? []).flatMap((m) => [m.homeTeamId, m.awayTeamId]),
+    ]),
   ])
   const refereeEmail = new Map(referees.map((r) => [r.id, r.email]))
   const redCardsOf = (matchId: string) =>

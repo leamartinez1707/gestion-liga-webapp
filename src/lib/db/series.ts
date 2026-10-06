@@ -1,5 +1,7 @@
 import type { Series, Division } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { isUuid } from "./ids"
+import { fetchAll } from "./fetch-all"
 import { buildSeriesOptions, type SeriesOption } from "@/lib/scope"
 
 // ---------------------------------------------------------------------------
@@ -9,8 +11,8 @@ import { buildSeriesOptions, type SeriesOption } from "@/lib/scope"
 export async function getSeries(): Promise<{ data: Series[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase.from("series").select("*").order("name")
-    if (error) return { data: null, error: error.message }
+    const { data, error } = await fetchAll((from, to) => supabase.from("series").select("*").order("name").order("id").range(from, to))
+    if (error) return { data: null, error }
     return { data: data.map(mapSeriesRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
@@ -18,6 +20,8 @@ export async function getSeries(): Promise<{ data: Series[] | null; error: strin
 }
 
 export async function getSeriesById(id: string): Promise<{ data: Series | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase.from("series").select("*").eq("id", id).single()
@@ -31,12 +35,12 @@ export async function getSeriesById(id: string): Promise<{ data: Series | null; 
 export async function getDivisions(seriesId?: string): Promise<{ data: Division[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    let query = supabase.from("divisions").select("*").order("display_order")
-    if (seriesId) {
-      query = query.eq("series_id", seriesId)
-    }
-    const { data, error } = await query
-    if (error) return { data: null, error: error.message }
+    const { data, error } = await fetchAll((from, to) => {
+      let query = supabase.from("divisions").select("*")
+      if (seriesId) query = query.eq("series_id", seriesId)
+      return query.order("display_order").order("id").range(from, to)
+    })
+    if (error) return { data: null, error }
     return { data: data.map(mapDivisionRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }

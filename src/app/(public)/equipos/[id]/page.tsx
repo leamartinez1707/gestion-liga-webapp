@@ -3,19 +3,19 @@ import { notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import type { Player } from "@/lib/types"
-import { getTeam, getTeams } from "@/lib/db/teams"
+import { getTeam, getTeamsByIds } from "@/lib/db/teams"
 import { getPlayersByIds, getPlayersByTeam } from "@/lib/db/players"
 import { getTopScorers } from "@/lib/db/goals"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
-import { getMatches } from "@/lib/db/matches"
+import { getMatches, getNextMatchdays } from "@/lib/db/matches"
 import { getAlbums } from "@/lib/db/gallery"
 import { getSanctions } from "@/lib/db/sanctions"
 import { getTeamSeasonPhotos } from "@/lib/db/team-photos"
 import { getAssistCounts } from "@/lib/db/player-stats"
 import { getAppearanceCounts } from "@/lib/db/lineups"
-import { activeSuspensions } from "@/lib/suspensions"
+import { activeSuspensions, sanctionTournamentIds } from "@/lib/suspensions"
 import { outcomeFor, percent, teamRecord } from "@/lib/team-stats"
 import { AlbumCard } from "@/components/album-card"
 import { resolveScope, scopeLabel, scopeQuery } from "@/lib/scope"
@@ -47,21 +47,20 @@ export default async function EquipoDetailPage({
   const { data: team, error: teamError } = await getTeam(id)
   if (teamError || !team) notFound()
 
-  const [{ data: players }, { data: teams }, seriesOptions, { data: tournaments }, { data: registrations }, { data: matches }, { data: sanctions }, seasonPhotos] =
+  const [{ data: players }, seriesOptions, { data: tournaments }, { data: registrations }, { data: matches }, { data: sanctions }, seasonPhotos] =
     await Promise.all([
       getPlayersByTeam(id),
-      getTeams(),
       getSeriesOptions(),
       getTournaments(),
       getRegistrations({ teamId: id }),
-      getMatches(),
-      getSanctions(),
+      // Only this team's matches (home or away), not the whole fixture
+      getMatches({ teamId: id }),
+      getSanctions({ teamId: id }),
       getTeamSeasonPhotos(id),
     ])
 
-  const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
   const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
-  const teamMatches = (matches ?? []).filter((m) => m.homeTeamId === id || m.awayTeamId === id)
+  const teamMatches = matches ?? []
 
   // Seasons: the tournaments the club played plus the years with a squad photo
   const registeredIds = new Set((registrations ?? []).map((r) => r.tournamentId))
@@ -97,12 +96,15 @@ export default async function EquipoDetailPage({
   squad = [...squad].sort((a, b) => (a.number || 999) - (b.number || 999))
 
   const seasonMatchIds = new Set(seasonMatches.map((m) => m.id))
-  const [{ data: scorers }, { data: albums }, assistsByPlayer, playedByPlayer] = await Promise.all([
+  const [{ data: scorers }, { data: albums }, assistsByPlayer, playedByPlayer, { data: teams }, nextMatchdays] = await Promise.all([
     getTopScorers(100, { teamIds: [id], tournamentIds: [...seasonTournamentIds] }),
     getAlbums({ matchIds: [...seasonMatchIds] }),
     getAssistCounts([...seasonMatchIds]),
     getAppearanceCounts([...seasonMatchIds]),
+    getTeamsByIds(seasonMatches.flatMap((m) => [m.homeTeamId, m.awayTeamId])),
+    getNextMatchdays(sanctionTournamentIds(sanctions ?? [])),
   ])
+  const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
   const goalsByPlayer = new Map((scorers ?? []).map((s) => [s.playerId, s.goals]))
   // Cards of the season, per player
   const seasonCards = new Map<string, { yellow: number; red: number }>()
@@ -117,7 +119,7 @@ export default async function EquipoDetailPage({
   const titles = (tournaments ?? [])
     .filter((t) => t.championTeamId === id)
     .sort((a, b) => b.season.localeCompare(a.season))
-  const suspended = activeSuspensions(sanctions ?? [], matches ?? [])
+  const suspended = activeSuspensions(sanctions ?? [], nextMatchdays)
   const seasonAlbums = (albums ?? []).filter((a) => a.photoCount > 0).slice(0, 8)
 
   // Back to where the visitor came from, or to the team's first division

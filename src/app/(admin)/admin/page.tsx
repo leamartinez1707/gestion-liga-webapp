@@ -1,9 +1,6 @@
 import { LayoutDashboard, Trophy, Users, Calendar, Newspaper } from "lucide-react"
 
-import { getTeams } from "@/lib/db/teams"
-import { getTournaments } from "@/lib/db/tournaments"
-import { getMatches } from "@/lib/db/matches"
-import { getArticles } from "@/lib/db/news"
+import { getDashboardCounts } from "@/lib/db/stats"
 import {
   Card,
   CardContent,
@@ -12,34 +9,33 @@ import {
 } from "@/components/ui/card"
 
 // ---------------------------------------------------------------------------
-// Dashboard Page — fetches real counts from Supabase
+// Dashboard Page — totals counted by the database (no rows are downloaded)
 // ---------------------------------------------------------------------------
 export default async function AdminDashboard() {
-  const [{ data: teams }, { data: tournaments }, { data: matches }, { data: articles }] =
-    await Promise.all([getTeams(), getTournaments(), getMatches(), getArticles()])
+  const counts = await getDashboardCounts()
 
   const stats = [
     {
       title: "Equipos",
-      value: teams?.length ?? "—",
+      value: counts.teams ?? "—",
       icon: Users,
       description: "equipos registrados",
     },
     {
       title: "Torneos",
-      value: tournaments?.length ?? "—",
+      value: counts.tournaments ?? "—",
       icon: Trophy,
       description: "torneos creados",
     },
     {
       title: "Partidos jugados",
-      value: matches?.filter((m) => m.status === "finished").length ?? "—",
+      value: counts.finishedMatches ?? "—",
       icon: Calendar,
       description: "partidos finalizados",
     },
     {
       title: "Noticias",
-      value: articles?.filter((a) => a.published).length ?? "—",
+      value: counts.publishedArticles ?? "—",
       icon: Newspaper,
       description: "artículos publicados",
     },

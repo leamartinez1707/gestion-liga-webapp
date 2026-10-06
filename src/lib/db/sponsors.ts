@@ -1,15 +1,15 @@
 import type { Sponsor } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { fetchAll } from "./fetch-all"
 
 export async function getSponsors(): Promise<{ data: Sponsor[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("sponsors")
-      .select("*")
-      .order("display_order")
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("sponsors").select("*").order("display_order").order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }

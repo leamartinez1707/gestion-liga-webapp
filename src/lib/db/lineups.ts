@@ -2,6 +2,7 @@ import type { Match, Player } from "@/lib/types"
 import { createClient, createReadOnlyClient } from "@/lib/supabase/server"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getLeagueSettings } from "@/lib/db/settings"
+import { fetchAllIn } from "./fetch-all"
 
 export interface LineupEntry {
   playerId: string
@@ -27,8 +28,11 @@ export async function getAppearanceCounts(matchIds: string[]): Promise<Map<strin
   if (matchIds.length === 0) return counts
   try {
     const supabase = createReadOnlyClient()
-    const { data } = await supabase.from("match_lineups").select("player_id").in("match_id", matchIds)
-    for (const r of data ?? []) counts.set(r.player_id, (counts.get(r.player_id) ?? 0) + 1)
+    // One row per player and match: a season goes past the API row cap, so it's paged (and chunked)
+    const { data } = await fetchAllIn(matchIds, (ids, from, to) =>
+      supabase.from("match_lineups").select("player_id").in("match_id", ids).order("id").range(from, to)
+    )
+    for (const r of data) counts.set(r.player_id, (counts.get(r.player_id) ?? 0) + 1)
   } catch {
     // Stats are best effort
   }
@@ -58,15 +62,14 @@ export async function getTournamentRoster(tournamentId: string, teamId: string):
 /** Matches a player already played as refuerzo in a tournament (excluding one match). */
 async function guestAppearances(playerId: string, tournamentId: string, exceptMatchId: string): Promise<number> {
   const supabase = createReadOnlyClient()
-  const { data: matches } = await supabase.from("matches").select("id").eq("tournament_id", tournamentId)
-  const matchIds = (matches ?? []).map((m) => m.id).filter((id) => id !== exceptMatchId)
-  if (matchIds.length === 0) return 0
+  // Counted by the DB, filtering on the match's tournament (no list of match ids in the URL)
   const { count } = await supabase
     .from("match_lineups")
-    .select("id", { count: "exact", head: true })
+    .select("id, match:match_id!inner(tournament_id)", { count: "exact", head: true })
     .eq("player_id", playerId)
     .eq("is_guest", true)
-    .in("match_id", matchIds)
+    .eq("match.tournament_id", tournamentId)
+    .neq("match_id", exceptMatchId)
   return count ?? 0
 }
 

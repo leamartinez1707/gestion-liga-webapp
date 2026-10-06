@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
-import { getArticles } from "@/lib/db/news"
+import { getArticlesPage } from "@/lib/db/news"
 import { getSeriesOptions } from "@/lib/db/series"
 import { resolveScope } from "@/lib/scope"
 import { CoverImage } from "@/components/cover-image"
@@ -9,6 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header"
+import { Pagination } from "@/components/ui/pagination"
+
+const PAGE_SIZE = 24
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00")
@@ -19,12 +22,15 @@ function formatDate(dateStr: string): string {
   })
 }
 
-interface Props { searchParams: Promise<{ serie?: string; div?: string }> }
+interface Props { searchParams: Promise<{ serie?: string; div?: string; page?: string }> }
 
 export default async function ActualidadPage({ searchParams }: Props) {
   const params = await searchParams
-  const [{ data: articles, error }, seriesOptions] = await Promise.all([getArticles(), getSeriesOptions()])
+  const page = Math.max(1, parseInt(params.page ?? "1") || 1)
+  const seriesOptions = await getSeriesOptions()
   const { series } = resolveScope(seriesOptions, params.serie, params.div)
+  // One page of the series news plus general ones, newest first, without the body
+  const { data: sortedArticles, error, totalPages } = await getArticlesPage(page, PAGE_SIZE, series?.id)
 
   if (error) {
     return (
@@ -33,11 +39,6 @@ export default async function ActualidadPage({ searchParams }: Props) {
       </div>
     )
   }
-
-  // News of the selected series plus general league news
-  const sortedArticles = (articles ?? [])
-    .filter((a) => !series || !a.seriesId || a.seriesId === series.id)
-    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <>
@@ -83,6 +84,7 @@ export default async function ActualidadPage({ searchParams }: Props) {
           ))}
         </div>
       )}
+      <Pagination page={page} totalPages={totalPages} />
       </div>
     </>
   )

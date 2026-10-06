@@ -1,6 +1,8 @@
 import { likeTerm } from "@/lib/db/filters"
 import type { Tournament, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
+import { isUuid } from "./ids"
+import { fetchAll } from "./fetch-all"
 
 export interface TournamentFilter {
   q?: string
@@ -48,18 +50,19 @@ export async function getTournamentsPaginated(
 export async function getTournaments(): Promise<{ data: Tournament[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    const { data, error } = await supabase
-      .from("tournaments")
-      .select("*")
-      .order("created_at", { ascending: false })
-    if (error) return { data: null, error: error.message }
-    return { data: (data ?? []).map(mapRow), error: null }
+    const { data, error } = await fetchAll((from, to) =>
+      supabase.from("tournaments").select("*").order("created_at", { ascending: false }).order("id").range(from, to)
+    )
+    if (error) return { data: null, error }
+    return { data: data.map(mapRow), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
   }
 }
 
 export async function getTournament(id: string): Promise<{ data: Tournament | null; error: string | null }> {
+  // Ids come from the URL: anything that isn't a uuid simply doesn't exist
+  if (!isUuid(id)) return { data: null, error: null }
   try {
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase

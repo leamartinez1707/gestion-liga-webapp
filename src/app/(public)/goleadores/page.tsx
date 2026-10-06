@@ -2,11 +2,10 @@ import Link from "next/link"
 import { Trophy, Medal } from "lucide-react"
 
 import { getTopScorers } from "@/lib/db/goals"
-import { getTeams } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations } from "@/lib/db/registrations"
-import { resolveScope, scopeQuery, teamsInTournament, tournamentLabel, tournamentsInScope } from "@/lib/scope"
+import { resolveScope, scopeQuery, tournamentLabel, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PhotoAvatar } from "@/components/photo-avatar"
 import { PageHeader } from "@/components/page-header"
@@ -22,16 +21,13 @@ interface Props { searchParams: Promise<{ serie?: string; div?: string }> }
 
 export default async function GoleadoresPage({ searchParams }: Props) {
   const params = await searchParams
-  const [seriesOptions, { data: teams }, { data: tournaments }, { data: registrations }] = await Promise.all([
-    getSeriesOptions(),
-    getTeams(),
-    getTournaments(),
-    getRegistrations(),
-  ])
+  const [seriesOptions, { data: tournaments }] = await Promise.all([getSeriesOptions(), getTournaments()])
 
   const scope = resolveScope(seriesOptions, params.serie, params.div)
   const currentTournament = tournamentsInScope(tournaments ?? [], scope)[0]
-  const teamIds = teamsInTournament(teams ?? [], registrations ?? [], currentTournament?.id).map((t) => t.id)
+  // Teams entered in the current tournament (aggregation happens in the DB)
+  const { data: registrations } = await getRegistrations({ tournamentIds: currentTournament ? [currentTournament.id] : [] })
+  const teamIds = [...new Set((registrations ?? []).map((r) => r.teamId))]
 
   const { data: scorers, error } = await getTopScorers(30, {
     teamIds,

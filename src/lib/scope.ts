@@ -133,3 +133,33 @@ export function tournamentOptions(tournaments: Tournament[], options: SeriesOpti
       label: `${tournamentLabel(t)} · ${scopeLabel(options, t.seriesId, t.divisionId)}`,
     }))
 }
+
+export interface SeasonScope {
+  /** Newest first */
+  seasons: string[]
+  /** Default: the current year if some tournament is from it, otherwise the newest season */
+  currentSeason: string
+  /** The one selected (?temporada=), or the default */
+  season: string
+  /** Tournaments of the selected season */
+  tournaments: Tournament[]
+}
+
+/** Season filter of the admin lists: keeps what they load bounded to one season. */
+export function seasonScope(tournaments: Tournament[], param?: string, year = String(new Date().getFullYear())): SeasonScope {
+  const seasons = [...new Set(tournaments.map((t) => t.season))].sort((a, b) => b.localeCompare(a))
+  const currentSeason = seasons.includes(year) ? year : seasons[0] ?? ""
+  const season = param && seasons.includes(param) ? param : currentSeason
+  return { seasons, currentSeason, season, tournaments: tournaments.filter((t) => t.season === season) }
+}
+
+/** The always-on season select of ListFilters. */
+export function seasonSelect(scope: SeasonScope, clears: string[] = []) {
+  return {
+    param: "temporada",
+    allLabel: "Temporada",
+    options: scope.seasons.map((s) => ({ value: s, label: `Temporada ${s}` })),
+    defaultValue: scope.currentSeason,
+    clears,
+  }
+}

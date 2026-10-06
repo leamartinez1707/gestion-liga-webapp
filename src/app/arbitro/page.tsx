@@ -21,14 +21,13 @@ function dateWindow(): { today: string; weekAgo: string } {
 
 export default async function ArbitroPage() {
   const profile = await getSessionProfile()
-  const { data: matches } = await getMatches()
-
   const { today, weekAgo } = dateWindow()
 
-  // Referee: their matches. Staff: today's matches of the whole league.
-  const mine = (matches ?? []).filter((m) =>
-    profile && isStaff(profile) ? m.date === today || m.status === "ongoing" : m.refereeId === profile?.id
-  )
+  // Referee: their matches. Staff: today's matches of the whole league. Filtered in the query.
+  const { data: matches } = profile
+    ? await getMatches(isStaff(profile) ? { dateOrLive: today } : { refereeId: profile.id })
+    : { data: [] }
+  const mine = matches ?? []
   const live = mine.filter((m) => m.status === "ongoing")
   const upcoming = mine
     .filter((m) => m.status === "scheduled" || m.status === "postponed")

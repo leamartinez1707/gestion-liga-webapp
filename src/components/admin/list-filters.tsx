@@ -16,6 +16,11 @@ export interface FilterSelect {
   options: { value: string; label: string }[]
   /** Params that depend on this one and are cleared when it changes (e.g. division after series) */
   clears?: string[]
+  /**
+   * Always-on filter (e.g. the season): no "all" option, and this value is
+   * shown when the URL doesn't have one (the page applies the same default).
+   */
+  defaultValue?: string
 }
 
 interface Props {
@@ -74,16 +79,20 @@ export function ListFilters({ searchPlaceholder, selects = [], resultLabel }: Pr
         {selects.map((s) => (
           <Select
             key={s.param}
-            value={searchParams.get(s.param) ?? ALL}
+            value={searchParams.get(s.param) ?? s.defaultValue ?? ALL}
             onValueChange={(v) =>
-              update({ [s.param]: v && v !== ALL ? v : null, ...Object.fromEntries((s.clears ?? []).map((p) => [p, null])) })
+              update({
+                // Picking the default leaves it out of the URL
+                [s.param]: v && v !== ALL && v !== s.defaultValue ? v : null,
+                ...Object.fromEntries((s.clears ?? []).map((p) => [p, null])),
+              })
             }
           >
             <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label={s.allLabel}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>{s.allLabel}</SelectItem>
+              {s.defaultValue === undefined && <SelectItem value={ALL}>{s.allLabel}</SelectItem>}
               {s.options.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}

@@ -235,4 +235,19 @@ begin
       'https://picsum.photos/seed/album-' || v_n || '-' || i || '/480/320', null, i
     from generate_series(1, 8) i;
   end loop;
+
+  -- ---- Champions of the finished 2025 tournaments: the standings leader ----
+  update public.tournaments t set champion_team_id = (
+    select team_id from (
+      select m.home_team_id team_id,
+        case when m.home_score > m.away_score then 3 when m.home_score = m.away_score then 1 else 0 end pts,
+        m.home_score - m.away_score gd, m.home_score gf
+      from public.matches m where m.tournament_id = t.id and m.status = 'finished'
+      union all
+      select m.away_team_id,
+        case when m.away_score > m.home_score then 3 when m.away_score = m.home_score then 1 else 0 end,
+        m.away_score - m.home_score, m.away_score
+      from public.matches m where m.tournament_id = t.id and m.status = 'finished'
+    ) r group by team_id order by sum(pts) desc, sum(gd) desc, sum(gf) desc limit 1)
+  where t.id::text like 'd0d0%' and t.season = '2025';
 end $$;

@@ -22,6 +22,8 @@ export interface Tournament {
   format: "league" | "elimination" | "groups"
   startDate?: string
   endDate?: string
+  /** Team that won it (counts as a title on the team page) */
+  championTeamId?: string
 }
 
 export interface Team {

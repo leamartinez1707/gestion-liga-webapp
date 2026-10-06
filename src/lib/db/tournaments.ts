@@ -148,5 +148,17 @@ function mapRow(row: Record<string, unknown>): Tournament {
     format: row.format as Tournament["format"],
     startDate: (row.start_date as string) ?? undefined,
     endDate: (row.end_date as string) ?? undefined,
+    championTeamId: (row.champion_team_id as string) ?? undefined,
+  }
+}
+
+/** Staff only (RLS): sets or clears the tournament's champion. */
+export async function setTournamentChampion(id: string, teamId: string | null): Promise<{ error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase.from("tournaments").update({ champion_team_id: teamId }).eq("id", id)
+    return error ? { error: error.message } : {}
+  } catch {
+    return { error: "No se pudo guardar el campeón." }
   }
 }

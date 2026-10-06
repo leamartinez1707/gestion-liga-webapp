@@ -40,3 +40,23 @@ export async function getPlayerMatchLines(playerId: string): Promise<PlayerMatch
     return []
   }
 }
+
+/** Assists per player over a set of matches (live sheet). */
+export async function getAssistCounts(matchIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  if (matchIds.length === 0) return counts
+  try {
+    const supabase = createReadOnlyClient()
+    const { data } = await supabase
+      .from("match_events")
+      .select("assist_player_id")
+      .in("match_id", matchIds)
+      .not("assist_player_id", "is", null)
+    for (const row of data ?? []) {
+      if (row.assist_player_id) counts.set(row.assist_player_id, (counts.get(row.assist_player_id) ?? 0) + 1)
+    }
+  } catch {
+    // Stats are best effort
+  }
+  return counts
+}

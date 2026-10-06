@@ -42,6 +42,8 @@ begin
 end;
 $$;
 
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
@@ -81,9 +83,10 @@ as $$
   where id = auth.uid() and role = 'delegate';
 $$;
 
-revoke execute on function public.is_staff() from public, anon;
+revoke execute on function public.is_staff() from public;
 revoke execute on function public.my_team_id() from public, anon;
-grant execute on function public.is_staff() to authenticated;
+-- anon needs is_staff(): the public news read policy calls it (returns false for anon)
+grant execute on function public.is_staff() to anon, authenticated;
 grant execute on function public.my_team_id() to authenticated;
 
 -- -----------------------------------------------------------------------------
@@ -161,6 +164,8 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.guard_team_structure() from public, anon, authenticated;
 
 drop trigger if exists guard_team_structure on public.teams;
 create trigger guard_team_structure

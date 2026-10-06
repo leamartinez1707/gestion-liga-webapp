@@ -42,6 +42,8 @@ export interface Registration {
   id: string
   tournamentId: string
   teamId: string
+  /** Set when the team left the tournament (pending matches became W.O.) */
+  withdrawnAt?: string
 }
 
 export interface Player {
@@ -62,10 +64,15 @@ export interface Match {
   time: string
   homeScore?: number
   awayScore?: number
-  status: "scheduled" | "ongoing" | "finished"
+  /** postponed = suspendido (se reprograma), cancelled = no se juega; ninguno cuenta en la tabla */
+  status: "scheduled" | "ongoing" | "finished" | "postponed" | "cancelled"
   matchday: number
   tournamentId: string
   venue?: string
+  /** Won by W.O. (always 3-0) */
+  walkover?: boolean
+  /** Public note, e.g. "Suspendido por lluvia" */
+  notes?: string
 }
 
 export interface Sanction {

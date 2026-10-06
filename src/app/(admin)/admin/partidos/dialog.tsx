@@ -23,6 +23,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const statusItems = [
+  { value: "scheduled", label: "Programado" },
+  { value: "ongoing", label: "En juego" },
+  { value: "finished", label: "Finalizado" },
+  { value: "postponed", label: "Suspendido (a reprogramar)" },
+  { value: "cancelled", label: "Cancelado" },
+]
+
+const resultItems = [
+  { value: "normal", label: "Resultado normal" },
+  { value: "wo_home", label: "W.O. — gana el local (3-0)" },
+  { value: "wo_away", label: "W.O. — gana el visitante (0-3)" },
+]
+
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
@@ -43,6 +57,8 @@ interface MatchDialogProps {
   teams: Team[]
   registrations: Registration[]
   players: Player[]
+  /** Preselect the tournament when adding a match from a tournament page */
+  defaultTournamentId?: string
 }
 
 export function MatchDialog({
@@ -53,10 +69,11 @@ export function MatchDialog({
   teams: allTeams,
   registrations,
   players,
+  defaultTournamentId,
 }: MatchDialogProps) {
   const [open, setOpen] = useState(false)
   const [tournamentId, setTournamentId] = useState(
-    "tournamentId" in (match ?? {}) ? (match as Match).tournamentId ?? "" : ""
+    "tournamentId" in (match ?? {}) ? (match as Match).tournamentId ?? "" : defaultTournamentId ?? ""
   )
   const [homeTeamId, setHomeTeamId] = useState(
     "homeTeamId" in (match ?? {}) ? (match as Match).homeTeamId ?? "" : ""
@@ -66,6 +83,11 @@ export function MatchDialog({
   )
   const [status, setStatus] = useState(
     "status" in (match ?? {}) ? (match as Match).status ?? "scheduled" : "scheduled"
+  )
+  const [result, setResult] = useState(
+    match && "walkover" in match && match.walkover
+      ? (match.homeScore ?? 0) > (match.awayScore ?? 0) ? "wo_home" : "wo_away"
+      : "normal"
   )
   const [state, formAction] = useActionState(action, undefined)
 
@@ -77,7 +99,7 @@ export function MatchDialog({
 
   // Only teams entered in the selected tournament can play it
   const registeredIds = new Set(
-    registrations.filter((r) => r.tournamentId === tournamentId).map((r) => r.teamId)
+    registrations.filter((r) => r.tournamentId === tournamentId && !r.withdrawnAt).map((r) => r.teamId)
   )
   const teams = tournamentId ? allTeams.filter((t) => registeredIds.has(t.id)) : allTeams
 
@@ -178,7 +200,7 @@ export function MatchDialog({
                 defaultValue={
                   "date" in (match ?? {}) ? (match as Match).date ?? "" : ""
                 }
-                required
+                required={!isEditing}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -190,7 +212,7 @@ export function MatchDialog({
                 defaultValue={
                   "time" in (match ?? {}) ? (match as Match).time ?? "" : ""
                 }
-                required
+                required={!isEditing}
               />
             </div>
           </div>
@@ -231,6 +253,50 @@ export function MatchDialog({
           {/* Score & Status (edit mode) */}
           {isEditing && (
             <>
+              <div className="flex flex-col gap-1.5">
+                <Label>Estado</Label>
+                <Select
+                  items={statusItems}
+                  value={status}
+                  onValueChange={(v) => v && setStatus(v as Match["status"])}
+                  name="status"
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusItems.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>Resultado</Label>
+                <Select
+                  items={resultItems}
+                  value={result}
+                  onValueChange={(v) => v && setResult(v)}
+                  name="result"
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resultItems.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {result !== "normal" && (
+                  <p className="text-xs text-muted-foreground">
+                    Se carga 3-0 y el partido queda finalizado. No se registran goleadores.
+                  </p>
+                )}
+              </div>
+
+              {result === "normal" && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="homeScore">Goles Local</Label>
@@ -257,23 +323,16 @@ export function MatchDialog({
                   />
                 </div>
               </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
-                <Label>Estado</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => v && setStatus(v as Match["status"])}
-                  name="status"
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Programado</SelectItem>
-                    <SelectItem value="ongoing">En juego</SelectItem>
-                    <SelectItem value="finished">Finalizado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="notes">Nota pública (opcional)</Label>
+                <Input
+                  id="notes"
+                  name="notes"
+                  defaultValue={(match as Match).notes ?? ""}
+                  placeholder="Ej: Suspendido por lluvia"
+                />
               </div>
             </>
           )}
@@ -301,8 +360,8 @@ export function MatchDialog({
             </div>
           )}
 
-          {/* Goals — only when editing and status is finished */}
-          {isEditing && match && (
+          {/* Goals — only when editing (a W.O. has no scorers) */}
+          {isEditing && match && result === "normal" && (
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Goles</Label>
               <p className="text-xs text-muted-foreground">

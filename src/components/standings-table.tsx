@@ -70,6 +70,7 @@ export function StandingsTable({ standings, className }: StandingsTableProps) {
                     <PhotoAvatar src={s.shield} name={s.teamName} className="size-6" fallbackClassName="text-[9px]" />
                     <span className="sm:hidden">{s.teamShortName}</span>
                     <span className="hidden sm:inline">{s.teamName}</span>
+                    {s.withdrawn && <span className="text-[10px] font-semibold uppercase text-destructive">Baja</span>}
                   </span>
                 </TableCell>
                 <TableCell className="text-center tabular-nums text-muted-foreground">

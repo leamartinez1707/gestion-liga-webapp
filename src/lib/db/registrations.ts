@@ -1,8 +1,13 @@
 import type { Registration } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
-function mapRow(row: { id: string; tournament_id: string; team_id: string }): Registration {
-  return { id: row.id, tournamentId: row.tournament_id, teamId: row.team_id }
+function mapRow(row: { id: string; tournament_id: string; team_id: string; withdrawn_at: string | null }): Registration {
+  return {
+    id: row.id,
+    tournamentId: row.tournament_id,
+    teamId: row.team_id,
+    withdrawnAt: row.withdrawn_at ?? undefined,
+  }
 }
 
 export async function getRegistrations(
@@ -10,7 +15,7 @@ export async function getRegistrations(
 ): Promise<{ data: Registration[] | null; error: string | null }> {
   try {
     const supabase = createReadOnlyClient()
-    let query = supabase.from("registrations").select("id, tournament_id, team_id")
+    let query = supabase.from("registrations").select("id, tournament_id, team_id, withdrawn_at")
     if (filter.tournamentId) query = query.eq("tournament_id", filter.tournamentId)
     if (filter.teamId) query = query.eq("team_id", filter.teamId)
     const { data, error } = await query
@@ -26,7 +31,7 @@ export async function getRegistration(id: string): Promise<{ data: Registration 
     const supabase = createReadOnlyClient()
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, tournament_id, team_id")
+      .select("id, tournament_id, team_id, withdrawn_at")
       .eq("id", id)
       .maybeSingle()
     if (error) return { data: null, error: error.message }
@@ -129,5 +134,20 @@ export async function setRoster(
     return {}
   } catch {
     return { error: "No se pudo guardar la lista de buena fe." }
+  }
+}
+
+/**
+ * Staff only (RPC). Marks the team as withdrawn; its pending matches become
+ * W.O. 3-0 for the opponent. Returns how many matches were converted.
+ */
+export async function withdrawRegistration(id: string): Promise<{ error?: string; count?: number }> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase.rpc("withdraw_team", { p_registration_id: id })
+    if (error) return { error: error.message }
+    return { count: data }
+  } catch {
+    return { error: "No se pudo dar de baja al equipo." }
   }
 }

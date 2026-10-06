@@ -5,6 +5,8 @@ export interface Standing {
   teamName: string
   teamShortName: string
   shield: string
+  /** Left the tournament (its pending matches were given as W.O.) */
+  withdrawn: boolean
   played: number
   won: number
   drawn: number
@@ -23,7 +25,8 @@ export interface Standing {
  */
 export function calculateStandings(
   matches: Match[],
-  teams: Team[]
+  teams: Team[],
+  withdrawnTeamIds: ReadonlySet<string> = new Set()
 ): Standing[] {
   const finishedMatches = matches.filter((m) => m.status === "finished")
 
@@ -43,6 +46,7 @@ export function calculateStandings(
       teamName: team?.name ?? "Desconocido",
       teamShortName: team?.shortName ?? team?.name ?? "Desconocido",
       shield: team?.shield ?? "/placeholder.svg",
+      withdrawn: withdrawnTeamIds.has(teamId),
       played: 0,
       won: 0,
       drawn: 0,

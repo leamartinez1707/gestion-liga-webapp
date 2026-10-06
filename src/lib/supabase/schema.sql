@@ -112,7 +112,10 @@ create table matches (
   time time,
   home_score integer,
   away_score integer,
-  status text default 'scheduled' check (status in ('scheduled', 'ongoing', 'finished')),
+  -- postponed = suspendido (a reprogramar), cancelled = no se juega; ninguno cuenta en la tabla
+  status text default 'scheduled' check (status in ('scheduled', 'ongoing', 'finished', 'postponed', 'cancelled')),
+  walkover boolean not null default false,   -- ganado por W.O. (siempre 3-0)
+  notes text,                                -- nota pública, p. ej. "Suspendido por lluvia"
   venue text,
   created_at timestamptz default now()
 );
@@ -159,6 +162,7 @@ create table registrations (
   id uuid default gen_random_uuid() primary key,
   tournament_id uuid not null references tournaments on delete cascade,
   team_id uuid not null references teams on delete cascade,
+  withdrawn_at timestamptz,   -- baja: los partidos pendientes pasaron a W.O. (withdraw_team)
   created_at timestamptz default now(),
   unique (tournament_id, team_id)
 );

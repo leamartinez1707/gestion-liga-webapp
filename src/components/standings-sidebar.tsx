@@ -41,6 +41,7 @@ export function StandingsSidebar({ standings, className }: StandingsSidebarProps
               {/* Team name */}
               <span className="flex-1 font-bold text-foreground min-w-0 leading-tight truncate">
                 {s.teamShortName}
+                {s.withdrawn && <span className="ml-1 text-[9px] font-semibold uppercase text-destructive">Baja</span>}
               </span>
               <div className="flex items-center gap-x-2">
               {/* Points */}

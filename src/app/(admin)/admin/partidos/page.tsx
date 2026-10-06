@@ -8,9 +8,9 @@ import { getTournaments } from "@/lib/db/tournaments"
 import { createMatchAction, updateMatchAction, deleteMatchAction } from "@/lib/actions/admin"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { MatchDialog } from "./dialog"
 import { SuspendMatchdayDialog } from "./suspend-dialog"
+import { MatchStatusBadge } from "@/components/match-status-badge"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { Pagination } from "@/components/ui/pagination"
 import { PartidosViewToggle } from "./view-toggle"
@@ -46,11 +46,11 @@ export default async function PartidosPage({ searchParams }: Props) {
           {matchesList.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No hay partidos.</TableCell></TableRow>}
           {matchesList.map((m) => (
             <TableRow key={m.id}>
-              <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{m.date} · F{m.matchday}</TableCell>
+              <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{m.date || "Sin fecha"} · F{m.matchday}</TableCell>
               <TableCell className="font-medium">{m.homeTeamName}</TableCell>
               <TableCell>{m.status === "finished" ? <span className="font-bold tabular-nums">{m.homeScore} - {m.awayScore}</span> : "—"}</TableCell>
               <TableCell className="font-medium">{m.awayTeamName}</TableCell>
-              <TableCell><Badge variant={m.status === "finished" ? "default" : "outline"} className="text-xs">{m.status === "finished" ? "Finalizado" : "Programado"}</Badge></TableCell>
+              <TableCell><MatchStatusBadge match={m} /></TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   <MatchDialog action={updateMatchAction.bind(null, m.id)} match={m} teams={teams ?? []} registrations={registrations ?? []} tournaments={tournaments ?? []} players={players ?? []}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></MatchDialog>
@@ -72,7 +72,7 @@ export default async function PartidosPage({ searchParams }: Props) {
           <MatchDialog action={createMatchAction} teams={teams ?? []} registrations={registrations ?? []} tournaments={tournaments ?? []} players={players ?? []}>
             <Button className="gap-1.5"><Plus className="h-4 w-4" />Nuevo Partido</Button>
           </MatchDialog>
-          <SuspendMatchdayDialog>
+          <SuspendMatchdayDialog tournaments={tournaments ?? []}>
             <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
               <CalendarX className="h-4 w-4" /> Suspender Fecha
             </Button>

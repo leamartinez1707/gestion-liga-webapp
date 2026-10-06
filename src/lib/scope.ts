@@ -69,6 +69,13 @@ export function teamsInTournament(
   return teams.filter((t) => ids.has(t.id))
 }
 
+/** Teams that left a tournament (shown with "Baja" in the standings). */
+export function withdrawnInTournament(registrations: Registration[], tournamentId: string | undefined): Set<string> {
+  return new Set(
+    registrations.filter((r) => r.tournamentId === tournamentId && r.withdrawnAt).map((r) => r.teamId)
+  )
+}
+
 /** Tournaments of the selected division, newest season first. */
 export function tournamentsInScope(tournaments: Tournament[], scope: Scope): Tournament[] {
   return tournaments

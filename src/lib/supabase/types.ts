@@ -38,16 +38,19 @@ export type Database = {
           away_score: number | null; away_team_id: string | null; created_at: string | null; date: string | null
           home_score: number | null; home_team_id: string | null; id: string; matchday: number | null
           status: string | null; time: string | null; tournament_id: string | null; venue: string | null
+          walkover: boolean; notes: string | null
         }
         Insert: {
           away_score?: number | null; away_team_id?: string | null; created_at?: string | null; date?: string | null
           home_score?: number | null; home_team_id?: string | null; id?: string; matchday?: number | null
           status?: string | null; time?: string | null; tournament_id?: string | null; venue?: string | null
+          walkover?: boolean; notes?: string | null
         }
         Update: {
           away_score?: number | null; away_team_id?: string | null; created_at?: string | null; date?: string | null
           home_score?: number | null; home_team_id?: string | null; id?: string; matchday?: number | null
           status?: string | null; time?: string | null; tournament_id?: string | null; venue?: string | null
+          walkover?: boolean; notes?: string | null
         }
         Relationships: [
           { foreignKeyName: "matches_away_team_id_fkey"; columns: ["away_team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
@@ -111,9 +114,9 @@ export type Database = {
         ]
       }
       registrations: {
-        Row: { created_at: string | null; id: string; team_id: string; tournament_id: string }
-        Insert: { created_at?: string | null; id?: string; team_id: string; tournament_id: string }
-        Update: { created_at?: string | null; id?: string; team_id?: string; tournament_id?: string }
+        Row: { created_at: string | null; id: string; team_id: string; tournament_id: string; withdrawn_at: string | null }
+        Insert: { created_at?: string | null; id?: string; team_id: string; tournament_id: string; withdrawn_at?: string | null }
+        Update: { created_at?: string | null; id?: string; team_id?: string; tournament_id?: string; withdrawn_at?: string | null }
         Relationships: [
           { foreignKeyName: "registrations_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },
           { foreignKeyName: "registrations_tournament_id_fkey"; columns: ["tournament_id"]; isOneToOne: false; referencedRelation: "tournaments"; referencedColumns: ["id"] },
@@ -196,6 +199,7 @@ export type Database = {
       is_staff: { Args: never; Returns: boolean }
       my_team_id: { Args: never; Returns: string }
       revoke_delegate: { Args: { p_team_id: string }; Returns: undefined }
+      withdraw_team: { Args: { p_registration_id: string }; Returns: number }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

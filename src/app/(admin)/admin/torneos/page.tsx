@@ -34,7 +34,7 @@ export default async function TorneosPage({ searchParams }: Props) {
     await Promise.all([getTournamentsPaginated(page, LIMIT), getTeams(), getSeriesOptions(), getRegistrations()])
   // Fixture only between the teams entered in the tournament
   const teamsOf = (tournamentId: string) => {
-    const ids = new Set((registrations ?? []).filter((r) => r.tournamentId === tournamentId).map((r) => r.teamId))
+    const ids = new Set((registrations ?? []).filter((r) => r.tournamentId === tournamentId && !r.withdrawnAt).map((r) => r.teamId))
     return (teams ?? []).filter((team) => ids.has(team.id))
   }
 

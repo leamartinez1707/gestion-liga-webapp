@@ -7,11 +7,11 @@ import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { calculateStandings } from "@/lib/db/standings"
 import { getRegistrations } from "@/lib/db/registrations"
-import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope } from "@/lib/scope"
+import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope, withdrawnInTournament } from "@/lib/scope"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { StandingsTable } from "@/components/standings-table"
 import { PhotoAvatar } from "@/components/photo-avatar"
+import { MatchStatusBadge } from "@/components/match-status-badge"
 import { cn } from "@/lib/utils"
 
 function formatDate(dateStr: string): string {
@@ -56,13 +56,14 @@ export default async function PartidosPage({ searchParams }: Props) {
   const matchesList = (matches ?? []).filter((m) => m.tournamentId === selectedTorneo?.id)
   const standings = calculateStandings(
     matchesList,
-    teamsInTournament(teamsList, registrations ?? [], selectedTorneo?.id)
+    teamsInTournament(teamsList, registrations ?? [], selectedTorneo?.id),
+    withdrawnInTournament(registrations ?? [], selectedTorneo?.id)
   )
 
   // Group by matchday; default to the next matchday still to be played
   const matchdays = [...new Set(matchesList.map((m) => m.matchday))].sort((a, b) => a - b)
   const nextMatchday = matchdays.find((md) =>
-    matchesList.some((m) => m.matchday === md && m.status !== "finished")
+    matchesList.some((m) => m.matchday === md && (m.status === "scheduled" || m.status === "ongoing"))
   )
   const selectedFecha =
     fechaParam > 0 && matchdays.includes(fechaParam)
@@ -153,12 +154,10 @@ export default async function PartidosPage({ searchParams }: Props) {
                     <div className="flex items-stretch">
                       <TeamSide team={home} score={finished ? m.homeScore : undefined} href={home && `/equipos/${home.id}${scopeQuery(scope)}`} />
                       <div className="flex flex-col items-center justify-center px-3 py-3 border-x border-border bg-background min-w-[76px]">
-                        {finished ? (
-                          <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success-soft">FINAL</Badge>
-                        ) : m.status === "ongoing" ? (
-                          <Badge variant="outline" className="text-[10px]">EN JUEGO</Badge>
-                        ) : (
+                        {m.status === "scheduled" ? (
                           <span className="text-sm font-bold tabular-nums">{m.time ? `${m.time.slice(0, 5)} hs` : "VS"}</span>
+                        ) : (
+                          <MatchStatusBadge match={m} />
                         )}
                       </div>
                       <TeamSide team={away} score={finished ? m.awayScore : undefined} href={away && `/equipos/${away.id}${scopeQuery(scope)}`} />
@@ -167,6 +166,7 @@ export default async function PartidosPage({ searchParams }: Props) {
                       <span className="text-xs text-muted-foreground">
                         {formatDate(m.date)}
                         {m.venue && ` · ${m.venue}`}
+                        {m.notes && ` · ${m.notes}`}
                       </span>
                     </div>
                   </CardContent>

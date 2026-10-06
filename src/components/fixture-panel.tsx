@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type { Match, Team } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { MatchStatusBadge } from "@/components/match-status-badge"
 
 interface FixturePanelProps {
   finishedMatches: Match[]
@@ -117,7 +118,9 @@ export function FixturePanel({
 
                   {/* Score */}
                   <div className="flex items-center gap-1.5">
-                    {match.status === "finished" ? (
+                    {match.status === "postponed" || match.status === "cancelled" ? (
+                      <MatchStatusBadge match={match} />
+                    ) : match.status === "finished" ? (
                       <>
                         <span className="text-2xl font-bold tabular-nums text-foreground">
                           {match.homeScore}
@@ -130,6 +133,7 @@ export function FixturePanel({
                     ) : (
                       <span className="text-sm font-semibold text-muted-foreground">vs</span>
                     )}
+                    {match.walkover && <MatchStatusBadge match={match} className="ml-1" />}
                   </div>
 
                   {/* Away team */}
@@ -140,6 +144,9 @@ export function FixturePanel({
                     </span>
                   </div>
                 </div>
+                {match.notes && (
+                  <p className="mt-2 text-center text-[10px] text-muted-foreground">{match.notes}</p>
+                )}
               </div>
             )
           })}

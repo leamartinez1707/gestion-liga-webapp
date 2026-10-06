@@ -1,17 +1,22 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, ListChecks, Trash2 } from "lucide-react"
+import { ArrowLeft, ListChecks, Trash2, UserMinus, Pencil, Plus } from "lucide-react"
 
 import { getTournament } from "@/lib/db/tournaments"
 import { getTeams } from "@/lib/db/teams"
 import { getPlayers } from "@/lib/db/players"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
+import { getMatches } from "@/lib/db/matches"
 import { scopeLabel } from "@/lib/scope"
 import {
   registerTeamAction,
   unregisterTeamAction,
+  withdrawTeamAction,
   setRosterAction,
+  createMatchAction,
+  updateMatchAction,
+  deleteMatchAction,
 } from "@/lib/actions/admin"
 import {
   Table,
@@ -25,6 +30,9 @@ import { Button } from "@/components/ui/button"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { PhotoAvatar } from "@/components/photo-avatar"
 import { RosterDialog } from "@/components/roster-dialog"
+import { Badge } from "@/components/ui/badge"
+import { MatchStatusBadge } from "@/components/match-status-badge"
+import { MatchDialog } from "../../partidos/dialog"
 import { RegisterForm } from "./register-form"
 
 export default async function TorneoInscripcionesPage({
@@ -37,12 +45,14 @@ export default async function TorneoInscripcionesPage({
   const { data: tournament } = await getTournament(id)
   if (!tournament) notFound()
 
-  const [{ data: teams }, { data: players }, { data: registrations }, series] = await Promise.all([
+  const [{ data: teams }, { data: players }, { data: registrations }, series, { data: matches }] = await Promise.all([
     getTeams(),
     getPlayers(),
     getRegistrations({ tournamentId: id }),
     getSeriesOptions(),
+    getMatches(id),
   ])
+  const matchdays = [...new Set((matches ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
   const registrationList = registrations ?? []
   const { data: rosters } = await getRosters(registrationList.map((r) => r.id))
 
@@ -109,6 +119,7 @@ export default async function TorneoInscripcionesPage({
                     <span className="flex items-center gap-2 font-medium">
                       <PhotoAvatar src={team.shield} name={team.name} className="size-7" fallbackClassName="text-[10px]" />
                       {team.name}
+                      {registration.withdrawnAt && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">BAJA</Badge>}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -126,6 +137,20 @@ export default async function TorneoInscripcionesPage({
                           <ListChecks className="h-4 w-4" />
                         </Button>
                       </RosterDialog>
+                      {!registration.withdrawnAt && (
+                        <DeleteConfirmDialog
+                          itemName={team.name}
+                          title={`Dar de baja a ${team.name}`}
+                          description="Los partidos ya jugados quedan como están. Los que faltan se dan por ganados 3-0 (W.O.) a cada rival. No se puede deshacer."
+                          confirmLabel="Dar de baja"
+                          pendingLabel="Dando de baja…"
+                          onConfirm={withdrawTeamAction.bind(null, registration.id)}
+                        >
+                          <Button variant="ghost" size="icon-sm" className="text-destructive" aria-label="Dar de baja">
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </DeleteConfirmDialog>
+                      )}
                       <DeleteConfirmDialog
                         itemName={`la inscripción de ${team.name}`}
                         onConfirm={unregisterTeamAction.bind(null, registration.id)}
@@ -142,6 +167,72 @@ export default async function TorneoInscripcionesPage({
           </TableBody>
         </Table>
       </div>
+
+      {/* Fixture */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Fixture</h2>
+        <MatchDialog
+          action={createMatchAction}
+          teams={teams ?? []}
+          registrations={registrationList}
+          tournaments={[tournament]}
+          players={players ?? []}
+          defaultTournamentId={tournament.id}
+        >
+          <Button variant="outline" size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Agregar partido</Button>
+        </MatchDialog>
+      </div>
+      {matchdays.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Todavía no hay partidos. Generá el fixture desde el listado de torneos o agregalos a mano.
+        </p>
+      ) : (
+        matchdays.map((md) => (
+          <div key={md} className="rounded-xl border border-border">
+            <div className="px-4 py-2 border-b border-border text-sm font-semibold">Fecha {md}</div>
+            <Table>
+              <TableBody>
+                {(matches ?? []).filter((m) => m.matchday === md).map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap w-32">
+                      {m.date || "Sin fecha"}{m.time && ` · ${m.time.slice(0, 5)}`}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {m.homeTeamName}
+                      <span className="mx-2 tabular-nums font-bold">
+                        {m.status === "finished" ? `${m.homeScore} - ${m.awayScore}` : "vs"}
+                      </span>
+                      {m.awayTeamName}
+                      {m.notes && <span className="block text-xs text-muted-foreground font-normal">{m.notes}</span>}
+                    </TableCell>
+                    <TableCell className="w-28"><MatchStatusBadge match={m} /></TableCell>
+                    <TableCell className="w-24 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <MatchDialog
+                          action={updateMatchAction.bind(null, m.id)}
+                          match={m}
+                          teams={teams ?? []}
+                          registrations={registrationList}
+                          tournaments={[tournament]}
+                          players={players ?? []}
+                        >
+                          <Button variant="ghost" size="icon-sm" aria-label="Editar partido"><Pencil className="h-4 w-4" /></Button>
+                        </MatchDialog>
+                        <DeleteConfirmDialog
+                          itemName={`${m.homeTeamName} vs ${m.awayTeamName}`}
+                          onConfirm={deleteMatchAction.bind(null, m.id)}
+                        >
+                          <Button variant="ghost" size="icon-sm" className="text-destructive" aria-label="Eliminar partido"><Trash2 className="h-4 w-4" /></Button>
+                        </DeleteConfirmDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ))
+      )}
     </div>
   )
 }

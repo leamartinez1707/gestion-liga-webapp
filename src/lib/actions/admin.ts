@@ -38,6 +38,8 @@ import {
   deletePlayer,
 } from "@/lib/db/players"
 import {
+  getMatch,
+  getMatches,
   createMatch,
   updateMatch,
   deleteMatch,
@@ -55,11 +57,11 @@ import {
   unpublishArticle,
 } from "@/lib/db/news"
 import { bulkCreateMatches } from "@/lib/db/fixture-actions"
-import { getMatches } from "@/lib/db/matches"
 import {
   getRegistrations,
   createRegistration,
   deleteRegistration,
+  withdrawRegistration,
   setRoster,
 } from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
@@ -371,7 +373,7 @@ export async function createMatchAction(
     return { error: "El equipo local y visitante no pueden ser el mismo." }
 
   const { data: registrations } = await getRegistrations({ tournamentId })
-  const registered = new Set((registrations ?? []).map((r) => r.teamId))
+  const registered = new Set((registrations ?? []).filter((r) => !r.withdrawnAt).map((r) => r.teamId))
   if (!registered.has(homeTeamId) || !registered.has(awayTeamId)) {
     return { error: "Los dos equipos tienen que estar inscriptos en el torneo." }
   }
@@ -391,6 +393,9 @@ export async function createMatchAction(
   return { success: true as const }
 }
 
+const MATCH_STATUSES: Match["status"][] = ["scheduled", "ongoing", "finished", "postponed", "cancelled"]
+const WALKOVER_SCORE = 3
+
 export async function updateMatchAction(
   id: string,
   _prev: unknown,
@@ -399,39 +404,63 @@ export async function updateMatchAction(
   const auth = await requireStaff()
   if (auth.error) return { error: auth.error }
 
-  const homeScore = formData.get("homeScore") as string
-  const awayScore = formData.get("awayScore") as string
-  const status = formData.get("status") as string
-  const date = formData.get("date") as string
-  const time = formData.get("time") as string
-  const matchday = formData.get("matchday") as string
-  const venue = formData.get("venue") as string
+  const { data: match } = await getMatch(id)
+  if (!match) return { error: "El partido no existe." }
 
-  const payload: Partial<{
-    homeScore: number | null
-    awayScore: number | null
-    status: Match["status"]
-    date: string
-    time: string
-    matchday: number
-    venue: string | null
-  }> = {}
+  const homeScore = formData.get("homeScore") as string | null
+  const awayScore = formData.get("awayScore") as string | null
+  const statusValue = formData.get("status") as string | null
+  const result = (formData.get("result") as string | null) ?? "normal" // normal | wo_home | wo_away
+  const homeTeamId = (formData.get("homeTeamId") as string | null) || match.homeTeamId
+  const awayTeamId = (formData.get("awayTeamId") as string | null) || match.awayTeamId
+  const date = formData.get("date") as string | null
+  const time = formData.get("time") as string | null
+  const matchday = formData.get("matchday") as string | null
+  const venue = formData.get("venue") as string | null
+  const notes = formData.get("notes") as string | null
 
-  if (homeScore !== null && homeScore !== undefined && homeScore !== "") {
-    payload.homeScore = parseInt(homeScore, 10)
+  const status = MATCH_STATUSES.find((s) => s === statusValue) ?? match.status
+
+  // Changing who plays (e.g. a rescheduled or swapped match)
+  if (homeTeamId !== match.homeTeamId || awayTeamId !== match.awayTeamId) {
+    if (homeTeamId === awayTeamId) return { error: "El equipo local y visitante no pueden ser el mismo." }
+    const { data: registrations } = await getRegistrations({ tournamentId: match.tournamentId })
+    const registered = new Set((registrations ?? []).filter((r) => !r.withdrawnAt).map((r) => r.teamId))
+    if (!registered.has(homeTeamId) || !registered.has(awayTeamId)) {
+      return { error: "Los dos equipos tienen que estar inscriptos en el torneo." }
+    }
   }
-  if (awayScore !== null && awayScore !== undefined && awayScore !== "") {
-    payload.awayScore = parseInt(awayScore, 10)
+
+  const walkover = result === "wo_home" || result === "wo_away"
+  const payload: Parameters<typeof updateMatch>[1] = {
+    homeTeamId,
+    awayTeamId,
+    status: walkover ? "finished" : status,
+    walkover,
+    date: date || undefined,
+    time: time || undefined,
+    matchday: matchday ? parseInt(matchday, 10) : undefined,
+    venue: venue?.trim() || null,
+    notes: notes?.trim() || null,
   }
-  if (status) payload.status = status as Match["status"]
-  if (date) payload.date = date
-  if (time) payload.time = time
-  if (matchday) payload.matchday = parseInt(matchday, 10)
-  payload.venue = venue || null
 
-  const result = await updateMatch(id, payload)
+  if (walkover) {
+    // W.O. is always 3-0 for the team that showed up
+    payload.homeScore = result === "wo_home" ? WALKOVER_SCORE : 0
+    payload.awayScore = result === "wo_away" ? WALKOVER_SCORE : 0
+  } else if (status === "postponed" || status === "cancelled") {
+    payload.homeScore = null
+    payload.awayScore = null
+  } else {
+    if (homeScore) payload.homeScore = parseInt(homeScore, 10)
+    if (awayScore) payload.awayScore = parseInt(awayScore, 10)
+    if (status === "finished" && (payload.homeScore == null && match.homeScore == null)) {
+      return { error: "Cargá el resultado para dar el partido por finalizado." }
+    }
+  }
 
-  if (result.error) return { error: result.error }
+  const update = await updateMatch(id, payload)
+  if (update.error) return { error: update.error }
 
   // Auto-process red cards
   const redCards = formData.getAll("redCards") as string[]
@@ -440,19 +469,23 @@ export async function updateMatchAction(
     await processMatchSanctions(id, validRedCards)
   }
 
-  // Save goals
-  const goalPlayers = formData.getAll("goalPlayer") as string[]
-  const goalCounts = formData.getAll("goalCount") as string[]
-  const scorers: { playerId: string; goals: number }[] = []
-  for (let i = 0; i < goalPlayers.length; i++) {
-    const pid = goalPlayers[i]
-    const count = parseInt(goalCounts[i] || "1", 10)
-    if (pid && pid !== "none" && count > 0) {
-      scorers.push({ playerId: pid, goals: count })
+  if (walkover) {
+    // A W.O. has no scorers
+    await saveMatchGoals(id, [])
+  } else {
+    const goalPlayers = formData.getAll("goalPlayer") as string[]
+    const goalCounts = formData.getAll("goalCount") as string[]
+    const scorers: { playerId: string; goals: number }[] = []
+    for (let i = 0; i < goalPlayers.length; i++) {
+      const pid = goalPlayers[i]
+      const count = parseInt(goalCounts[i] || "1", 10)
+      if (pid && pid !== "none" && count > 0) {
+        scorers.push({ playerId: pid, goals: count })
+      }
     }
-  }
-  if (scorers.length > 0) {
-    await saveMatchGoals(id, scorers)
+    if (scorers.length > 0) {
+      await saveMatchGoals(id, scorers)
+    }
   }
 
   revalidateSite()
@@ -499,7 +532,7 @@ export async function generateFixtureAction(
 
   // The preview's order is kept, but the teams must be exactly the registered ones
   const { data: registrations } = await getRegistrations({ tournamentId })
-  const registered = new Set((registrations ?? []).map((r) => r.teamId))
+  const registered = new Set((registrations ?? []).filter((r) => !r.withdrawnAt).map((r) => r.teamId))
   if (teamIds.length !== registered.size || teamIds.some((id) => !registered.has(id))) {
     return { error: "Los equipos cambiaron. Cerrá y volvé a generar la vista previa." }
   }
@@ -865,6 +898,13 @@ export async function revokeDelegateFormAction(formData: FormData): Promise<void
 // Matchday suspension
 // ---------------------------------------------------------------------------
 
+/**
+ * Suspends one matchday of one tournament.
+ * - days > 0: every pending match from that matchday on moves the same number
+ *   of days (the whole calendar shifts, e.g. one week).
+ * - days = 0: the matchday's pending matches are marked "suspendido" to be
+ *   rescheduled later; the rest of the calendar stays.
+ */
 export async function suspendMatchdayAction(
   _prev: unknown,
   formData: FormData
@@ -872,42 +912,45 @@ export async function suspendMatchdayAction(
   const auth = await requireStaff()
   if (auth.error) return { error: auth.error }
 
-  const matchday = formData.get("matchday") as string
-  const days = formData.get("days") as string
+  const tournamentId = formData.get("tournamentId") as string | null
+  const matchday = parseInt((formData.get("matchday") as string | null) ?? "", 10)
+  const days = parseInt((formData.get("days") as string | null) || "0", 10)
+  const reason = (formData.get("reason") as string | null)?.trim() || null
 
-  if (!matchday) return { error: "La fecha es obligatoria." }
-  const matchdayNum = parseInt(matchday, 10)
-  const daysNum = parseInt(days || "7", 10)
+  if (!tournamentId) return { error: "Elegí el torneo." }
+  if (!matchday || matchday < 1) return { error: "Indicá el número de fecha." }
+  if (Number.isNaN(days) || days < 0) return { error: "Los días a correr no pueden ser negativos." }
 
-  try {
-    const { createClient } = await import("@/lib/supabase/server")
-    const supabase = await createClient()
+  const { data: matches } = await getMatches(tournamentId)
+  const pending = (matches ?? []).filter(
+    (m) => m.status === "scheduled" || m.status === "postponed"
+  )
+  const affected = days > 0
+    ? pending.filter((m) => m.matchday >= matchday)
+    : pending.filter((m) => m.matchday === matchday)
 
-    // Get all matches from this matchday onward
-    const { data: matches } = await supabase.from("matches")
-      .select("id, date, matchday")
-      .gte("matchday", matchdayNum)
-      .order("matchday")
+  if (affected.length === 0) return { error: "No hay partidos pendientes en esa fecha." }
 
-    if (!matches?.length) return { error: "No se encontraron partidos para esa fecha." }
-
-    // Shift each match's date
-    for (const m of matches) {
-      if (!m.date) continue
-      const matchdayDiff = (m.matchday as number) - matchdayNum
-      const newDate = new Date(m.date as string)
-      newDate.setDate(newDate.getDate() + daysNum * (matchdayDiff + 1))
-
-      await supabase.from("matches")
-        .update({ date: newDate.toISOString().split("T")[0] })
-        .eq("id", m.id)
-    }
-
-    revalidateSite()
-    return { success: true as const }
-  } catch {
-    return { error: "No se pudo suspender la fecha." }
+  for (const m of affected) {
+    const result = days > 0
+      ? await updateMatch(m.id, {
+          status: "scheduled",
+          date: m.date ? shiftDate(m.date, days) : undefined,
+          notes: m.matchday === matchday ? reason : undefined,
+        })
+      : await updateMatch(m.id, { status: "postponed", notes: reason })
+    if (result.error) return { error: result.error }
   }
+
+  revalidateSite()
+  return { success: true as const }
+}
+
+/** "2026-08-15" + 7 → "2026-08-22" (UTC, no timezone drift) */
+function shiftDate(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 // ---------------------------------------------------------------------------
@@ -995,6 +1038,19 @@ export async function unregisterTeamAction(
   if (auth.error) return { error: auth.error }
 
   const result = await deleteRegistration(registrationId)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
+}
+
+/** Team leaves the tournament: played matches stay, pending ones become W.O. 3-0. */
+export async function withdrawTeamAction(
+  registrationId: string
+): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await withdrawRegistration(registrationId)
   if (result.error) return { error: result.error }
   revalidateSite()
   return {}

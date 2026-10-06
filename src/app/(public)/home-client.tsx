@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import type { Team, Tournament, Registration, NewsArticle, Sponsor } from "@/lib/types"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import type { LeagueInfo } from "@/lib/types"
-import { resolveScope, teamsInTournament, tournamentsInScope, type SeriesOption } from "@/lib/scope"
+import { resolveScope, teamsInTournament, tournamentsInScope, withdrawnInTournament, type SeriesOption } from "@/lib/scope"
 import { calculateStandings } from "@/lib/db/standings"
 import { StandingsSidebar } from "@/components/standings-sidebar"
 import { LeftSidebar } from "@/components/left-sidebar"
@@ -74,8 +74,8 @@ export function HomePageClient({
   )
 
   const standings = useMemo(
-    () => calculateStandings(filteredMatches, filteredTeams),
-    [filteredMatches, filteredTeams]
+    () => calculateStandings(filteredMatches, filteredTeams, withdrawnInTournament(registrations, currentTournament?.id)),
+    [filteredMatches, filteredTeams, registrations, currentTournament?.id]
   )
 
   const finishedMatches = filteredMatches
@@ -83,7 +83,7 @@ export function HomePageClient({
     .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(b.time))
 
   const scheduledMatches = filteredMatches
-    .filter((m) => m.status === "scheduled")
+    .filter((m) => m.status === "scheduled" || m.status === "postponed")
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
 
   const sortedNews = [...articles].sort((a, b) => b.date.localeCompare(a.date))

@@ -75,8 +75,14 @@ export default async function JugadorPage({
   const seasonRows = season ? rows.filter((r) => seasonOf(r.match!.tournamentId) === season) : rows
   const sum = (list: typeof rows) =>
     list.reduce(
-      (t, r) => ({ goals: t.goals + r.goals, assists: t.assists + r.assists, yellow: t.yellow + r.yellow, red: t.red + r.red }),
-      { goals: 0, assists: 0, yellow: 0, red: 0 }
+      (t, r) => ({
+        played: t.played + (r.played ? 1 : 0),
+        goals: t.goals + r.goals,
+        assists: t.assists + r.assists,
+        yellow: t.yellow + r.yellow,
+        red: t.red + r.red,
+      }),
+      { played: 0, goals: 0, assists: 0, yellow: 0, red: 0 }
     )
   // This season and the whole career in the league
   const totals = sum(seasonRows)
@@ -89,6 +95,7 @@ export default async function JugadorPage({
   const teamHref = `/equipos/${player.teamId}${q}`
 
   const stats = [
+    { label: "Partidos", value: totals.played, total: career.played, icon: "👕" },
     { label: "Goles", value: totals.goals, total: career.goals, icon: "⚽" },
     { label: "Asistencias", value: totals.assists, total: career.assists, icon: "👟" },
     { label: "Amarillas", value: totals.yellow, total: career.yellow, icon: "🟨" },
@@ -129,7 +136,7 @@ export default async function JugadorPage({
         )}
 
         <SectionTitle>Estadísticas</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {stats.map((s) => (
             <div key={s.label} className="rounded-xl border border-border bg-card p-4">
               <p className="flex items-center gap-1.5 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -154,7 +161,7 @@ export default async function JugadorPage({
           <SectionTitle>Partidos</SectionTitle>
           {rows.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-              Todavía no tiene goles, asistencias ni tarjetas cargados.
+              Todavía no tiene partidos cargados.
             </p>
           ) : (
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
@@ -212,7 +219,7 @@ export default async function JugadorPage({
             </ul>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            Se muestran los partidos en los que tuvo goles, asistencias o tarjetas. Las asistencias salen de la planilla del árbitro.
+            Partidos que jugó según la planilla del árbitro, y aquellos en los que tuvo goles o tarjetas cargados desde el panel.
           </p>
         </section>
       </div>

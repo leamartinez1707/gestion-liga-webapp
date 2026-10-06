@@ -1,3 +1,5 @@
+import { likeTerm } from "@/lib/db/filters"
+import { normalize } from "@/lib/text"
 import type { Team, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { isUuid } from "./ids"
@@ -5,18 +7,32 @@ import { fetchAll, fetchAllIn } from "./fetch-all"
 
 const TEAM_COLUMNS = "id, name, short_name, shield_url, category, series_id, division_id, coach, assistant_coach, tournament_id"
 
+export interface TeamFilter {
+  q?: string
+  ids?: string[]
+}
+
 export async function getTeamsPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: TeamFilter = {}
 ): Promise<PaginatedResult<Team>> {
   try {
+    // Filtering by an empty set (e.g. a search with no match) finds nothing
+    if (filter.ids && filter.ids.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("teams")
       .select("*", { count: "exact" })
+    // search_name: name + short name, lowercase without accents (generated column)
+    const term = likeTerm(normalize(filter.q ?? ""))
+    if (term) query = query.ilike("search_name", term)
+    if (filter.ids) query = query.in("id", filter.ids)
+
+    const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .range(from, to)
 

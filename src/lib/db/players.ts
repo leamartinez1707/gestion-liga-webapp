@@ -1,3 +1,5 @@
+import { likeTerm } from "@/lib/db/filters"
+import { normalize } from "@/lib/text"
 import type { Player, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { isUuid } from "./ids"
@@ -5,18 +7,34 @@ import { fetchAll, fetchAllIn } from "./fetch-all"
 
 const PLAYER_COLUMNS = "id, name, number, position, photo_url, team_id, active"
 
+export interface PlayerFilter {
+  q?: string
+  teamIds?: string[]
+  active?: boolean
+}
+
 export async function getPlayersPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: PlayerFilter = {}
 ): Promise<PaginatedResult<Player>> {
   try {
+    // Filtering by an empty set (e.g. a search with no match) finds nothing
+    if (filter.teamIds && filter.teamIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("players")
       .select("*", { count: "exact" })
+    // search_name: lowercase without accents (generated column)
+    const term = likeTerm(normalize(filter.q ?? ""))
+    if (term) query = query.ilike("search_name", term)
+    if (filter.teamIds) query = query.in("team_id", filter.teamIds)
+    if (filter.active !== undefined) query = query.eq("active", filter.active)
+
+    const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .range(from, to)
 

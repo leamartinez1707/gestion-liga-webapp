@@ -11,23 +11,47 @@ const MATCH_SELECT = `
   away_team:away_team_id (name)
 ` as const
 
+/** Filters of the admin matches list. */
+export interface MatchListFilter {
+  /** Only matches of these tournaments (e.g. one season's) */
+  tournamentIds?: string[]
+  tournamentId?: string
+  /** Matches where any of these teams plays (home or away) */
+  teamIds?: string[]
+  matchday?: number
+  status?: string
+}
+
 export async function getMatchesPaginated(
   page = 1,
   limit = 10,
-  /** Only matches of these tournaments (e.g. one season's) */
-  tournamentIds?: string[]
+  filter: MatchListFilter = {}
 ): Promise<PaginatedResult<MatchWithTeams>> {
-  if (tournamentIds?.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
+  // Filtering by an empty set (e.g. a search with no match) finds nothing
+  const empty = { data: [], total: 0, page, totalPages: 0, error: null }
+  if (filter.tournamentIds?.length === 0 || filter.teamIds?.length === 0) return empty
+  // Team ids go inside an .or() string and come from the URL
+  const teamIds = filter.teamIds ? uuids(filter.teamIds) : undefined
+  if (teamIds?.length === 0) return empty
   try {
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
     let query = supabase.from("matches").select(MATCH_SELECT, { count: "exact" })
-    if (tournamentIds) query = query.in("tournament_id", tournamentIds)
+    if (filter.tournamentIds) query = query.in("tournament_id", filter.tournamentIds)
+    if (filter.tournamentId) query = query.eq("tournament_id", filter.tournamentId)
+    if (teamIds) {
+      const ids = teamIds.join(",")
+      query = query.or(`home_team_id.in.(${ids}),away_team_id.in.(${ids})`)
+    }
+    if (filter.matchday) query = query.eq("matchday", filter.matchday)
+    if (filter.status) query = query.eq("status", filter.status)
+
+    // Admin list: latest first
     const { data, error, count } = await query
-      .order("date", { ascending: true })
-      .order("time", { ascending: true })
+      .order("date", { ascending: false })
+      .order("time", { ascending: false })
       .order("id")
       .range(from, to)
 
@@ -106,6 +130,20 @@ export async function getMatches(
     return { data: data.map(mapRowWithTeams), error: null }
   } catch {
     return { data: null, error: "No se pudo conectar con la base de datos." }
+  }
+}
+
+/** Matchdays of a tournament, ascending (only that column is read). */
+export async function getMatchdays(tournamentId: string): Promise<number[]> {
+  if (!isUuid(tournamentId)) return []
+  try {
+    const supabase = createReadOnlyClient()
+    const { data } = await fetchAll((from, to) =>
+      supabase.from("matches").select("matchday").eq("tournament_id", tournamentId).order("id").range(from, to)
+    )
+    return [...new Set(data.flatMap((m) => (m.matchday == null ? [] : [m.matchday])))].sort((a, b) => a - b)
+  } catch {
+    return []
   }
 }
 

@@ -10,6 +10,7 @@ delete from public.sanctions where match_id in (select id from public.matches wh
 delete from public.photos where id::text like 'd0d0%';
 delete from public.photo_albums where id::text like 'd0d0%';
 delete from public.news_articles where id::text like 'd0d0%';
+delete from public.match_lineups where id::text like 'd0d0%';
 delete from public.match_events where id::text like 'd0d0%';
 delete from public.matches where id::text like 'd0d0%';
 delete from public.registration_players where registration_id in (select id from public.registrations where id::text like 'd0d0%');

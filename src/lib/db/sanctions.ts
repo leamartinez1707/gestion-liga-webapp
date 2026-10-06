@@ -2,10 +2,18 @@ import type { Sanction, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 import { fetchAll } from "./fetch-all"
 import { isUuid } from "./ids"
+import { likeTerm } from "./filters"
+import { normalize } from "@/lib/text"
 
 const SANCTION_DETAILS = `
   id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
   player:player_id (name),
+  match:match_id (matchday, tournament_id)
+`
+// Same columns, but only sanctions whose player passes the filters on `player`
+const SANCTION_DETAILS_BY_PLAYER = `
+  id, player_id, match_id, card_type, match_date, matches_suspended, expires_after_match,
+  player:player_id!inner (name),
   match:match_id (matchday, tournament_id)
 `
 // Same columns, but only sanctions whose match passes the filters on `match`
@@ -15,19 +23,45 @@ const SANCTION_DETAILS_INNER = `
   match:match_id!inner (matchday, tournament_id, home_team_id, away_team_id)
 `
 
+export interface SanctionFilter {
+  playerIds?: string[]
+  ids?: string[]
+  cardType?: string
+  /** Player name (accent-insensitive, players.search_name) */
+  q?: string
+  /** Current team of the player */
+  teamId?: string
+}
+
 export async function getSanctionsPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: SanctionFilter = {}
 ): Promise<PaginatedResult<SanctionWithDetails>> {
   try {
+    // Filtering by an empty set (e.g. a search with no match) finds nothing
+    if (filter.ids && filter.ids.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
+    if (filter.playerIds && filter.playerIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
+    if (filter.teamId !== undefined && !isUuid(filter.teamId)) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    // Name and team filter on the player in the same query (no list of ids in the URL)
+    const term = likeTerm(normalize(filter.q ?? ""))
+    const byPlayer = !!term || !!filter.teamId
+    let query = supabase
       .from("sanctions")
-      .select(SANCTION_DETAILS, { count: "exact" })
+      .select(byPlayer ? SANCTION_DETAILS_BY_PLAYER : SANCTION_DETAILS, { count: "exact" })
+    if (term) query = query.ilike("player.search_name", term)
+    if (filter.teamId) query = query.eq("player.team_id", filter.teamId)
+    if (filter.playerIds) query = query.in("player_id", filter.playerIds)
+    if (filter.ids) query = query.in("id", filter.ids)
+    if (filter.cardType) query = query.eq("card_type", filter.cardType)
+
+    const { data, error, count } = await query
       .order("created_at", { ascending: false })
+      .order("id")
       .range(from, to)
 
     if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }
@@ -161,7 +195,14 @@ export async function syncMatchRedCards(
  * With no filter it reads the whole table (paged).
  */
 export async function getSanctions(
-  filter: { playerIds?: string[]; matchIds?: string[]; tournamentIds?: string[]; teamId?: string } = {}
+  filter: {
+    playerIds?: string[]
+    matchIds?: string[]
+    tournamentIds?: string[]
+    teamId?: string
+    /** Only the ones that suspend (matches_suspended > 0) */
+    suspendingOnly?: boolean
+  } = {}
 ): Promise<{ data: SanctionWithDetails[] | null; error: string | null }> {
   if (filter.playerIds?.length === 0 || filter.matchIds?.length === 0 || filter.tournamentIds?.length === 0) {
     return { data: [], error: null }
@@ -175,6 +216,7 @@ export async function getSanctions(
       let query = supabase.from("sanctions").select(byMatch ? SANCTION_DETAILS_INNER : SANCTION_DETAILS)
       if (filter.playerIds) query = query.in("player_id", filter.playerIds)
       if (filter.matchIds) query = query.in("match_id", filter.matchIds)
+      if (filter.suspendingOnly) query = query.gt("matches_suspended", 0)
       if (filter.tournamentIds) query = query.in("match.tournament_id", filter.tournamentIds)
       if (filter.teamId) {
         query = query.or(`home_team_id.eq.${filter.teamId},away_team_id.eq.${filter.teamId}`, { referencedTable: "match" })

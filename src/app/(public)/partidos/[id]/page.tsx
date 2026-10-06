@@ -9,6 +9,7 @@ import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getPlayersByTeam } from "@/lib/db/players"
 import { getMatchEvents, getMatchRefereeName } from "@/lib/db/match-events"
+import { getLineup } from "@/lib/db/lineups"
 import { getGoalsByMatch } from "@/lib/db/goals"
 import { getSanctions } from "@/lib/db/sanctions"
 import { getAlbums } from "@/lib/db/gallery"
@@ -48,7 +49,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
   const { data: match } = await getMatch(id)
   if (!match) notFound()
 
-  const [{ data: teams }, { data: tournaments }, seriesOptions, headToHead, events, goalsByMatch, { data: sanctions }, { data: albums }, { data: articles }, { data: homePlayers }, { data: awayPlayers }, refereeName] =
+  const [{ data: teams }, { data: tournaments }, seriesOptions, headToHead, events, goalsByMatch, { data: sanctions }, { data: albums }, { data: articles }, { data: homePlayers }, { data: awayPlayers }, refereeName, lineup] =
     await Promise.all([
       getTeamsByIds([match.homeTeamId, match.awayTeamId]),
       getTournaments(),
@@ -63,6 +64,7 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
       getPlayersByTeam(match.homeTeamId),
       getPlayersByTeam(match.awayTeamId),
       getMatchRefereeName(id),
+      getLineup(id),
     ])
 
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
@@ -248,6 +250,41 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
                     </ul>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {lineup.length > 0 && (
+              <div className="mt-10">
+                <SectionTitle>Formaciones</SectionTitle>
+                <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border bg-card">
+                  {[home, away].map((team, side) => {
+                    const list = lineup
+                      .filter((l) => l.teamId === team?.id)
+                      .map((l) => ({ ...l, player: players.get(l.playerId) }))
+                      .sort((a, b) => (a.player?.number || 999) - (b.player?.number || 999))
+                    return (
+                      <div key={side} className={cn("min-w-0", side === 0 && "border-r border-border")}>
+                        <p className="flex items-center justify-between gap-2 border-b border-border bg-muted px-3 py-2 font-display text-sm font-semibold uppercase tracking-wider">
+                          <span className="truncate">{team?.shortName ?? "—"}</span>
+                          <span className="text-muted-foreground">{list.length}</span>
+                        </p>
+                        <ul className="divide-y divide-border">
+                          {list.map((l) => (
+                            <li key={l.playerId}>
+                              <Link href={`/jugadores/${l.playerId}`} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted">
+                                <span className="w-6 shrink-0 text-center font-display text-base font-bold tabular-nums text-muted-foreground">
+                                  {l.player && l.player.number > 0 ? l.player.number : "–"}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate font-medium">{l.player?.name ?? "Jugador"}</span>
+                                {l.isGuest && <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">Refuerzo</span>}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 

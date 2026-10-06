@@ -8,14 +8,12 @@ import { addEventAction, deleteEventAction, setLiveStateAction } from "@/lib/act
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { PhotoAvatar } from "@/components/photo-avatar"
+import type { LineupEntry } from "@/lib/db/lineups"
+import { LineupPanel, type LineupTeam } from "./lineup-panel"
 import { cn } from "@/lib/utils"
 
-interface SheetTeam {
-  id: string
+interface SheetTeam extends LineupTeam {
   name: string
-  shortName: string
-  shield: string
-  players: Player[]
 }
 
 interface LiveSheetProps {
@@ -24,6 +22,8 @@ interface LiveSheetProps {
   away: SheetTeam
   events: MatchEvent[]
   suspendedPlayerIds: string[]
+  lineup: LineupEntry[]
+  guestRules: { allowed: boolean; maxMatches: number }
 }
 
 const EVENT_LABEL: Record<MatchEvent["type"], string> = {
@@ -37,12 +37,23 @@ const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: 
 // For a goal, a second step asks who assisted (scorerId set)
 type Picking = { team: SheetTeam; type: MatchEvent["type"]; scorerId?: string } | null
 
-export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: LiveSheetProps) {
+export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineup, guestRules }: LiveSheetProps) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [picking, setPicking] = useState<Picking>(null)
   const [confirmFinish, setConfirmFinish] = useState(false)
   const suspended = new Set(suspendedPlayerIds)
+  // Before kick-off the referee starts with the lineup; then with the events
+  const [tab, setTab] = useState<"jugadores" | "partido">(match.status === "scheduled" ? "jugadores" : "partido")
+  const lineupIds = new Set(lineup.map((l) => l.playerId))
+
+  // Event picker: who's playing first (refuerzos included), then the rest of the list
+  const pickable = (team: SheetTeam): Player[] => {
+    const all = [...team.players, ...team.others]
+    const playing = all.filter((p) => lineupIds.has(p.id))
+    const rest = team.players.filter((p) => !lineupIds.has(p.id))
+    return playing.length ? [...playing, ...rest] : team.players
+  }
 
   const run = (fn: () => Promise<{ error?: string }>, after?: () => void) =>
     startTransition(async () => {
@@ -68,7 +79,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
   const finished = match.status === "finished"
   const blocked = match.status === "cancelled" || match.status === "postponed"
   const playerName = (id?: string) =>
-    [...home.players, ...away.players].find((p) => p.id === id)?.name ?? "Sin identificar"
+    [...home.players, ...home.others, ...away.players, ...away.others].find((p) => p.id === id)?.name ?? "Sin identificar"
   const teamOf = (id: string) => (id === home.id ? home : away)
   const lastEvent = events[events.length - 1]
 
@@ -90,6 +101,38 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
         </div>
       </div>
 
+      {/* Tabs: lineup (who plays) and the match itself */}
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+        {(["jugadores", "partido"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn("min-h-11 rounded-lg text-sm font-bold transition", tab === t ? "bg-background shadow-sm" : "text-muted-foreground")}
+          >
+            {t === "jugadores" ? `👕 Jugadores (${lineup.length})` : "⚽ Partido"}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>}
+
+      {tab === "jugadores" ? (
+        blocked ? (
+          <p className="rounded-lg bg-muted p-4 text-center text-sm text-muted-foreground">El partido está suspendido o cancelado.</p>
+        ) : (
+          <LineupPanel
+            matchId={match.id}
+            teams={[home, away]}
+            lineup={lineup}
+            suspended={suspended}
+            guestRules={guestRules}
+            pending={pending}
+            run={run}
+          />
+        )
+      ) : (
+        <>
       {/* Match clock controls */}
       {!blocked && (
         <div className="grid">
@@ -112,8 +155,6 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
           )}
         </div>
       )}
-
-      {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>}
 
       {/* Event buttons, one column per team */}
       {!blocked && (
@@ -187,6 +228,9 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
         )}
       </section>
 
+        </>
+      )}
+
       {/* Player picker */}
       {/* Closing on the assist step keeps the goal (without assist): never lose a goal */}
       <Dialog
@@ -221,7 +265,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
               {picking.type === "own_goal" && (
                 <p className="text-xs text-muted-foreground">Elegí el jugador de {picking.team.shortName} que la metió en contra: el gol suma para el rival.</p>
               )}
-              {picking.team.players.filter((p) => p.id !== picking.scorerId).map((p) => (
+              {pickable(picking.team).filter((p) => p.id !== picking.scorerId).map((p) => (
                 <button
                   key={p.id}
                   type="button"
@@ -239,7 +283,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: Liv
                   )}
                 </button>
               ))}
-              {picking.team.players.length === 0 && (
+              {pickable(picking.team).length === 0 && (
                 <p className="py-4 text-center text-sm text-muted-foreground">El equipo no tiene jugadores cargados.</p>
               )}
               {!picking.scorerId && (picking.type === "goal" || picking.type === "own_goal") && (

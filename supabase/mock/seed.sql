@@ -4,7 +4,7 @@
 -- Creates, in Serie 1 División A, Serie 1 División B and Serie 2 División A:
 --   8 teams per division, 14 players per team, a finished "Apertura 2025" and
 --   a "Clausura 2026" (fechas 1-5 played, 6-7 to play), live-sheet events
---   (goals, assists, cards), 4 referees, news linked to matches, photo albums,
+--   (goals, assists, cards), lineups (11 per team), 4 referees, news linked to matches, photo albums,
 --   squad photos per season and sponsors.
 --
 -- Every mock row has an id starting with d0d0 (and referees an @mock.liga
@@ -173,6 +173,24 @@ begin
   for v_m in select id from public.matches where id::text like 'd0d0%' and status = 'finished' order by date loop
     perform public.recompute_match(v_m.id);
   end loop;
+
+  -- ---- Lineups: 11 per team; whoever scored, assisted or got a card played ----
+  insert into public.match_lineups (id, match_id, team_id, player_id, is_guest)
+  select ('d0d0' || substr(md5('lu-' || x.match_id || '-' || x.player_id), 5))::uuid, x.match_id, x.team_id, x.player_id, x.is_guest
+  from (
+    select y.*, row_number() over (partition by y.match_id, y.team_id order by y.has_ev desc, y.is_guest, md5(y.match_id::text || y.player_id::text)) rn
+    from (
+      select m.id match_id, p.team_id, p.id player_id,
+        exists (select 1 from public.match_events e where e.match_id = m.id and (e.player_id = p.id or e.assist_player_id = p.id)) has_ev,
+        not exists (
+          select 1 from public.registration_players rp join public.registrations r on r.id = rp.registration_id
+          where r.tournament_id = m.tournament_id and r.team_id = p.team_id and rp.player_id = p.id) is_guest
+      from public.matches m
+      join public.players p on p.team_id in (m.home_team_id, m.away_team_id)
+      where m.id::text like 'd0d0%' and m.status = 'finished'
+    ) y
+  ) x
+  where (x.rn <= 11 or x.has_ev) and (not x.is_guest or x.has_ev);
 
   -- ---- News: a report for the last two fechas of each division, plus the season opener ----
   for v_m in

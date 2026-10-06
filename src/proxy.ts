@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  const supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,8 +40,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Protected delegate routes → redirect to login
-  if (!user && request.nextUrl.pathname.startsWith("/delegado")) {
+  // Protected delegate and referee routes → redirect to login
+  if (!user && (request.nextUrl.pathname.startsWith("/delegado") || request.nextUrl.pathname.startsWith("/arbitro"))) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
@@ -61,6 +61,7 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/delegado/:path*",
+    "/arbitro/:path*",
     "/login",
   ],
 }

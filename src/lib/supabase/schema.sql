@@ -15,7 +15,7 @@
 create table profiles (
   id uuid references auth.users primary key,
   email text unique not null,
-  role text not null default 'delegate' check (role in ('superadmin', 'editor', 'delegate')),
+  role text not null default 'delegate' check (role in ('superadmin', 'editor', 'delegate', 'referee')),
   team_id uuid,              -- FK a teams agregada más abajo (teams se crea después)
   created_at timestamptz default now()
 );
@@ -116,6 +116,8 @@ create table matches (
   status text default 'scheduled' check (status in ('scheduled', 'ongoing', 'finished', 'postponed', 'cancelled')),
   walkover boolean not null default false,   -- ganado por W.O. (siempre 3-0)
   notes text,                                -- nota pública, p. ej. "Suspendido por lluvia"
+  referee_id uuid references profiles on delete set null,  -- árbitro que carga la planilla
+  live_period text check (live_period in ('1T', 'ET', '2T')),
   venue text,
   created_at timestamptz default now()
 );
@@ -127,7 +129,8 @@ create table sanctions (
   id uuid default gen_random_uuid() primary key,
   player_id uuid references players,
   match_id uuid references matches,
-  card_type text check (card_type in ('yellow', 'red')),
+  card_type text check (card_type in ('yellow', 'red', 'accumulation')),
+  source text not null default 'manual' check (source in ('manual', 'match', 'accumulation')),
   match_date date,
   matches_suspended integer default 0,
   expires_after_match integer,
@@ -199,6 +202,30 @@ create table photos (
   thumb_url text,             -- miniatura 480px generada al subir
   caption text,
   display_order integer not null default 0,
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
+-- Configuración de la liga (una fila) y planilla en vivo.
+-- recompute_match() deriva marcador, goleadores y tarjetas de match_events
+-- (supabase/migrations/20261010120000_live_sheet.sql).
+-- -----------------------------------------------------------------------------
+create table league_settings (
+  id boolean primary key default true check (id),
+  yellow_cards_for_suspension integer not null default 5,  -- 0 = no suspende
+  yellow_suspension_matches integer not null default 1,
+  red_card_matches integer not null default 1,
+  updated_at timestamptz default now()
+);
+
+create table match_events (
+  id uuid default gen_random_uuid() primary key,
+  match_id uuid not null references matches on delete cascade,
+  team_id uuid not null references teams on delete cascade,
+  player_id uuid references players on delete set null,
+  type text not null check (type in ('goal', 'own_goal', 'yellow', 'red')),
+  period text check (period in ('1T', '2T')),
+  created_by uuid default auth.uid(),
   created_at timestamptz default now()
 );
 

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import type { Team, Tournament, Registration, NewsArticle, Sponsor, PhotoAlbum } from "@/lib/types"
 import Link from "next/link"
 import { AlbumCard } from "@/components/album-card"
+import { AutoRefresh } from "@/components/auto-refresh"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import type { LeagueInfo } from "@/lib/types"
 import { resolveScope, teamsInTournament, tournamentsInScope, withdrawnInTournament, type SeriesOption } from "@/lib/scope"
@@ -87,7 +88,7 @@ export function HomePageClient({
     .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(b.time))
 
   const scheduledMatches = filteredMatches
-    .filter((m) => m.status === "scheduled" || m.status === "postponed")
+    .filter((m) => m.status === "scheduled" || m.status === "postponed" || m.status === "ongoing")
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
 
   const sortedNews = [...articles].sort((a, b) => b.date.localeCompare(a.date))
@@ -109,6 +110,7 @@ export function HomePageClient({
 
   return (
     <div className="w-full px-4 md:px-6 py-5">
+      <AutoRefresh active={filteredMatches.some((m) => m.status === "ongoing")} />
       <div className="grid gap-5 lg:grid-cols-[200px_1fr_300px]">
         {/* ===== LEFT SIDEBAR ===== */}
         <div className="hidden lg:block">

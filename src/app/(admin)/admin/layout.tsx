@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { Shield, LogOut } from "lucide-react"
 
-import { getSessionProfile, isStaff } from "@/lib/auth"
+import { getSessionProfile, homeFor, isStaff } from "@/lib/auth"
 import { signOut } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +20,7 @@ export default async function AdminLayout({
     redirect("/login")
   }
   if (!isStaff(user)) {
-    redirect("/delegado")
+    redirect(homeFor(user))
   }
 
   return (

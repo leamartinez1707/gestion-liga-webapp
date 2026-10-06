@@ -63,6 +63,10 @@ interface MatchDialogProps {
   existingGoals?: { playerId: string; goals: number }[]
   /** Players with a red card in this match (edit mode) */
   redCardPlayerIds?: string[]
+  /** Referees that can be assigned (staff only list) */
+  referees?: { id: string; email: string }[]
+  /** The match has a live sheet: scorers and cards come from it */
+  hasSheet?: boolean
 }
 
 export function MatchDialog({
@@ -76,6 +80,8 @@ export function MatchDialog({
   defaultTournamentId,
   existingGoals = [],
   redCardPlayerIds = [],
+  referees = [],
+  hasSheet = false,
 }: MatchDialogProps) {
   const [open, setOpen] = useState(false)
   const [tournamentId, setTournamentId] = useState(
@@ -95,6 +101,7 @@ export function MatchDialog({
       ? (match.homeScore ?? 0) > (match.awayScore ?? 0) ? "wo_home" : "wo_away"
       : "normal"
   )
+  const [refereeId, setRefereeId] = useState(match && "refereeId" in match && match.refereeId ? match.refereeId : "none")
   const [state, formAction] = useActionState(action, undefined)
 
   if (state?.success && open) {
@@ -352,8 +359,37 @@ export function MatchDialog({
             </>
           )}
 
-          {/* Red cards — only when editing an existing match */}
+          {/* Referee: fills in the live sheet from their phone */}
           {isEditing && (
+            <div className="flex flex-col gap-1.5">
+              <Label>Árbitro</Label>
+              <Select
+                items={[{ value: "none", label: "Sin asignar" }, ...referees.map((r) => ({ value: r.id, label: r.email }))]}
+                value={refereeId}
+                onValueChange={(v) => v && setRefereeId(v)}
+                name="refereeId"
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {referees.map((r) => <SelectItem key={r.id} value={r.id}>{r.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {referees.length === 0 && (
+                <p className="text-xs text-muted-foreground">Agregá árbitros en la sección Árbitros.</p>
+              )}
+            </div>
+          )}
+
+          {isEditing && hasSheet && result === "normal" && (
+            <p className="rounded-md bg-muted-bg p-3 text-xs text-muted-foreground border-t">
+              Este partido tiene planilla: los goles y las tarjetas se cargan desde ahí
+              (<a href={`/arbitro/partido/${(match as Match).id}`} className="text-primary underline">abrir planilla</a>).
+            </p>
+          )}
+
+          {/* Red cards — only when editing an existing match */}
+          {isEditing && !hasSheet && (
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Tarjetas Rojas</Label>
               <p className="text-xs text-muted-foreground">
@@ -383,7 +419,7 @@ export function MatchDialog({
           )}
 
           {/* Goals — only when editing (a W.O. has no scorers) */}
-          {isEditing && match && result === "normal" && (
+          {isEditing && match && result === "normal" && !hasSheet && (
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Goles</Label>
               <p className="text-xs text-muted-foreground">

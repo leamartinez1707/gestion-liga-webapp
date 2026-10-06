@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { StandingsTable } from "@/components/standings-table"
 import { PhotoAvatar } from "@/components/photo-avatar"
 import { MatchStatusBadge } from "@/components/match-status-badge"
+import { AutoRefresh } from "@/components/auto-refresh"
 import { cn } from "@/lib/utils"
 
 function formatDate(dateStr: string): string {
@@ -80,6 +81,7 @@ export default async function PartidosPage({ searchParams }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16">
+      <AutoRefresh active={currentMatches.some((m) => m.status === "ongoing")} />
       {/* TITLE */}
       <div className="text-center mb-10">
         <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
@@ -147,7 +149,7 @@ export default async function PartidosPage({ searchParams }: Props) {
             {currentMatches.map((m) => {
               const home = teamMap.get(m.homeTeamId)
               const away = teamMap.get(m.awayTeamId)
-              const finished = m.status === "finished"
+              const finished = m.status === "finished" || m.status === "ongoing"
               return (
                 <Card key={m.id} className="border-border overflow-hidden">
                   <CardContent className="p-0">

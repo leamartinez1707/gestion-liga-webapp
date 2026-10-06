@@ -46,7 +46,7 @@ export default async function SancionesPage({ searchParams }: Props) {
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.playerName}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{s.matchLabel || "—"}</TableCell>
-                <TableCell><Badge variant={s.cardType === "red" ? "destructive" : "outline"} className="text-xs">{s.cardType === "red" ? "Roja" : "Amarilla"}</Badge></TableCell>
+                <TableCell><Badge variant={s.cardType === "red" ? "destructive" : "outline"} className="text-xs">{s.cardType === "red" ? "Roja" : s.cardType === "accumulation" ? "Acumulación" : "Amarilla"}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-xs">{s.matchDate || "—"}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">
                   {s.matchesSuspended > 0 ? (

@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, ListChecks, Trash2, UserMinus, Pencil, Plus } from "lucide-react"
+import { ArrowLeft, ListChecks, Trash2, UserMinus, Pencil, Plus, ClipboardList } from "lucide-react"
 
 import { getTournament } from "@/lib/db/tournaments"
 import { getTeams } from "@/lib/db/teams"
@@ -10,6 +10,8 @@ import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getMatches } from "@/lib/db/matches"
 import { getGoalsByMatch } from "@/lib/db/goals"
 import { getSanctions } from "@/lib/db/sanctions"
+import { getReferees } from "@/lib/db/referees"
+import { getMatchIdsWithEvents } from "@/lib/db/match-events"
 import { scopeLabel } from "@/lib/scope"
 import {
   registerTeamAction,
@@ -55,10 +57,13 @@ export default async function TorneoInscripcionesPage({
     getMatches(id),
   ])
   const matchdays = [...new Set((matches ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
-  const [goalsByMatch, { data: sanctions }] = await Promise.all([
+  const [goalsByMatch, { data: sanctions }, referees, withSheet] = await Promise.all([
     getGoalsByMatch((matches ?? []).map((m) => m.id)),
     getSanctions(),
+    getReferees(),
+    getMatchIdsWithEvents((matches ?? []).map((m) => m.id)),
   ])
+  const refereeEmail = new Map(referees.map((r) => [r.id, r.email]))
   const redCardsOf = (matchId: string) =>
     (sanctions ?? []).filter((s) => s.matchId === matchId && s.cardType === "red").map((s) => s.playerId)
   const registrationList = registrations ?? []
@@ -212,15 +217,20 @@ export default async function TorneoInscripcionesPage({
                       </span>
                       {m.awayTeamName}
                       {m.notes && <span className="block text-xs text-muted-foreground font-normal">{m.notes}</span>}
+                      <span className="block text-xs text-muted-foreground font-normal">
+                        Árbitro: {m.refereeId ? refereeEmail.get(m.refereeId) ?? "—" : "sin asignar"}
+                      </span>
                     </TableCell>
                     <TableCell className="w-28"><MatchStatusBadge match={m} /></TableCell>
-                    <TableCell className="w-24 text-right">
+                    <TableCell className="w-32 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <MatchDialog
                           action={updateMatchAction.bind(null, m.id)}
                           match={m}
                           existingGoals={goalsByMatch.get(m.id)}
                           redCardPlayerIds={redCardsOf(m.id)}
+                          referees={referees}
+                          hasSheet={withSheet.has(m.id)}
                           teams={teams ?? []}
                           registrations={registrationList}
                           tournaments={[tournament]}
@@ -228,6 +238,9 @@ export default async function TorneoInscripcionesPage({
                         >
                           <Button variant="ghost" size="icon-sm" aria-label="Editar partido"><Pencil className="h-4 w-4" /></Button>
                         </MatchDialog>
+                        <Button variant="ghost" size="icon-sm" aria-label="Planilla" render={<Link href={`/arbitro/partido/${m.id}`} />}>
+                          <ClipboardList className="h-4 w-4" />
+                        </Button>
                         <DeleteConfirmDialog
                           itemName={`${m.homeTeamName} vs ${m.awayTeamName}`}
                           onConfirm={deleteMatchAction.bind(null, m.id)}

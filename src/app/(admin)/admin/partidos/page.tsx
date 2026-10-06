@@ -5,6 +5,8 @@ import { getTeams } from "@/lib/db/teams"
 import { getRegistrations } from "@/lib/db/registrations"
 import { getGoalsByMatch } from "@/lib/db/goals"
 import { getSanctions } from "@/lib/db/sanctions"
+import { getReferees } from "@/lib/db/referees"
+import { getMatchIdsWithEvents } from "@/lib/db/match-events"
 import { getPlayers } from "@/lib/db/players"
 import { getTournaments } from "@/lib/db/tournaments"
 import { createMatchAction, updateMatchAction, deleteMatchAction } from "@/lib/actions/admin"
@@ -35,9 +37,11 @@ export default async function PartidosPage({ searchParams }: Props) {
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t]))
   const matchesList = matches || []
-  const [goalsByMatch, { data: sanctions }] = await Promise.all([
+  const [goalsByMatch, { data: sanctions }, referees, withSheet] = await Promise.all([
     getGoalsByMatch(matchesList.map((m) => m.id)),
     getSanctions(),
+    getReferees(),
+    getMatchIdsWithEvents(matchesList.map((m) => m.id)),
   ])
   const redCardsOf = (matchId: string) =>
     (sanctions ?? []).filter((s) => s.matchId === matchId && s.cardType === "red").map((s) => s.playerId)
@@ -61,7 +65,7 @@ export default async function PartidosPage({ searchParams }: Props) {
               <TableCell><MatchStatusBadge match={m} /></TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  <MatchDialog action={updateMatchAction.bind(null, m.id)} match={m} existingGoals={goalsByMatch.get(m.id)} redCardPlayerIds={redCardsOf(m.id)} teams={teams ?? []} registrations={registrations ?? []} tournaments={tournaments ?? []} players={players ?? []}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></MatchDialog>
+                  <MatchDialog action={updateMatchAction.bind(null, m.id)} match={m} existingGoals={goalsByMatch.get(m.id)} redCardPlayerIds={redCardsOf(m.id)} referees={referees} hasSheet={withSheet.has(m.id)} teams={teams ?? []} registrations={registrations ?? []} tournaments={tournaments ?? []} players={players ?? []}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></MatchDialog>
                   <DeleteConfirmDialog itemName={`${m.homeTeamName} vs ${m.awayTeamName}`} onConfirm={deleteMatchAction.bind(null, m.id)}><Button variant="ghost" size="icon-sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></DeleteConfirmDialog>
                 </div>
               </TableCell>

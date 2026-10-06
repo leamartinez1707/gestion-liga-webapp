@@ -120,7 +120,7 @@ export function FixturePanel({
                   <div className="flex items-center gap-1.5">
                     {match.status === "postponed" || match.status === "cancelled" ? (
                       <MatchStatusBadge match={match} />
-                    ) : match.status === "finished" ? (
+                    ) : match.status === "finished" || match.status === "ongoing" ? (
                       <>
                         <span className="text-2xl font-bold tabular-nums text-foreground">
                           {match.homeScore}
@@ -133,7 +133,7 @@ export function FixturePanel({
                     ) : (
                       <span className="text-sm font-semibold text-muted-foreground">vs</span>
                     )}
-                    {match.walkover && <MatchStatusBadge match={match} className="ml-1" />}
+                    {(match.walkover || match.status === "ongoing") && <MatchStatusBadge match={match} className="ml-1" />}
                   </div>
 
                   {/* Away team */}

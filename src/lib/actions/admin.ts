@@ -47,6 +47,7 @@ import {
 } from "@/lib/db/matches"
 import {
   createSanction,
+  getSanction,
   deleteSanction,
   syncMatchRedCards,
 } from "@/lib/db/sanctions"
@@ -66,6 +67,9 @@ import {
   setRoster,
 } from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
+import { updateLeagueSettings } from "@/lib/db/settings"
+import { setReferee } from "@/lib/db/referees"
+import { createClient } from "@/lib/supabase/server"
 import {
   createAlbum,
   updateAlbum,
@@ -430,6 +434,7 @@ export async function updateMatchAction(
   const matchday = formData.get("matchday") as string | null
   const venue = formData.get("venue") as string | null
   const notes = formData.get("notes") as string | null
+  const refereeId = formData.get("refereeId") as string | null
 
   const status = MATCH_STATUSES.find((s) => s === statusValue) ?? match.status
 
@@ -454,6 +459,8 @@ export async function updateMatchAction(
     matchday: matchday ? parseInt(matchday, 10) : undefined,
     venue: venue?.trim() || null,
     notes: notes?.trim() || null,
+    // "none" = sin árbitro; field absent = don't touch
+    refereeId: refereeId === null ? undefined : refereeId === "none" ? null : refereeId,
   }
 
   if (walkover) {
@@ -613,10 +620,11 @@ export async function createSanctionAction(
     matchId: matchId || undefined,
     cardType: cardType as "yellow" | "red",
     matchDate: matchDate || match.date,
-    matchesSuspended: matchesSuspended ? parseInt(matchesSuspended, 10) : cardType === "red" ? 1 : 0,
+    matchesSuspended: cardType === "yellow" ? 0 : matchesSuspended ? parseInt(matchesSuspended, 10) : 1,
   })
 
   if (result.error) return { error: result.error }
+  if (cardType === "yellow") await recomputeAccumulationFor(playerId, matchId)
   revalidateSite()
   return { success: true as const }
 }
@@ -627,8 +635,10 @@ export async function deleteSanctionAction(
   const auth = await requireStaff()
   if (auth.error) return { error: auth.error }
 
+  const { data: sanction } = await getSanction(id)
   const result = await deleteSanction(id)
   if (result.error) return { error: result.error }
+  if (sanction?.cardType === "yellow") await recomputeAccumulationFor(sanction.playerId, sanction.matchId)
   revalidateSite()
   return {}
 }
@@ -1231,4 +1241,59 @@ export async function setAlbumCoverAction(albumId: string, url: string): Promise
   if (result.error) return { error: result.error }
   revalidateSite()
   return {}
+}
+
+// ---------------------------------------------------------------------------
+// League settings and referees
+// ---------------------------------------------------------------------------
+
+export async function updateSettingsAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const num = (name: string) => parseInt((formData.get(name) as string | null) ?? "", 10)
+  const settings = {
+    yellowCardsForSuspension: num("yellowCardsForSuspension"),
+    yellowSuspensionMatches: num("yellowSuspensionMatches"),
+    redCardMatches: num("redCardMatches"),
+  }
+  if (Object.values(settings).some((v) => Number.isNaN(v) || v < 0 || v > 50)) {
+    return { error: "Revisá los números: tienen que ser entre 0 y 50." }
+  }
+
+  const result = await updateLeagueSettings(settings)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function addRefereeAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const email = (formData.get("email") as string | null)?.trim()
+  if (!email) return { error: "El email es obligatorio." }
+  const result = await setReferee(email, true)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function removeRefereeAction(email: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await setReferee(email, false)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
+}
+
+/** After adding/removing a yellow by hand: rebuild that player's accumulation. */
+async function recomputeAccumulationFor(playerId: string, matchId: string | null) {
+  if (!matchId) return
+  const { data: match } = await getMatch(matchId)
+  if (!match) return
+  const supabase = await createClient()
+  await supabase.rpc("recompute_accumulation", { p_player_id: playerId, p_tournament_id: match.tournamentId })
 }

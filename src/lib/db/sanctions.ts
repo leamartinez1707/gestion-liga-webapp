@@ -37,7 +37,7 @@ export interface SanctionRow {
   id: string
   playerId: string
   matchId: string | null
-  cardType: "yellow" | "red"
+  cardType: "yellow" | "red" | "accumulation"
   matchDate: string | null
   matchesSuspended: number
   expiresAfterMatch: number | null
@@ -109,7 +109,8 @@ export async function syncMatchRedCards(
 
     const toAdd = [...wanted].filter((id) => !have.has(id))
     if (toAdd.length > 0) {
-      const { matchesSuspended } = calculateSuspension("red")
+      const { data: settings } = await supabase.from("league_settings").select("red_card_matches").maybeSingle()
+      const matchesSuspended = settings?.red_card_matches ?? calculateSuspension("red").matchesSuspended
       const { error } = await supabase.from("sanctions").insert(
         toAdd.map((playerId) => ({
           player_id: playerId,
@@ -118,6 +119,7 @@ export async function syncMatchRedCards(
           match_date: match.date,
           matches_suspended: matchesSuspended,
           expires_after_match: match.matchday ? match.matchday + matchesSuspended : null,
+          source: "match",
         }))
       )
       if (error) return { error: error.message }
@@ -233,7 +235,7 @@ function mapRowWithDetails(row: Record<string, unknown>): SanctionWithDetails {
     id: row.id as string,
     playerId: row.player_id as string,
     matchId: (row.match_id as string) ?? null,
-    cardType: (row.card_type as "yellow" | "red") ?? "yellow",
+    cardType: (row.card_type as SanctionRow["cardType"]) ?? "yellow",
     matchDate: (row.match_date as string) ?? null,
     matchesSuspended: (row.matches_suspended as number) ?? 0,
     expiresAfterMatch: (row.expires_after_match as number) ?? null,

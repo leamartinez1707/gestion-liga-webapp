@@ -1,0 +1,291 @@
+"use client"
+
+import { useState, useTransition } from "react"
+import { Undo2, Trash2 } from "lucide-react"
+
+import type { Match, MatchEvent, Player } from "@/lib/types"
+import { addEventAction, deleteEventAction, setLiveStateAction } from "@/lib/actions/live"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { PhotoAvatar } from "@/components/photo-avatar"
+import { cn } from "@/lib/utils"
+
+interface SheetTeam {
+  id: string
+  name: string
+  shortName: string
+  shield: string
+  players: Player[]
+}
+
+interface LiveSheetProps {
+  match: Match
+  home: SheetTeam
+  away: SheetTeam
+  events: MatchEvent[]
+  suspendedPlayerIds: string[]
+}
+
+const EVENT_LABEL: Record<MatchEvent["type"], string> = {
+  goal: "Gol",
+  own_goal: "Gol en contra",
+  yellow: "Amarilla",
+  red: "Roja",
+}
+const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: "⚽", yellow: "🟨", red: "🟥" }
+
+type Picking = { team: SheetTeam; type: MatchEvent["type"] } | null
+
+export function LiveSheet({ match, home, away, events, suspendedPlayerIds }: LiveSheetProps) {
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [picking, setPicking] = useState<Picking>(null)
+  const [confirmFinish, setConfirmFinish] = useState(false)
+  const suspended = new Set(suspendedPlayerIds)
+
+  const run = (fn: () => Promise<{ error?: string }>, after?: () => void) =>
+    startTransition(async () => {
+      setError(null)
+      const result = await fn()
+      if (result.error) setError(result.error)
+      else after?.()
+    })
+
+  const addEvent = (team: SheetTeam, type: MatchEvent["type"], playerId: string | null) =>
+    run(() => addEventAction(match.id, { teamId: team.id, playerId, type }), () => setPicking(null))
+
+  const setState = (status: "scheduled" | "ongoing" | "finished", period: Match["livePeriod"] | null) =>
+    run(() => setLiveStateAction(match.id, status, period), () => setConfirmFinish(false))
+
+  const finished = match.status === "finished"
+  const blocked = match.status === "cancelled" || match.status === "postponed"
+  const playerName = (id?: string) =>
+    [...home.players, ...away.players].find((p) => p.id === id)?.name ?? "Sin identificar"
+  const teamOf = (id: string) => (id === home.id ? home : away)
+  const lastEvent = events[events.length - 1]
+
+  return (
+    <div className={cn("flex flex-col gap-4", pending && "opacity-70")}>
+      {/* Scoreboard */}
+      <div className="rounded-2xl bg-primary p-4 text-white shadow">
+        <div className="flex items-center justify-between gap-2">
+          <TeamHeader team={home} />
+          <div className="text-center">
+            <p className="text-5xl font-black tabular-nums leading-none">
+              {match.homeScore ?? 0}<span className="mx-1 text-white/50">-</span>{match.awayScore ?? 0}
+            </p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-white/80">
+              {finished ? "Final" : match.status === "ongoing" ? periodLabel(match.livePeriod) : blocked ? "Suspendido" : "Sin empezar"}
+            </p>
+          </div>
+          <TeamHeader team={away} />
+        </div>
+      </div>
+
+      {/* Match clock controls */}
+      {!blocked && (
+        <div className="grid">
+          {match.status === "scheduled" && (
+            <BigButton onClick={() => setState("ongoing", "1T")} disabled={pending}>▶ Empezar partido</BigButton>
+          )}
+          {match.status === "ongoing" && match.livePeriod !== "ET" && match.livePeriod !== "2T" && (
+            <BigButton onClick={() => setState("ongoing", "ET")} disabled={pending}>⏸ Entretiempo</BigButton>
+          )}
+          {match.status === "ongoing" && match.livePeriod === "ET" && (
+            <BigButton onClick={() => setState("ongoing", "2T")} disabled={pending}>▶ Empezar 2º tiempo</BigButton>
+          )}
+          {match.status === "ongoing" && match.livePeriod === "2T" && (
+            <BigButton onClick={() => setConfirmFinish(true)} disabled={pending} tone="dark">🏁 Terminar partido</BigButton>
+          )}
+          {finished && (
+            <Button variant="outline" onClick={() => setState("ongoing", "2T")} disabled={pending}>
+              Reabrir partido para corregir
+            </Button>
+          )}
+        </div>
+      )}
+
+      {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>}
+
+      {/* Event buttons, one column per team */}
+      {!blocked && (
+        <div className="grid grid-cols-2 gap-3">
+          {[home, away].map((team) => (
+            <div key={team.id} className="flex flex-col gap-2 rounded-xl border border-border bg-background p-2">
+              <p className="truncate text-center text-sm font-bold">{team.shortName}</p>
+              <BigButton onClick={() => setPicking({ team, type: "goal" })} disabled={pending}>⚽ Gol</BigButton>
+              <BigButton onClick={() => setPicking({ team, type: "yellow" })} disabled={pending} tone="yellow">🟨 Amarilla</BigButton>
+              <BigButton onClick={() => setPicking({ team, type: "red" })} disabled={pending} tone="red">🟥 Roja</BigButton>
+              <button
+                type="button"
+                onClick={() => setPicking({ team, type: "own_goal" })}
+                disabled={pending}
+                className="py-1 text-xs text-muted-foreground underline"
+              >
+                Gol en contra
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Timeline */}
+      <section className="rounded-xl border border-border bg-background">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <h2 className="text-sm font-semibold">Lo cargado</h2>
+          {lastEvent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1"
+              disabled={pending}
+              onClick={() => run(() => deleteEventAction(match.id, lastEvent.id))}
+            >
+              <Undo2 className="h-4 w-4" />
+              Deshacer último
+            </Button>
+          )}
+        </div>
+        {events.length === 0 ? (
+          <p className="p-4 text-center text-sm text-muted-foreground">Todavía no se cargó nada.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {[...events].reverse().map((e) => (
+              <li key={e.id} className="flex items-center gap-3 px-3 py-2.5">
+                <span className="text-lg" aria-hidden>{EVENT_ICON[e.type]}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium">{playerName(e.playerId)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {EVENT_LABEL[e.type]} · {teamOf(e.teamId).shortName}{e.period && ` · ${e.period}`}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Borrar"
+                  disabled={pending}
+                  onClick={() => {
+                    if (confirm(`¿Borrar ${EVENT_LABEL[e.type].toLowerCase()} de ${playerName(e.playerId)}?`)) {
+                      run(() => deleteEventAction(match.id, e.id))
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Player picker */}
+      <Dialog open={picking !== null} onOpenChange={(open) => !open && setPicking(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {picking && `${EVENT_ICON[picking.type]} ${EVENT_LABEL[picking.type]} · ${picking.team.shortName}`}
+            </DialogTitle>
+          </DialogHeader>
+          {picking && (
+            <div className="flex flex-col gap-1.5">
+              {picking.type === "own_goal" && (
+                <p className="text-xs text-muted-foreground">Elegí el jugador de {picking.team.shortName} que la metió en contra: el gol suma para el rival.</p>
+              )}
+              {picking.team.players.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  disabled={pending}
+                  onClick={() => addEvent(picking.team, picking.type, p.id)}
+                  className="flex items-center gap-3 rounded-lg border border-border px-3 py-3 text-left active:bg-muted-bg disabled:opacity-60"
+                >
+                  <span className="w-8 text-center text-lg font-black tabular-nums text-muted-foreground">
+                    {p.number > 0 ? p.number : "–"}
+                  </span>
+                  <PhotoAvatar src={p.photo} name={p.name} className="size-9" fallbackClassName="text-xs" />
+                  <span className="flex-1 text-base font-medium">{p.name}</span>
+                  {suspended.has(p.id) && (
+                    <span className="text-[10px] font-semibold uppercase text-destructive">Suspendido</span>
+                  )}
+                </button>
+              ))}
+              {picking.team.players.length === 0 && (
+                <p className="py-4 text-center text-sm text-muted-foreground">El equipo no tiene jugadores cargados.</p>
+              )}
+              {(picking.type === "goal" || picking.type === "own_goal") && (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => addEvent(picking.team, picking.type, null)}
+                  className="mt-1 rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground"
+                >
+                  No sé quién fue (sumar el gol igual)
+                </button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Finish confirmation */}
+      <Dialog open={confirmFinish} onOpenChange={setConfirmFinish}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Terminar el partido?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Queda {home.shortName} {match.homeScore ?? 0} - {match.awayScore ?? 0} {away.shortName}. Se actualiza la tabla de posiciones. Si te equivocaste, después lo podés reabrir.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmFinish(false)}>Volver</Button>
+            <Button onClick={() => setState("finished", null)} disabled={pending}>Sí, terminar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function periodLabel(period: Match["livePeriod"]): string {
+  if (period === "ET") return "Entretiempo"
+  if (period === "2T") return "2º tiempo"
+  return "1er tiempo"
+}
+
+function TeamHeader({ team }: { team: SheetTeam }) {
+  return (
+    <div className="flex w-24 flex-col items-center gap-1.5 text-center">
+      <PhotoAvatar src={team.shield} name={team.name} className="size-12 bg-white" />
+      <span className="text-xs font-semibold leading-tight">{team.shortName}</span>
+    </div>
+  )
+}
+
+function BigButton({
+  children,
+  onClick,
+  disabled,
+  tone = "primary",
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  tone?: "primary" | "yellow" | "red" | "dark"
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "min-h-14 w-full rounded-xl px-3 text-base font-bold shadow-sm transition active:scale-[0.98] disabled:opacity-60",
+        tone === "primary" && "bg-primary text-white",
+        tone === "yellow" && "bg-amber-300 text-amber-950",
+        tone === "red" && "bg-red-600 text-white",
+        tone === "dark" && "bg-foreground text-background"
+      )}
+    >
+      {children}
+    </button>
+  )
+}

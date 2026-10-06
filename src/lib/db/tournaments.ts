@@ -1,18 +1,34 @@
+import { likeTerm } from "@/lib/db/filters"
 import type { Tournament, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
+export interface TournamentFilter {
+  q?: string
+  seriesId?: string
+  divisionId?: string
+  season?: string
+}
+
 export async function getTournamentsPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: TournamentFilter = {}
 ): Promise<PaginatedResult<Tournament>> {
   try {
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("tournaments")
       .select("*", { count: "exact" })
+    const term = likeTerm(filter.q)
+    if (term) query = query.ilike("name", term)
+    if (filter.seriesId) query = query.eq("series_id", filter.seriesId)
+    if (filter.divisionId) query = query.eq("division_id", filter.divisionId)
+    if (filter.season) query = query.eq("season", filter.season)
+
+    const { data, error, count } = await query
       .order("created_at", { ascending: false })
       .range(from, to)
 

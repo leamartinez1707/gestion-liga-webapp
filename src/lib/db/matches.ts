@@ -1,20 +1,41 @@
 import type { Match, PaginatedResult } from "@/lib/types"
 import { createReadOnlyClient, createClient } from "@/lib/supabase/server"
 
+export interface MatchFilter {
+  tournamentId?: string
+  /** Matches where any of these teams plays (home or away) */
+  teamIds?: string[]
+  matchday?: number
+  status?: string
+}
+
 export async function getMatchesPaginated(
   page = 1,
-  limit = 10
+  limit = 10,
+  filter: MatchFilter = {}
 ): Promise<PaginatedResult<MatchWithTeams>> {
   try {
+    // Filtering by an empty set (e.g. a search with no match) finds nothing
+    if (filter.teamIds && filter.teamIds.length === 0) return { data: [], total: 0, page, totalPages: 0, error: null }
     const supabase = createReadOnlyClient()
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
+    let query = supabase
       .from("matches")
       .select(`*, home_team:home_team_id(name), away_team:away_team_id(name)`, { count: "exact" })
-      .order("date", { ascending: true })
-      .order("time", { ascending: true })
+    if (filter.tournamentId) query = query.eq("tournament_id", filter.tournamentId)
+    if (filter.teamIds) {
+      const ids = filter.teamIds.join(",")
+      query = query.or(`home_team_id.in.(${ids}),away_team_id.in.(${ids})`)
+    }
+    if (filter.matchday) query = query.eq("matchday", filter.matchday)
+    if (filter.status) query = query.eq("status", filter.status)
+
+    // Admin list: latest first
+    const { data, error, count } = await query
+      .order("date", { ascending: false })
+      .order("time", { ascending: false })
       .range(from, to)
 
     if (error) return { data: [], total: 0, page, totalPages: 0, error: error.message }

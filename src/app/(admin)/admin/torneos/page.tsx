@@ -2,7 +2,8 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { Plus, Pencil, Trash2, Calendar, Users } from "lucide-react"
 
-import { getTournamentsPaginated } from "@/lib/db/tournaments"
+import { getTournaments, getTournamentsPaginated } from "@/lib/db/tournaments"
+import { ListFilters } from "@/components/admin/list-filters"
 import { getTeams } from "@/lib/db/teams"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations } from "@/lib/db/registrations"
@@ -25,13 +26,27 @@ import { Pagination } from "@/components/ui/pagination"
 const LIMIT = 10
 const formatLabels: Record<string, string> = { league: "Liga", elimination: "Eliminatoria", groups: "Grupos" }
 
-interface Props { searchParams: Promise<{ page?: string }> }
+interface Props { searchParams: Promise<{ page?: string; q?: string; serie?: string; division?: string; temporada?: string }> }
 
 export default async function TorneosPage({ searchParams }: Props) {
   const params = await searchParams
   const page = Math.max(1, parseInt(params.page ?? "1") || 1)
-  const [{ data: tournaments, error, totalPages }, { data: teams }, series, { data: registrations }] =
-    await Promise.all([getTournamentsPaginated(page, LIMIT), getTeams(), getSeriesOptions(), getRegistrations()])
+  const [{ data: tournaments, error, total, totalPages }, { data: teams }, series, { data: registrations }, { data: allTournaments }] =
+    await Promise.all([
+      getTournamentsPaginated(page, LIMIT, {
+        q: params.q,
+        seriesId: params.serie,
+        divisionId: params.serie ? params.division : undefined,
+        season: params.temporada,
+      }),
+      getTeams(),
+      getSeriesOptions(),
+      getRegistrations(),
+      getTournaments(),
+    ])
+  const filtering = !!(params.q || params.serie || params.temporada)
+  const chosenSeries = series.find((s) => s.id === params.serie)
+  const seasons = [...new Set((allTournaments ?? []).map((t) => t.season))].sort((a, b) => b.localeCompare(a))
   // Fixture only between the teams entered in the tournament
   const teamsOf = (tournamentId: string) => {
     const ids = new Set((registrations ?? []).filter((r) => r.tournamentId === tournamentId && !r.withdrawnAt).map((r) => r.teamId))
@@ -48,11 +63,24 @@ export default async function TorneosPage({ searchParams }: Props) {
           <Button className="gap-1.5"><Plus className="h-4 w-4" />Nuevo Torneo</Button>
         </TournamentDialog>
       </div>
+      <Suspense>
+        <ListFilters
+          searchPlaceholder="Buscar torneo por nombre"
+          selects={[
+            { param: "serie", allLabel: "Todas las series", options: series.map((s) => ({ value: s.id, label: s.name })), clears: ["division"] },
+            ...(chosenSeries
+              ? [{ param: "division", allLabel: "Todas las divisiones", options: chosenSeries.divisions.map((d) => ({ value: d.id, label: d.name })) }]
+              : []),
+            { param: "temporada", allLabel: "Todas las temporadas", options: seasons.map((s) => ({ value: s, label: s })) },
+          ]}
+          resultLabel={`${total} ${total === 1 ? "torneo" : "torneos"}`}
+        />
+      </Suspense>
       <div className="rounded-xl border border-border">
         <Table>
           <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Serie · División</TableHead><TableHead>Temporada</TableHead><TableHead>Equipos</TableHead><TableHead className="w-44 text-right">Acciones</TableHead></TableRow></TableHeader>
           <TableBody>
-            {tournaments.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No hay torneos.</TableCell></TableRow>}
+            {tournaments.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">{filtering ? "Ningún torneo coincide con la búsqueda." : "No hay torneos."}</TableCell></TableRow>}
             {tournaments.map((t) => (
               <TableRow key={t.id}>
                 <TableCell className="font-medium">{t.name}</TableCell>

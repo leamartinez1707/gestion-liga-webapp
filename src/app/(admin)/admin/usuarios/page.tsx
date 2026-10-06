@@ -9,9 +9,25 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { CreateUserDialog, EditRoleDialog, ResetPasswordDialog, ROLE_LABELS } from "./user-dialogs"
+import { Suspense } from "react"
+import { normalize } from "@/lib/text"
+import { ListFilters } from "@/components/admin/list-filters"
 
-export default async function UsuariosPage() {
-  const [me, { data: users, error }, { data: teams }] = await Promise.all([getSessionProfile(), getUsers(), getTeams()])
+export default async function UsuariosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; rol?: string; equipo?: string }>
+}) {
+  const params = await searchParams
+  const [me, { data: allUsers, error }, { data: teams }] = await Promise.all([getSessionProfile(), getUsers(), getTeams()])
+  // Few accounts: filter here, accent-insensitive on name and email
+  const term = normalize(params.q ?? "")
+  const users = allUsers.filter(
+    (u) =>
+      (!term || normalize(`${u.displayName ?? ""} ${u.email}`).includes(term)) &&
+      (!params.rol || (params.rol === "admin" ? u.role === "superadmin" || u.role === "editor" : u.role === params.rol)) &&
+      (!params.equipo || u.teamId === params.equipo)
+  )
   const canManageAdmins = me?.role === "superadmin"
   const teamOptions = (teams ?? []).map((t) => ({ id: t.id, name: t.name })).sort((a, b) => a.name.localeCompare(b.name))
   const configured = !!process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -35,6 +51,17 @@ export default async function UsuariosPage() {
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
 
+      <Suspense>
+        <ListFilters
+          searchPlaceholder="Buscar por nombre o email"
+          selects={[
+            { param: "rol", allLabel: "Todos los roles", options: [{ value: "admin", label: "Administradores" }, { value: "delegate", label: "Delegados" }, { value: "referee", label: "Árbitros" }] },
+            { param: "equipo", allLabel: "Todos los equipos", options: teamOptions.map((t) => ({ value: t.id, label: t.name })) },
+          ]}
+          resultLabel={`${users.length} de ${allUsers.length} ${allUsers.length === 1 ? "cuenta" : "cuentas"}`}
+        />
+      </Suspense>
+
       <div className="rounded-xl border border-border">
         <Table>
           <TableHeader>
@@ -46,6 +73,9 @@ export default async function UsuariosPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {users.length === 0 && (
+              <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Ninguna cuenta coincide con la búsqueda.</TableCell></TableRow>
+            )}
             {users.map((u) => {
               const isMe = u.id === me?.id
               const isAdmin = u.role === "superadmin" || u.role === "editor"

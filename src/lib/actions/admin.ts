@@ -58,6 +58,14 @@ import { uploadOptionalImage } from "@/lib/actions/upload"
 import { requireStaff } from "@/lib/auth"
 import type { Player, Match } from "@/lib/types"
 
+/**
+ * Public pages (home, actualidad, goleadores…) are statically rendered, so any
+ * change made from the panels must invalidate the whole site, not just /admin.
+ */
+function revalidateSite() {
+  revalidatePath("/", "layout")
+}
+
 // ---------------------------------------------------------------------------
 // Tournament actions
 // ---------------------------------------------------------------------------
@@ -91,7 +99,7 @@ export async function createTournamentAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -122,7 +130,7 @@ export async function updateTournamentAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -134,7 +142,7 @@ export async function deleteTournamentAction(
 
   const result = await deleteTournament(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return {}
 }
 
@@ -171,7 +179,7 @@ export async function createTeamAction(_prev: unknown, formData: FormData) {
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/equipos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -206,8 +214,7 @@ export async function updateTeamAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/equipos")
-  revalidatePath(`/admin/equipos/${id}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -219,7 +226,7 @@ export async function deleteTeamAction(
 
   const result = await deleteTeam(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/equipos")
+  revalidateSite()
   redirect("/admin/equipos")
 }
 
@@ -251,7 +258,7 @@ export async function createPlayerAction(_prev: unknown, formData: FormData) {
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/jugadores")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -284,7 +291,7 @@ export async function updatePlayerAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/jugadores")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -296,7 +303,7 @@ export async function deletePlayerAction(
 
   const result = await deletePlayer(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/jugadores")
+  revalidateSite()
   return {}
 }
 
@@ -339,7 +346,7 @@ export async function createMatchAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/partidos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -407,7 +414,7 @@ export async function updateMatchAction(
     await saveMatchGoals(id, scorers)
   }
 
-  revalidatePath("/admin/partidos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -419,7 +426,7 @@ export async function deleteMatchAction(
 
   const result = await deleteMatch(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/partidos")
+  revalidateSite()
   return {}
 }
 
@@ -452,8 +459,7 @@ export async function generateFixtureAction(
   const result = await bulkCreateMatches(tournamentId, teamIds)
   if (result.error) return { error: result.error }
 
-  revalidatePath("/admin/partidos")
-  revalidatePath("/admin/torneos")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -487,7 +493,7 @@ export async function createSanctionAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sanciones")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -499,7 +505,7 @@ export async function deleteSanctionAction(
 
   const result = await deleteSanction(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sanciones")
+  revalidateSite()
   return {}
 }
 
@@ -537,7 +543,7 @@ export async function createArticleAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -570,7 +576,7 @@ export async function updateArticleAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -582,7 +588,7 @@ export async function deleteArticleAction(
 
   const result = await deleteArticle(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return {}
 }
 
@@ -592,7 +598,7 @@ export async function publishArticleAction(id: string) {
 
   const result = await publishArticle(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -602,7 +608,7 @@ export async function unpublishArticleAction(id: string) {
 
   const result = await unpublishArticle(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/noticias")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -613,7 +619,7 @@ export async function publishArticleFormAction(formData: FormData) {
   const id = formData.get("id") as string
   if (!id) return
   await publishArticle(id)
-  revalidatePath("/admin/noticias")
+  revalidateSite()
 }
 
 /** Form action wrapper for unpublish — accepts FormData, returns void */
@@ -623,7 +629,7 @@ export async function unpublishArticleFormAction(formData: FormData) {
   const id = formData.get("id") as string
   if (!id) return
   await unpublishArticle(id)
-  revalidatePath("/admin/noticias")
+  revalidateSite()
 }
 
 // ---------------------------------------------------------------------------
@@ -648,7 +654,7 @@ export async function createSeriesAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/series")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -669,8 +675,7 @@ export async function updateSeriesAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/series")
-  revalidatePath(`/admin/series/${id}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -682,7 +687,7 @@ export async function deleteSeriesAction(
 
   const result = await deleteSeries(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/series")
+  revalidateSite()
   return {}
 }
 
@@ -708,7 +713,7 @@ export async function createDivisionAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/series/${seriesId}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -730,7 +735,7 @@ export async function updateDivisionAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/series/${seriesId}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -743,7 +748,7 @@ export async function deleteDivisionAction(
 
   const result = await deleteDivision(id)
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/series/${seriesId}`)
+  revalidateSite()
   return {}
 }
 
@@ -764,7 +769,7 @@ export async function assignDelegateAction(
 
   const result = await assignDelegate(teamId, email.trim())
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/equipos/${teamId}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -779,7 +784,7 @@ export async function assignDelegateFormAction(formData: FormData): Promise<void
 
   const result = await assignDelegate(teamId, email.trim())
   if (result.error) throw new Error(result.error)
-  revalidatePath(`/admin/equipos/${teamId}`)
+  revalidateSite()
 }
 
 export async function revokeDelegateAction(teamId: string) {
@@ -788,7 +793,7 @@ export async function revokeDelegateAction(teamId: string) {
 
   const result = await revokeDelegate(teamId)
   if (result.error) return { error: result.error }
-  revalidatePath(`/admin/equipos/${teamId}`)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -800,7 +805,7 @@ export async function revokeDelegateFormAction(formData: FormData): Promise<void
   const teamId = formData.get("teamId") as string
   const result = await revokeDelegate(teamId)
   if (result.error) throw new Error(result.error)
-  revalidatePath(`/admin/equipos/${teamId}`)
+  revalidateSite()
 }
 
 // ---------------------------------------------------------------------------
@@ -845,7 +850,7 @@ export async function suspendMatchdayAction(
         .eq("id", m.id)
     }
 
-    revalidatePath("/admin/partidos")
+    revalidateSite()
     return { success: true as const }
   } catch {
     return { error: "No se pudo suspender la fecha." }
@@ -875,7 +880,7 @@ export async function createSponsorAction(_prev: unknown, formData: FormData) {
     displayOrder: displayOrder ? parseInt(displayOrder) : 0,
   })
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sponsors")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -895,7 +900,7 @@ export async function updateSponsorAction(id: string, _prev: unknown, formData: 
     displayOrder: displayOrder ? parseInt(displayOrder) : undefined,
   })
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sponsors")
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -905,6 +910,6 @@ export async function deleteSponsorAction(id: string): Promise<{ error?: string 
 
   const result = await deleteSponsor(id)
   if (result.error) return { error: result.error }
-  revalidatePath("/admin/sponsors")
+  revalidateSite()
   return {}
 }

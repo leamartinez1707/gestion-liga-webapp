@@ -20,6 +20,9 @@ function getMedalIcon(position: number) {
   return <span className="text-xs text-muted-foreground w-4 text-center">{position + 1}</span>
 }
 
+// Safety net for edits made directly in Supabase; panel actions revalidate immediately.
+export const revalidate = 300
+
 export default async function GoleadoresPage() {
   const { data: scorers, error } = await getTopScorers(30)
 

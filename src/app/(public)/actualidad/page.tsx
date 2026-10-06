@@ -15,6 +15,9 @@ function formatDate(dateStr: string): string {
   })
 }
 
+// Safety net for edits made directly in Supabase; panel actions revalidate immediately.
+export const revalidate = 300
+
 export default async function ActualidadPage() {
   const { data: articles, error } = await getArticles()
 

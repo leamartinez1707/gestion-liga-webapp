@@ -17,10 +17,9 @@ function parsePosition(value: FormDataEntryValue | null): Player["position"] | u
   return POSITIONS.find((p) => p === value)
 }
 
-function revalidateTeam(teamId: string) {
-  revalidatePath("/delegado")
-  revalidatePath(`/equipos/${teamId}`)
-  revalidatePath(`/admin/equipos/${teamId}`)
+// Public pages are statically rendered: refresh the whole site after a change.
+function revalidateSite() {
+  revalidatePath("/", "layout")
 }
 
 async function ownPlayer(playerId: string, teamId: string) {
@@ -53,7 +52,7 @@ export async function delegateUpdateTeamAction(_prev: unknown, formData: FormDat
   })
 
   if (result.error) return { error: result.error }
-  revalidateTeam(teamId)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -79,7 +78,7 @@ export async function delegateCreatePlayerAction(_prev: unknown, formData: FormD
   })
 
   if (result.error) return { error: result.error }
-  revalidateTeam(teamId)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -112,7 +111,7 @@ export async function delegateUpdatePlayerAction(
   })
 
   if (result.error) return { error: result.error }
-  revalidateTeam(teamId)
+  revalidateSite()
   return { success: true as const }
 }
 
@@ -129,6 +128,6 @@ export async function delegateDeletePlayerAction(
 
   const result = await deletePlayer(playerId)
   if (result.error) return { error: result.error }
-  revalidateTeam(teamId)
+  revalidateSite()
   return {}
 }

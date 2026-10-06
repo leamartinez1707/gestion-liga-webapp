@@ -24,6 +24,9 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
   }
 }
 
+// Safety net for edits made directly in Supabase; panel actions revalidate immediately.
+export const revalidate = 300
+
 export default async function HomePage() {
   const [seriesResult, divisionsResult, teamsResult, matchesResult, articlesResult, sponsorsResult] =
     await Promise.all([

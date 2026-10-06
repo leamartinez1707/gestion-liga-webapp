@@ -46,9 +46,8 @@ export default async function PartidosPage({ searchParams }: Props) {
   const redCardsOf = (matchId: string) =>
     (sanctions ?? []).filter((s) => s.matchId === matchId && s.cardType === "red").map((s) => s.playerId)
 
-  function getTeamShortName(teamId: string): string {
-    return teamMap.get(teamId)?.shortName ?? "—"
-  }
+  // Plain object: functions can't be passed to the client toggle
+  const shortNames = Object.fromEntries([...teamMap].map(([id, t]) => [id, t.shortName]))
 
   const listView = (
     <div className="rounded-xl border border-border">
@@ -92,7 +91,7 @@ export default async function PartidosPage({ searchParams }: Props) {
         </div>
       </div>
 
-      <PartidosViewToggle matches={matchesList} getTeamShortName={getTeamShortName} listView={listView} />
+      <PartidosViewToggle matches={matchesList} shortNames={shortNames} listView={listView} />
 
       <Suspense><Pagination page={page} totalPages={totalPages} /></Suspense>
     </div>

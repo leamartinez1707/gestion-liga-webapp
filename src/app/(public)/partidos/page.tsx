@@ -7,7 +7,7 @@ import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { calculateStandings } from "@/lib/db/standings"
 import { getRegistrations } from "@/lib/db/registrations"
-import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope, withdrawnInTournament } from "@/lib/scope"
+import { resolveScope, scopeQuery, teamsInTournament, tournamentLabel, tournamentsInScope, withdrawnInTournament } from "@/lib/scope"
 import { Card, CardContent } from "@/components/ui/card"
 import { StandingsTable } from "@/components/standings-table"
 import { PhotoAvatar } from "@/components/photo-avatar"
@@ -43,7 +43,7 @@ export default async function PartidosPage({ searchParams }: Props) {
   const [{ data: matches, error }, { data: teams }, { data: tournaments }, seriesOptions, { data: registrations }] =
     await Promise.all([getMatches(), getTeams(), getTournaments(), getSeriesOptions(), getRegistrations()])
 
-  if (error) return <div className="container mx-auto px-4 py-16 text-center"><p className="text-destructive">{error}</p></div>
+  if (error) return <div className="page-container py-16 text-center"><p className="text-destructive">{error}</p></div>
 
   const scope = resolveScope(seriesOptions, params.serie, params.div)
   const teamsList = teams ?? []
@@ -80,7 +80,7 @@ export default async function PartidosPage({ searchParams }: Props) {
   const buildUrl = (extra: Record<string, string>) => `/partidos${scopeQuery(scope, extra)}`
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-16">
+    <div className="page-container py-12 md:py-16">
       <AutoRefresh active={currentMatches.some((m) => m.status === "ongoing")} />
       {/* TITLE */}
       <div className="text-center mb-10">
@@ -90,7 +90,7 @@ export default async function PartidosPage({ searchParams }: Props) {
         </h1>
         {selectedTorneo && (
           <p className="mt-2 text-muted-foreground text-sm">
-            {selectedTorneo.name} · Temporada {selectedTorneo.season}
+            {tournamentLabel(selectedTorneo)}
           </p>
         )}
       </div>

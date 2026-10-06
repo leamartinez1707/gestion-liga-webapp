@@ -27,7 +27,7 @@ export default async function ActualidadPage({ searchParams }: Props) {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-16 md:py-20 text-center">
+      <div className="page-container py-10 md:py-14 text-center">
         <p className="text-destructive text-sm font-medium">{error}</p>
       </div>
     )
@@ -39,7 +39,7 @@ export default async function ActualidadPage({ searchParams }: Props) {
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
-    <div className="container mx-auto px-4 py-16 md:py-20">
+    <div className="page-container py-10 md:py-14">
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
         Actualidad{series && <span className="text-primary"> · {series.name}</span>}
       </h1>

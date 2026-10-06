@@ -8,11 +8,11 @@ import type { MatchWithTeams } from "@/lib/db/matches"
 
 interface Props {
   matches: MatchWithTeams[]
-  getTeamShortName: (id: string) => string
+  shortNames: Record<string, string>
   listView: React.ReactNode
 }
 
-export function PartidosViewToggle({ matches, getTeamShortName, listView }: Props) {
+export function PartidosViewToggle({ matches, shortNames, listView }: Props) {
   const [view, setView] = useState<"list" | "fixture">("list")
 
   if (matches.length === 0) return <>{listView}</>
@@ -42,7 +42,7 @@ export function PartidosViewToggle({ matches, getTeamShortName, listView }: Prop
           </Button>
         </div>
       )}
-      {view === "list" ? listView : <FixtureGrid matches={matches} getTeamShortName={getTeamShortName} />}
+      {view === "list" ? listView : <FixtureGrid matches={matches} getTeamShortName={(id) => shortNames[id] ?? "—"} />}
     </div>
   )
 }

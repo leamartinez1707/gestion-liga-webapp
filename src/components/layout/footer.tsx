@@ -5,7 +5,7 @@ export function Footer() {
 
   return (
     <footer className="w-full bg-primary mt-auto">
-      <div className="mx-auto px-4 py-10 max-w-6xl">
+      <div className="page-container py-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="text-base font-extrabold text-white tracking-tight">

@@ -88,7 +88,7 @@ export default async function EquipoDetailPage({
   const backHref = `/equipos${scopeQuery(backScope)}`
 
   return (
-    <div className="container mx-auto px-4 py-16 md:py-20">
+    <div className="page-container py-10 md:py-14">
       <div className="bg-background border border-border rounded-lg p-6 md:p-8">
         <Button variant="ghost" size="sm" className="mb-8" render={<Link href={backHref} />}>
           <ArrowLeft className="mr-1 h-4 w-4" />

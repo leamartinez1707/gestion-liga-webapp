@@ -104,3 +104,8 @@ export function scopeLabel(options: SeriesOption[], seriesId?: string, divisionI
   const division = series.divisions.find((d) => d.id === divisionId)
   return division ? `${series.name} · ${division.name}` : series.name
 }
+
+/** "Apertura · Temporada 2026", without repeating the season when the name has it. */
+export function tournamentLabel(t: { name: string; season: string }): string {
+  return t.name.includes(t.season) ? t.name : `${t.name} · Temporada ${t.season}`
+}

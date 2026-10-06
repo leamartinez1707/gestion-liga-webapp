@@ -19,7 +19,7 @@ export default async function EquiposPage({ searchParams }: Props) {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-16 md:py-20 text-center">
+      <div className="page-container py-10 md:py-14 text-center">
         <p className="text-destructive text-sm font-medium">{error}</p>
       </div>
     )
@@ -33,7 +33,7 @@ export default async function EquiposPage({ searchParams }: Props) {
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")
 
   return (
-    <div className="container mx-auto px-4 py-16 md:py-20">
+    <div className="page-container py-10 md:py-14">
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
         Equipos{scopeName && <span className="text-primary"> · {scopeName}</span>}
       </h1>
@@ -50,7 +50,7 @@ export default async function EquiposPage({ searchParams }: Props) {
           {teamsList.map((team) => (
             <Link key={team.id} href={`/equipos/${team.id}${scopeQuery(scope)}`}>
               <Card className="h-full border-border transition-all hover:shadow-md hover:border-primary/30">
-                <CardHeader className="items-center text-center pb-3">
+                <CardHeader className="items-center pt-6 text-center pb-3">
                   <PhotoAvatar src={team.shield} name={team.name} className="size-16 mx-auto" fallbackClassName="text-lg" />
                   <CardTitle className="text-sm mt-2 leading-snug">{team.name}</CardTitle>
                 </CardHeader>

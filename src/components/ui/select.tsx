@@ -6,7 +6,33 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+// Base UI's <Select.Value> shows the raw value (an id, "finished"...) unless the
+// root gets `items`. Collect them from the <SelectItem> children so every select
+// shows its label without having to pass the list twice.
+function collectItems(node: React.ReactNode, out: Record<string, React.ReactNode>) {
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement(child)) return
+    const props = child.props as { value?: unknown; children?: React.ReactNode }
+    if (child.type === SelectItem && typeof props.value === "string") {
+      out[props.value] = props.children
+    } else if (props.children) {
+      collectItems(props.children, out)
+    }
+  })
+  return out
+}
+
+function Select<Value, Multiple extends boolean | undefined = false>({
+  items,
+  children,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  return (
+    <SelectPrimitive.Root items={items ?? collectItems(children, {})} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (

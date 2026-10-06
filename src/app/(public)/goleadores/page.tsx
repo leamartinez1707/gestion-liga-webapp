@@ -6,7 +6,7 @@ import { getTeams } from "@/lib/db/teams"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations } from "@/lib/db/registrations"
-import { resolveScope, scopeQuery, teamsInTournament, tournamentsInScope } from "@/lib/scope"
+import { resolveScope, scopeQuery, teamsInTournament, tournamentLabel, tournamentsInScope } from "@/lib/scope"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PhotoAvatar } from "@/components/photo-avatar"
 
@@ -40,13 +40,13 @@ export default async function GoleadoresPage({ searchParams }: Props) {
   const scopeName = [scope.series?.name, scope.division?.name].filter(Boolean).join(" · ")
 
   return (
-    <div className="container mx-auto px-4 py-16 md:py-20">
+    <div className="page-container py-10 md:py-14">
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
         Goleadores{scopeName && <span className="text-primary"> · {scopeName}</span>}
       </h1>
       <p className="mt-3 text-muted-foreground max-w-lg">
         {currentTournament
-          ? `${currentTournament.name} · Temporada ${currentTournament.season}`
+          ? tournamentLabel(currentTournament)
           : "Tabla de goleadores de la división."}
       </p>
 

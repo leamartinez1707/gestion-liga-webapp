@@ -58,9 +58,9 @@ export function Header({ seriesOptions }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full">
       {/* Navy bar */}
       <div className="w-full bg-primary shadow-sm">
-        <div className="flex h-12 items-center justify-between px-4">
+        <div className="page-container flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <span className="text-white font-extrabold text-sm tracking-tight">
+            <span className="text-white font-extrabold text-base tracking-tight">
               LIGA METROPOLITANA
             </span>
           </Link>
@@ -125,7 +125,7 @@ export function Header({ seriesOptions }: HeaderProps) {
       {/* Series selector bar */}
       {seriesOptions.length > 0 && (
         <div className="w-full bg-white border-b border-border/50 shadow-[0_1px_3px_rgba(26,43,72,0.04)]">
-          <div className="px-4 py-2">
+          <div className="page-container py-2">
             <SeriesSelector
               series={seriesOptions}
               selectedSeries={paramSerie}

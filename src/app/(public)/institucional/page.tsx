@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 
 export default function InstitucionalPage() {
   return (
-    <div className="container mx-auto px-4 py-16 md:py-20">
+    <div className="page-container py-10 md:py-14">
       <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Institucional</h1>
       <p className="mt-3 text-muted-foreground max-w-lg">
         Información institucional de la Liga Metropolitana de Futsal.

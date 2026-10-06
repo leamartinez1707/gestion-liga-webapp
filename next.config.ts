@@ -20,7 +20,11 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "**.supabase.co",
-      }
+      },
+      // Mock data (supabase/mock/seed.sql): shields, faces and photos
+      { protocol: "https", hostname: "api.dicebear.com" },
+      { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "fastly.picsum.photos" }
     ],
   },
 }

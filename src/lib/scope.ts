@@ -76,15 +76,29 @@ export function withdrawnInTournament(registrations: Registration[], tournamentI
   )
 }
 
-/** Tournaments of the selected division, newest season first. */
-export function tournamentsInScope(tournaments: Tournament[], scope: Scope): Tournament[] {
+/** Today in Argentina as YYYY-MM-DD (fixture dates are local). */
+export function todayIso(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date())
+}
+
+/**
+ * Tournaments of the selected division. The first one is the "current" one:
+ * the newest that already started; tournaments that haven't started yet
+ * (created ahead of time) go after, soonest first.
+ */
+export function tournamentsInScope(tournaments: Tournament[], scope: Scope, today = todayIso()): Tournament[] {
+  const key = (t: Tournament) => t.startDate ?? t.season
+  const upcoming = (t: Tournament) => !!t.startDate && t.startDate > today
   return tournaments
     .filter(
       (t) =>
         (!scope.series || t.seriesId === scope.series.id) &&
         (!scope.division || t.divisionId === scope.division.id)
     )
-    .sort((a, b) => (b.startDate ?? b.season).localeCompare(a.startDate ?? a.season))
+    .sort((a, b) => {
+      if (upcoming(a) !== upcoming(b)) return upcoming(a) ? 1 : -1
+      return upcoming(a) ? key(a).localeCompare(key(b)) : key(b).localeCompare(key(a))
+    })
 }
 
 /** Query string that keeps the visitor's series/division when navigating. */

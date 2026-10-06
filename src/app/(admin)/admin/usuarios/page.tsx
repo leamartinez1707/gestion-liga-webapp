@@ -52,9 +52,10 @@ export default async function UsuariosPage() {
               const canEdit = !isMe && (canManageAdmins || !isAdmin)
               return (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium">
-                    {u.email}
+                  <TableCell>
+                    <span className="font-medium">{u.displayName || u.email}</span>
                     {isMe && <span className="ml-2 text-xs text-muted-foreground">(vos)</span>}
+                    {u.displayName && <span className="block text-xs text-muted-foreground">{u.email}</span>}
                   </TableCell>
                   <TableCell>
                     <Badge variant={isAdmin ? "default" : "outline"} className="text-xs">{ROLE_LABELS[u.role]}</Badge>

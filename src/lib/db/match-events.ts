@@ -96,3 +96,14 @@ export async function setMatchLiveState(
     return { error: "No se pudo actualizar el partido." }
   }
 }
+
+/** Public: name of the match's referee (only the name, through an RPC). */
+export async function getMatchRefereeName(matchId: string): Promise<string | null> {
+  try {
+    const supabase = createReadOnlyClient()
+    const { data } = await supabase.rpc("match_referee_name", { p_match_id: matchId })
+    return data ?? null
+  } catch {
+    return null
+  }
+}

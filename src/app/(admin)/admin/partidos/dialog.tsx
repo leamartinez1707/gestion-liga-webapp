@@ -64,7 +64,7 @@ interface MatchDialogProps {
   /** Players with a red card in this match (edit mode) */
   redCardPlayerIds?: string[]
   /** Referees that can be assigned (staff only list) */
-  referees?: { id: string; email: string }[]
+  referees?: { id: string; label: string }[]
   /** The match has a live sheet: scorers and cards come from it */
   hasSheet?: boolean
 }
@@ -364,7 +364,7 @@ export function MatchDialog({
             <div className="flex flex-col gap-1.5">
               <Label>Árbitro</Label>
               <Select
-                items={[{ value: "none", label: "Sin asignar" }, ...referees.map((r) => ({ value: r.id, label: r.email }))]}
+                items={[{ value: "none", label: "Sin asignar" }, ...referees.map((r) => ({ value: r.id, label: r.label }))]}
                 value={refereeId}
                 onValueChange={(v) => v && setRefereeId(v)}
                 name="refereeId"
@@ -372,7 +372,7 @@ export function MatchDialog({
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin asignar</SelectItem>
-                  {referees.map((r) => <SelectItem key={r.id} value={r.id}>{r.email}</SelectItem>)}
+                  {referees.map((r) => <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>)}
                 </SelectContent>
               </Select>
               {referees.length === 0 && (

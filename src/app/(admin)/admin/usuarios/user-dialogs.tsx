@@ -166,6 +166,10 @@ export function CreateUserDialog({
         ) : (
           <form action={formAction} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
+              <Label htmlFor="displayName">Nombre y apellido</Label>
+              <Input id="displayName" name="displayName" placeholder="Se muestra en la ficha del partido (árbitros)" />
+            </div>
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
@@ -200,10 +204,14 @@ export function EditRoleDialog({ user, teams, canManageAdmins }: { user: LeagueU
       <DialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Cambiar rol"><Pencil className="h-4 w-4" /></Button>} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cambiar rol</DialogTitle>
+          <DialogTitle>Editar cuenta</DialogTitle>
           <DialogDescription>{user.email}</DialogDescription>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`name-${user.id}`}>Nombre y apellido</Label>
+            <Input id={`name-${user.id}`} name="displayName" defaultValue={user.displayName ?? ""} />
+          </div>
           <RoleFields role={role} setRole={setRole} teamId={teamId} setTeamId={setTeamId} teams={teams} canManageAdmins={canManageAdmins} />
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
           <div className="flex justify-end pt-2"><SubmitButton label="Guardar" pendingLabel="Guardando…" /></div>

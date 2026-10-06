@@ -119,10 +119,11 @@ export default async function EquipoDetailPage({
                 const goals = goalsByPlayer.get(player.id) ?? 0
                 const suspendedUntil = suspended.get(player.id)?.untilMatchday
                 return (
-                  <li
-                    key={player.id}
-                    className="flex items-center gap-3 rounded-lg border border-border p-3"
-                  >
+                  <li key={player.id}>
+                    <Link
+                      href={`/jugadores/${player.id}${query.serie ? scopeQuery(backScope) : ""}`}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition hover:border-primary/40 hover:shadow-sm"
+                    >
                     <PhotoAvatar src={player.photo} name={player.name} className="size-14" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">
@@ -148,6 +149,7 @@ export default async function EquipoDetailPage({
                         </span>
                       </div>
                     )}
+                    </Link>
                   </li>
                 )
               })}

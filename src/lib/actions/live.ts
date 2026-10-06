@@ -21,7 +21,7 @@ function refresh(matchId: string) {
 
 export async function addEventAction(
   matchId: string,
-  input: { teamId: string; playerId: string | null; type: MatchEvent["type"] }
+  input: { teamId: string; playerId: string | null; assistPlayerId?: string | null; type: MatchEvent["type"] }
 ): Promise<{ error?: string }> {
   const auth = await requireMatchEditor(matchId)
   if (auth.error) return { error: auth.error }
@@ -44,8 +44,16 @@ export async function addEventAction(
     if (player?.teamId !== input.teamId) return { error: "El jugador no es de ese equipo." }
   }
 
+  // An assist is a teammate of the scorer, on a regular goal
+  const assistPlayerId = input.type === "goal" && input.playerId ? input.assistPlayerId ?? null : null
+  if (assistPlayerId) {
+    if (assistPlayerId === input.playerId) return { error: "El que asiste no puede ser el mismo que hizo el gol." }
+    const { data: assist } = await getPlayer(assistPlayerId)
+    if (assist?.teamId !== input.teamId) return { error: "El que asiste no es de ese equipo." }
+  }
+
   const period = match.livePeriod === "2T" ? "2T" : match.livePeriod === "1T" ? "1T" : null
-  const result = await addMatchEvent({ matchId, teamId: input.teamId, playerId: input.playerId, type: input.type, period })
+  const result = await addMatchEvent({ matchId, teamId: input.teamId, playerId: input.playerId, assistPlayerId, type: input.type, period })
   if (result.error) return { error: result.error }
 
   // First event of a scheduled match: it's being played

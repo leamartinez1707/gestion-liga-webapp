@@ -14,6 +14,7 @@ export async function getMatchEvents(matchId: string): Promise<MatchEvent[]> {
       matchId: row.match_id,
       teamId: row.team_id,
       playerId: row.player_id ?? undefined,
+      assistPlayerId: row.assist_player_id ?? undefined,
       type: row.type as MatchEvent["type"],
       period: (row.period as MatchEvent["period"]) ?? undefined,
       createdAt: row.created_at ?? "",
@@ -40,6 +41,7 @@ export async function addMatchEvent(event: {
   matchId: string
   teamId: string
   playerId: string | null
+  assistPlayerId?: string | null
   type: MatchEvent["type"]
   period: MatchEvent["period"] | null
 }): Promise<{ error?: string }> {
@@ -49,6 +51,7 @@ export async function addMatchEvent(event: {
       match_id: event.matchId,
       team_id: event.teamId,
       player_id: event.playerId,
+      assist_player_id: event.type === "goal" ? event.assistPlayerId ?? null : null,
       type: event.type,
       period: event.period,
     })

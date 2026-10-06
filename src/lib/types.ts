@@ -85,6 +85,8 @@ export interface MatchEvent {
   matchId: string
   teamId: string
   playerId?: string
+  /** Goals only: who gave the pass */
+  assistPlayerId?: string
   type: "goal" | "own_goal" | "yellow" | "red"
   period?: "1T" | "2T"
   createdAt: string

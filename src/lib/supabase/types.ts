@@ -40,10 +40,11 @@ export type Database = {
         Relationships: []
       }
       match_events: {
-        Row: { created_at: string | null; created_by: string | null; id: string; match_id: string; period: string | null; player_id: string | null; team_id: string; type: string }
-        Insert: { created_at?: string | null; created_by?: string | null; id?: string; match_id: string; period?: string | null; player_id?: string | null; team_id: string; type: string }
-        Update: { created_at?: string | null; created_by?: string | null; id?: string; match_id?: string; period?: string | null; player_id?: string | null; team_id?: string; type?: string }
+        Row: { assist_player_id: string | null; created_at: string | null; created_by: string | null; id: string; match_id: string; period: string | null; player_id: string | null; team_id: string; type: string }
+        Insert: { assist_player_id?: string | null; created_at?: string | null; created_by?: string | null; id?: string; match_id: string; period?: string | null; player_id?: string | null; team_id: string; type: string }
+        Update: { assist_player_id?: string | null; created_at?: string | null; created_by?: string | null; id?: string; match_id?: string; period?: string | null; player_id?: string | null; team_id?: string; type?: string }
         Relationships: [
+          { foreignKeyName: "match_events_assist_player_id_fkey"; columns: ["assist_player_id"]; isOneToOne: false; referencedRelation: "players"; referencedColumns: ["id"] },
           { foreignKeyName: "match_events_match_id_fkey"; columns: ["match_id"]; isOneToOne: false; referencedRelation: "matches"; referencedColumns: ["id"] },
           { foreignKeyName: "match_events_player_id_fkey"; columns: ["player_id"]; isOneToOne: false; referencedRelation: "players"; referencedColumns: ["id"] },
           { foreignKeyName: "match_events_team_id_fkey"; columns: ["team_id"]; isOneToOne: false; referencedRelation: "teams"; referencedColumns: ["id"] },

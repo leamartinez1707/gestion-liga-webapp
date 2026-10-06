@@ -65,6 +65,17 @@ import {
   setRoster,
 } from "@/lib/db/registrations"
 import { uploadOptionalImage } from "@/lib/actions/upload"
+import {
+  createAlbum,
+  updateAlbum,
+  deleteAlbum,
+  addPhotos,
+  deletePhoto,
+  getAlbum,
+  getPhotos,
+  storagePathFromUrl,
+  type AlbumInput,
+} from "@/lib/db/gallery"
 import { requireStaff } from "@/lib/auth"
 import type { Player, Match } from "@/lib/types"
 
@@ -1070,4 +1081,111 @@ export async function setRosterAction(
   if (result.error) return { error: result.error }
   revalidateSite()
   return { success: true as const }
+}
+
+// ---------------------------------------------------------------------------
+// Gallery actions
+// ---------------------------------------------------------------------------
+
+function readAlbumForm(formData: FormData): AlbumInput | { error: string } {
+  const title = (formData.get("title") as string | null)?.trim()
+  if (!title) return { error: "El título del álbum es obligatorio." }
+  const optional = (name: string) => {
+    const value = (formData.get(name) as string | null)?.trim()
+    return value && value !== "null" ? value : null
+  }
+  return {
+    title,
+    description: optional("description"),
+    date: optional("date"),
+    seriesId: optional("seriesId"),
+    matchId: optional("matchId"),
+    published: formData.get("published") === "true",
+  }
+}
+
+export async function createAlbumAction(_prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const input = readAlbumForm(formData)
+  if ("error" in input) return { error: input.error }
+
+  const result = await createAlbum(input)
+  if (result.error || !result.id) return { error: result.error ?? "No se pudo crear el álbum." }
+  revalidateSite()
+  redirect(`/admin/galeria/${result.id}`)
+}
+
+export async function updateAlbumAction(id: string, _prev: unknown, formData: FormData) {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const input = readAlbumForm(formData)
+  if ("error" in input) return { error: input.error }
+
+  const result = await updateAlbum(id, input)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return { success: true as const }
+}
+
+export async function deleteAlbumAction(id: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await deleteAlbum(id)
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  redirect("/admin/galeria")
+}
+
+/**
+ * The browser uploads the files straight to Storage (no body-size limit),
+ * then sends the public URLs here. Only URLs inside this album's folder are accepted.
+ */
+export async function addPhotosAction(albumId: string, urls: string[]): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const valid = urls.filter((url) => storagePathFromUrl(url)?.startsWith(`gallery/${albumId}/`))
+  if (valid.length !== urls.length) return { error: "Alguna foto no pertenece a este álbum." }
+
+  const { data: album } = await getAlbum(albumId, true)
+  if (!album) return { error: "El álbum no existe." }
+
+  const result = await addPhotos(albumId, valid)
+  if (result.error) return { error: result.error }
+  if (!album.coverUrl && valid[0]) await updateAlbum(albumId, { coverUrl: valid[0] })
+
+  revalidateSite()
+  return {}
+}
+
+export async function deletePhotoAction(photoId: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await deletePhoto(photoId)
+  if (result.error || !result.albumId) return { error: result.error }
+
+  // Deleted the cover: use the next photo (or none)
+  const { data: album } = await getAlbum(result.albumId, true)
+  if (album?.coverUrl === result.url) {
+    const { data: photos } = await getPhotos(result.albumId, true)
+    await updateAlbum(result.albumId, { coverUrl: photos?.[0]?.url ?? null })
+  }
+
+  revalidateSite()
+  return {}
+}
+
+export async function setAlbumCoverAction(albumId: string, url: string): Promise<{ error?: string }> {
+  const auth = await requireStaff()
+  if (auth.error) return { error: auth.error }
+
+  const result = await updateAlbum(albumId, { coverUrl: url })
+  if (result.error) return { error: result.error }
+  revalidateSite()
+  return {}
 }

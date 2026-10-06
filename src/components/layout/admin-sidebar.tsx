@@ -10,6 +10,7 @@ import {
   Calendar,
   Ban,
   Newspaper,
+  Images,
   Layers,
   HeartHandshake,
   LogOut,
@@ -35,6 +36,7 @@ const sidebarLinks = [
   { label: "Partidos", href: "/admin/partidos", icon: Calendar },
   { label: "Sanciones", href: "/admin/sanciones", icon: Ban },
   { label: "Noticias", href: "/admin/noticias", icon: Newspaper },
+  { label: "Galería", href: "/admin/galeria", icon: Images },
   { label: "Auspiciantes", href: "/admin/sponsors", icon: HeartHandshake },
 ]
 

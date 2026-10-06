@@ -9,5 +9,6 @@ export const navLinks: NavLink[] = [
   { label: "Partidos", href: "/partidos" },
   { label: "Goleadores", href: "/goleadores" },
   { label: "Actualidad", href: "/actualidad" },
+  { label: "Fotos", href: "/galeria" },
   { label: "Institucional", href: "/institucional" },
 ]

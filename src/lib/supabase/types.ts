@@ -78,6 +78,32 @@ export type Database = {
           { foreignKeyName: "news_articles_series_id_fkey"; columns: ["series_id"]; isOneToOne: false; referencedRelation: "series"; referencedColumns: ["id"] },
         ]
       }
+      photo_albums: {
+        Row: {
+          cover_url: string | null; created_at: string | null; date: string | null; description: string | null
+          id: string; match_id: string | null; published: boolean; series_id: string | null; title: string
+        }
+        Insert: {
+          cover_url?: string | null; created_at?: string | null; date?: string | null; description?: string | null
+          id?: string; match_id?: string | null; published?: boolean; series_id?: string | null; title: string
+        }
+        Update: {
+          cover_url?: string | null; created_at?: string | null; date?: string | null; description?: string | null
+          id?: string; match_id?: string | null; published?: boolean; series_id?: string | null; title?: string
+        }
+        Relationships: [
+          { foreignKeyName: "photo_albums_match_id_fkey"; columns: ["match_id"]; isOneToOne: false; referencedRelation: "matches"; referencedColumns: ["id"] },
+          { foreignKeyName: "photo_albums_series_id_fkey"; columns: ["series_id"]; isOneToOne: false; referencedRelation: "series"; referencedColumns: ["id"] },
+        ]
+      }
+      photos: {
+        Row: { album_id: string; caption: string | null; created_at: string | null; display_order: number; id: string; url: string }
+        Insert: { album_id: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; url: string }
+        Update: { album_id?: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; url?: string }
+        Relationships: [
+          { foreignKeyName: "photos_album_id_fkey"; columns: ["album_id"]; isOneToOne: false; referencedRelation: "photo_albums"; referencedColumns: ["id"] },
+        ]
+      }
       players: {
         Row: {
           active: boolean | null; created_at: string | null; id: string; name: string; number: number | null

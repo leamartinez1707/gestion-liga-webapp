@@ -8,6 +8,9 @@ import { getTopScorers } from "@/lib/db/goals"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getRegistrations } from "@/lib/db/registrations"
+import { getMatches } from "@/lib/db/matches"
+import { getAlbums } from "@/lib/db/gallery"
+import { AlbumCard } from "@/components/album-card"
 import { resolveScope, scopeLabel, scopeQuery } from "@/lib/scope"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -34,12 +37,19 @@ export default async function EquipoDetailPage({
   const { data: team, error: teamError } = await getTeam(id)
   if (teamError || !team) notFound()
 
-  const [{ data: players }, seriesOptions, { data: tournaments }, { data: registrations }] = await Promise.all([
+  const [{ data: players }, seriesOptions, { data: tournaments }, { data: registrations }, { data: matches }] = await Promise.all([
     getPlayersByTeam(id),
     getSeriesOptions(),
     getTournaments(),
     getRegistrations({ teamId: id }),
+    getMatches(),
   ])
+  // Photo albums of this team's matches
+  const teamMatchIds = (matches ?? [])
+    .filter((m) => m.homeTeamId === id || m.awayTeamId === id)
+    .map((m) => m.id)
+  const { data: albums } = await getAlbums({ matchIds: teamMatchIds })
+  const teamAlbums = (albums ?? []).filter((a) => a.photoCount > 0).slice(0, 8)
 
   // A club can play in several series (e.g. F8 and F11): show every tournament
   // of its latest season, and count goals in those.
@@ -152,6 +162,15 @@ export default async function EquipoDetailPage({
             </ul>
           )}
         </section>
+
+        {teamAlbums.length > 0 && (
+          <section className="mt-14">
+            <h2 className="text-xl font-bold mb-6">Fotos</h2>
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+              {teamAlbums.map((a) => <AlbumCard key={a.id} album={a} />)}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )

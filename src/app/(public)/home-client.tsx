@@ -3,7 +3,9 @@
 import { useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 
-import type { Team, Tournament, Registration, NewsArticle, Sponsor } from "@/lib/types"
+import type { Team, Tournament, Registration, NewsArticle, Sponsor, PhotoAlbum } from "@/lib/types"
+import Link from "next/link"
+import { AlbumCard } from "@/components/album-card"
 import type { MatchWithTeams } from "@/lib/db/matches"
 import type { LeagueInfo } from "@/lib/types"
 import { resolveScope, teamsInTournament, tournamentsInScope, withdrawnInTournament, type SeriesOption } from "@/lib/scope"
@@ -20,6 +22,7 @@ interface HomePageClientProps {
   teams: Team[]
   tournaments: Tournament[]
   registrations: Registration[]
+  albums: PhotoAlbum[]
   matches: MatchWithTeams[]
   articles: NewsArticle[]
   leagueInfo: LeagueInfo
@@ -49,6 +52,7 @@ export function HomePageClient({
   teams,
   tournaments,
   registrations,
+  albums,
   matches,
   articles,
   leagueInfo: _leagueInfo,
@@ -92,6 +96,10 @@ export function HomePageClient({
   const seriesNews = selectedSeriesId
     ? sortedNews.filter((a) => !a.seriesId || a.seriesId === selectedSeriesId)
     : sortedNews
+
+  const seriesAlbums = albums
+    .filter((a) => !a.seriesId || a.seriesId === selectedSeriesId)
+    .slice(0, 4)
 
   const teamMap = new Map(teams.map((t) => [t.id, t]))
 
@@ -143,6 +151,20 @@ export function HomePageClient({
               />
             </div>
           ))}
+
+          {seriesAlbums.length > 0 && (
+            <section>
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Últimas fotos</h2>
+                <Link href={`/galeria?serie=${scope.series?.slug ?? ""}`} className="text-xs font-medium text-primary hover:underline">
+                  Ver todas
+                </Link>
+              </div>
+              <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+                {seriesAlbums.map((a) => <AlbumCard key={a.id} album={a} sizes="(min-width: 1280px) 15vw, 45vw" />)}
+              </div>
+            </section>
+          )}
 
           {filteredTeams.length === 0 && scope.division && (
             <div className="flex items-center justify-center h-48 rounded-lg border border-dashed border-border bg-muted-bg text-sm text-muted-foreground">

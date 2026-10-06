@@ -120,3 +120,25 @@ export interface Sponsor {
   linkUrl?: string
   displayOrder: number
 }
+
+export interface PhotoAlbum {
+  id: string
+  title: string
+  description?: string
+  date: string
+  /** null = whole league */
+  seriesId?: string
+  /** Optional: the album then shows on both teams' pages */
+  matchId?: string
+  coverUrl?: string
+  published: boolean
+  photoCount: number
+}
+
+export interface Photo {
+  id: string
+  albumId: string
+  url: string
+  caption?: string
+  displayOrder: number
+}

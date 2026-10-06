@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { getSeriesOptions } from "@/lib/db/series"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getRegistrations } from "@/lib/db/registrations"
+import { getAlbums } from "@/lib/db/gallery"
 import { getTeams } from "@/lib/db/teams"
 import { getMatches } from "@/lib/db/matches"
 import { getArticles } from "@/lib/db/news"
@@ -29,7 +30,7 @@ function mapArticleRowToNewsArticle(row: ArticleRow): NewsArticle {
 export const revalidate = 300
 
 export default async function HomePage() {
-  const [seriesOptions, teamsResult, tournamentsResult, registrationsResult, matchesResult, articlesResult, sponsorsResult] =
+  const [seriesOptions, teamsResult, tournamentsResult, registrationsResult, matchesResult, articlesResult, sponsorsResult, albumsResult] =
     await Promise.all([
       getSeriesOptions(),
       getTeams(),
@@ -38,6 +39,7 @@ export default async function HomePage() {
       getMatches(),
       getArticles(),
       getSponsors(),
+      getAlbums(),
     ])
 
   const teams = teamsResult.data ?? []
@@ -51,6 +53,7 @@ export default async function HomePage() {
         teams={teams}
         tournaments={tournamentsResult.data ?? []}
         registrations={registrationsResult.data ?? []}
+        albums={(albumsResult.data ?? []).filter((a) => a.photoCount > 0)}
         matches={matches}
         articles={articles}
         leagueInfo={leagueInfo}

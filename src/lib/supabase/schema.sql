@@ -177,6 +177,31 @@ create table registration_players (
 );
 
 -- -----------------------------------------------------------------------------
+-- Galería: álbumes (de una serie o de toda la liga, opcionalmente de un
+-- partido) y sus fotos (bucket public-images, carpeta gallery/<album_id>/)
+-- -----------------------------------------------------------------------------
+create table photo_albums (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  description text,
+  date date default current_date,
+  series_id uuid references series on delete set null,
+  match_id uuid references matches on delete set null,
+  cover_url text,
+  published boolean not null default false,
+  created_at timestamptz default now()
+);
+
+create table photos (
+  id uuid default gen_random_uuid() primary key,
+  album_id uuid not null references photo_albums on delete cascade,
+  url text not null,
+  caption text,
+  display_order integer not null default 0,
+  created_at timestamptz default now()
+);
+
+-- -----------------------------------------------------------------------------
 -- Goals (goleadores por partido)
 -- -----------------------------------------------------------------------------
 create table goals (

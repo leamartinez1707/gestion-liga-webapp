@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import { Upload, X, ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { resizeImage } from "@/lib/resize-image"
 
 interface ImageUploadProps {
   name: string
@@ -15,24 +16,39 @@ export function ImageUpload({ name, currentUrl, className }: ImageUploadProps) {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const [processing, setProcessing] = useState(false)
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const original = input.files?.[0]
     setError(null)
 
-    if (!file) return
+    if (!original) return
 
-    if (!file.type.startsWith("image/")) {
+    if (!original.type.startsWith("image/")) {
       setError("El archivo debe ser una imagen.")
+      input.value = ""
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("La imagen no puede superar los 5 MB.")
+    // Shrink phone photos so the form stays under the upload limit
+    setProcessing(true)
+    const file = await resizeImage(original)
+    setProcessing(false)
+
+    if (file.size > 4 * 1024 * 1024) {
+      setError("La imagen es demasiado grande. Probá con otra.")
+      input.value = ""
       return
     }
 
-    const url = URL.createObjectURL(file)
-    setPreview(url)
+    if (file !== original) {
+      const transfer = new DataTransfer()
+      transfer.items.add(file)
+      input.files = transfer.files
+    }
+
+    setPreview(URL.createObjectURL(file))
   }, [])
 
   const handleRemove = useCallback(() => {
@@ -81,7 +97,7 @@ export function ImageUpload({ name, currentUrl, className }: ImageUploadProps) {
           ) : (
             <Upload className="h-5 w-5" />
           )}
-          <span className="text-[10px]">Subir</span>
+          <span className="text-[10px]">{processing ? "Procesando…" : "Subir"}</span>
         </button>
       )}
 

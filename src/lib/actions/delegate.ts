@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { requireDelegateTeam } from "@/lib/auth"
 import { uploadOptionalImage } from "@/lib/actions/upload"
+import { savePlayerPrivate } from "@/lib/db/player-private"
 import { getPlayer, createPlayer, updatePlayer } from "@/lib/db/players"
 import { updateTeam } from "@/lib/db/teams"
 import { getRegistration, setRoster } from "@/lib/db/registrations"
@@ -79,6 +80,10 @@ export async function delegateCreatePlayerAction(_prev: unknown, formData: FormD
   })
 
   if (result.error) return { error: result.error }
+  if (result.id) {
+    const saved = await savePlayerPrivate(result.id, formData)
+    if (saved.error) return { error: saved.error }
+  }
   revalidateSite()
   return { success: true as const }
 }
@@ -112,6 +117,8 @@ export async function delegateUpdatePlayerAction(
   })
 
   if (result.error) return { error: result.error }
+  const saved = await savePlayerPrivate(playerId, formData)
+  if (saved.error) return { error: saved.error }
   revalidateSite()
   return { success: true as const }
 }

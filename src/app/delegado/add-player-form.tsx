@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PlayerPrivateFields } from "@/components/player-private-fields"
 import {
   Select,
   SelectContent,
@@ -67,6 +68,8 @@ export function AddPlayerForm() {
             <Label htmlFor="name">Nombre</Label>
             <Input id="name" name="name" placeholder="Nombre del jugador" required />
           </div>
+
+          <PlayerPrivateFields idPrefix="new" />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">

@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Check, UserPlus } from "lucide-react"
+import { Check, CheckCheck, UserPlus } from "lucide-react"
 
 import type { Player } from "@/lib/types"
 import type { LineupEntry } from "@/lib/db/lineups"
-import { addNewGuestAction, setLineupAction } from "@/lib/actions/live"
+import { addNewGuestAction, setLineupAction, setLineupAllAction } from "@/lib/actions/live"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,27 +30,30 @@ interface Props {
   lineup: LineupEntry[]
   suspended: Set<string>
   guestRules: { allowed: boolean; maxMatches: number }
+  /** playerId → cédula */
+  documents: Record<string, string>
   pending: boolean
-  run: (fn: () => Promise<{ error?: string }>, after?: () => void) => void
+  run: (fn: () => Promise<{ error?: string; notice?: string }>, after?: () => void) => void
 }
 
 /**
  * Who plays: the referee checks each ID against this list and taps the player.
  * Refuerzos (not on the list) only when the league allows them.
  */
-export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pending, run }: Props) {
+export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, documents, pending, run }: Props) {
   const [guestTeam, setGuestTeam] = useState<LineupTeam | null>(null)
   const playing = new Map(lineup.map((l) => [l.playerId, l]))
 
   return (
     <div className="flex flex-col gap-4">
       <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-        Pedí la cédula y tocá a cada jugador que juega. Los goles y tarjetas solo se pueden cargar a jugadores habilitados.
+        Pedí la cédula y tocá a cada jugador que juega, o marcá todos de una y destildá a los que faltan. Los suspendidos no se marcan.
       </p>
 
       {teams.map((team) => {
         const guests = team.others.filter((p) => playing.get(p.id)?.isGuest)
         const count = [...playing.values()].filter((l) => l.teamId === team.id).length
+        const allMarked = team.players.length > 0 && team.players.every((p) => playing.has(p.id) || suspended.has(p.id))
         return (
           <section key={team.id} className="overflow-hidden rounded-xl border border-border bg-background">
             <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2">
@@ -58,6 +61,19 @@ export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pen
               <h2 className="flex-1 truncate font-bold">{team.shortName}</h2>
               <span className="text-sm font-semibold tabular-nums text-muted-foreground">{count} juegan</span>
             </div>
+            {team.players.length > 0 && (
+              <div className="border-b border-border p-2">
+                <Button
+                  variant="outline"
+                  className="min-h-11 w-full gap-2"
+                  disabled={pending}
+                  onClick={() => run(() => setLineupAllAction(matchId, team.id, !allMarked))}
+                >
+                  <CheckCheck className="size-4" />
+                  {allMarked ? "Desmarcar todos" : team.hasList ? "Marcar toda la lista" : "Marcar todos"}
+                </Button>
+              </div>
+            )}
 
             <ul className="divide-y divide-border">
               {[...team.players, ...guests].map((p) => {
@@ -84,6 +100,7 @@ export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pen
                       <PhotoAvatar src={p.photo} name={p.name} className="size-10" fallbackClassName="text-xs" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{p.name}</span>
+                        {documents[p.id] && <span className="block text-xs tabular-nums text-muted-foreground">CI {documents[p.id]}</span>}
                         {(entry?.isGuest || suspended.has(p.id)) && (
                           <span className="flex gap-2 text-[11px] font-semibold uppercase">
                             {entry?.isGuest && <span className="text-amber-700">Refuerzo</span>}

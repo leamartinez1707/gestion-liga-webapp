@@ -72,6 +72,13 @@ export function AddPlayerInline({ teamId }: AddPlayerInlineProps) {
       </div>
 
       <div className="flex flex-col gap-1">
+        <Label htmlFor="document" className="text-xs">
+          Cédula
+        </Label>
+        <Input id="document" name="document" inputMode="numeric" maxLength={20} placeholder="Opcional" className="h-8 w-32" />
+      </div>
+
+      <div className="flex flex-col gap-1">
         <Label htmlFor="position" className="text-xs">
           Posición
         </Label>

@@ -89,7 +89,8 @@ export interface MatchEvent {
   playerId?: string
   /** Goals only: who gave the pass */
   assistPlayerId?: string
-  type: "goal" | "own_goal" | "yellow" | "red"
+  /** blue: futsal, the player leaves the match without a later suspension */
+  type: "goal" | "own_goal" | "yellow" | "red" | "blue"
   period?: "1T" | "2T"
   createdAt: string
 }
@@ -107,6 +108,8 @@ export interface LeagueSettings {
   guestPlayerMaxMatches: number
   /** Days after a finished match its referee can still edit it; null = no limit */
   refereeEditDays: number | null
+  /** Futsal blue card on the referee sheet */
+  blueCardsEnabled: boolean
 }
 
 export interface Sanction {

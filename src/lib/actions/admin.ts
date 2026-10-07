@@ -64,6 +64,7 @@ import {
   withdrawRegistration,
   setRoster,
 } from "@/lib/db/registrations"
+import { savePlayerPrivate } from "@/lib/db/player-private"
 import { uploadOptionalImage } from "@/lib/actions/upload"
 import { deleteTeamSeasonPhoto, setTeamSeasonPhoto } from "@/lib/db/team-photos"
 import { updateLeagueSettings } from "@/lib/db/settings"
@@ -336,6 +337,10 @@ export async function createPlayerAction(_prev: unknown, formData: FormData) {
   })
 
   if (result.error) return { error: result.error }
+  if (result.id) {
+    const saved = await savePlayerPrivate(result.id, formData)
+    if (saved.error) return { error: saved.error }
+  }
   revalidateSite()
   return { success: true as const }
 }
@@ -369,6 +374,8 @@ export async function updatePlayerAction(
   })
 
   if (result.error) return { error: result.error }
+  const saved = await savePlayerPrivate(id, formData)
+  if (saved.error) return { error: saved.error }
   revalidateSite()
   return { success: true as const }
 }
@@ -1093,12 +1100,20 @@ export async function registerTeamAction(
   const auth = await requireStaff()
   if (auth.error) return { error: auth.error }
 
-  const teamId = formData.get("teamId") as string | null
-  if (!teamId) return { error: "Elegí un equipo." }
+  const teamIds = [...new Set(formData.getAll("teamId").filter((v): v is string => typeof v === "string" && !!v))]
+  if (teamIds.length === 0) return { error: "Elegí al menos un equipo." }
 
-  const result = await createRegistration(tournamentId, teamId)
-  if (result.error) return { error: result.error }
+  // One by one: each team is checked (e.g. not in two divisions of a series)
+  const failed: string[] = []
+  for (const teamId of teamIds) {
+    const result = await createRegistration(tournamentId, teamId)
+    if (result.error) failed.push(result.error)
+  }
   revalidateSite()
+  if (failed.length) {
+    const done = teamIds.length - failed.length
+    return { error: `${done ? `Se inscribieron ${done}. ` : ""}No se pudo inscribir ${failed.length}: ${[...new Set(failed)].join(" ")}` }
+  }
   return { success: true as const }
 }
 
@@ -1291,6 +1306,7 @@ export async function updateSettingsAction(_prev: unknown, formData: FormData) {
     guestPlayersAllowed: formData.get("guestPlayersAllowed") === "on",
     guestPlayerMaxMatches,
     refereeEditDays,
+    blueCardsEnabled: formData.get("blueCardsEnabled") === "on",
   })
   if (result.error) return { error: result.error }
   revalidateSite()

@@ -134,6 +134,62 @@ export async function checkEligibility(
   return { isGuest: true }
 }
 
+/**
+ * Players of the lista de buena fe (or of the team, when it has no list) who can
+ * play this match: everyone but the suspended ones. One query per kind, for "marcar todos".
+ */
+export async function regularsEligible(
+  match: Match,
+  teamId: string,
+  players: Player[]
+): Promise<{ eligible: Player[]; skipped: { player: Player; reason: string }[]; error?: string }> {
+  const own = players.filter((p) => p.teamId === teamId)
+  const { data: roster, error: rosterError } = await getTournamentRoster(match.tournamentId, teamId)
+  if (rosterError) return { eligible: [], skipped: [], error: "No se pudo revisar la lista de buena fe. Probá de nuevo." }
+  const { data: sanctions, error } = await getSanctions({
+    playerIds: own.map((p) => p.id),
+    tournamentIds: [match.tournamentId],
+    suspendingOnly: true,
+  })
+  if (error) return { eligible: [], skipped: [], error: "No se pudieron revisar las sanciones. Probá de nuevo." }
+
+  const suspendedUntil = new Map<string, number>()
+  for (const s of sanctions ?? []) {
+    if (s.matchday == null || s.matchesSuspended <= 0) continue
+    const last = s.expiresAfterMatch ?? s.matchday + s.matchesSuspended
+    if (match.matchday > s.matchday && match.matchday <= last) {
+      suspendedUntil.set(s.playerId, Math.max(suspendedUntil.get(s.playerId) ?? 0, last))
+    }
+  }
+  const eligible: Player[] = []
+  const skipped: { player: Player; reason: string }[] = []
+  for (const p of own) {
+    // Same players the sheet lists: the lista de buena fe, or the active squad (refuerzos go one by one)
+    if (roster.size > 0 ? !roster.has(p.id) : !p.active) continue
+    const until = suspendedUntil.get(p.id)
+    if (until !== undefined) skipped.push({ player: p, reason: `suspendido hasta la fecha ${until}` })
+    else eligible.push(p)
+  }
+  return { eligible, skipped }
+}
+
+/** Several regulars at once (not refuerzos). */
+export async function addManyToLineup(matchId: string, teamId: string, playerIds: string[]): Promise<{ error?: string }> {
+  if (playerIds.length === 0) return {}
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from("match_lineups")
+      .upsert(
+        playerIds.map((playerId) => ({ match_id: matchId, team_id: teamId, player_id: playerId, is_guest: false })),
+        { onConflict: "match_id,player_id", ignoreDuplicates: true }
+      )
+    return error ? { error: error.message } : {}
+  } catch {
+    return { error: "No se pudo guardar." }
+  }
+}
+
 /** Referee or staff (RLS). Adding twice is a no-op. */
 export async function addToLineup(matchId: string, entry: LineupEntry): Promise<{ error?: string }> {
   try {

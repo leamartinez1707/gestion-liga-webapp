@@ -5,15 +5,20 @@ import { revalidatePath } from "next/cache"
 import type { Match, MatchEvent, Player } from "@/lib/types"
 import { requireMatchEditor } from "@/lib/auth"
 import { getMatch } from "@/lib/db/matches"
-import { getPlayer } from "@/lib/db/players"
+import { getPlayer, getPlayersByTeam } from "@/lib/db/players"
 import { addMatchEvent, deleteMatchEvent, getMatchEvents, setMatchLiveState } from "@/lib/db/match-events"
-import { addToLineup, checkEligibility, getLineup, removeFromLineup } from "@/lib/db/lineups"
+import { addManyToLineup, addToLineup, checkEligibility, getLineup, regularsEligible, removeFromLineup } from "@/lib/db/lineups"
 import { createServiceClient } from "@/lib/supabase/admin"
+import { getLeagueSettings } from "@/lib/db/settings"
+import { todayIso } from "@/lib/scope"
 
 // Live sheet (planilla): the assigned referee or staff. Each action is saved
 // right away and the DB recomputes score, scorers and cards.
 
-const EVENT_TYPES: MatchEvent["type"][] = ["goal", "own_goal", "yellow", "red"]
+const EVENT_TYPES: MatchEvent["type"][] = ["goal", "own_goal", "yellow", "red", "blue"]
+const CARDS: MatchEvent["type"][] = ["yellow", "red", "blue"]
+/** Red or blue: the player leaves the match */
+const sentOff = (e: MatchEvent) => e.type === "red" || e.type === "blue"
 
 function refresh(matchId: string) {
   // Public pages show the live score
@@ -24,11 +29,14 @@ function refresh(matchId: string) {
 export async function addEventAction(
   matchId: string,
   input: { teamId: string; playerId: string | null; assistPlayerId?: string | null; type: MatchEvent["type"] }
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; notice?: string }> {
   const auth = await requireMatchEditor(matchId)
   if (auth.error) return { error: auth.error }
 
   if (!EVENT_TYPES.includes(input.type)) return { error: "Dato inválido." }
+  if (input.type === "blue" && !(await getLeagueSettings()).blueCardsEnabled) {
+    return { error: "La liga no usa tarjeta azul." }
+  }
   const { data: match } = await getMatch(matchId)
   if (!match) return { error: "El partido no existe." }
   if (input.teamId !== match.homeTeamId && input.teamId !== match.awayTeamId) {
@@ -38,10 +46,20 @@ export async function addEventAction(
     return { error: "El partido está suspendido o cancelado." }
   }
   // Cards need a player; a goal can be "sin identificar"
-  if ((input.type === "yellow" || input.type === "red") && !input.playerId) {
+  if (CARDS.includes(input.type) && !input.playerId) {
     return { error: "Elegí el jugador." }
   }
+  // Second yellow of the match: it comes with the red
+  let secondYellow = false
   if (input.playerId) {
+    // A player sent off (red or blue) is off the pitch: no more cards or goals
+    const events = await getMatchEvents(matchId)
+    const own = events.filter((e) => e.playerId === input.playerId)
+    if (own.some(sentOff)) return { error: "Ese jugador ya salió del partido (tiene roja o azul)." }
+    secondYellow = input.type === "yellow" && own.some((e) => e.type === "yellow")
+    if (input.assistPlayerId && events.some((e) => e.playerId === input.assistPlayerId && sentOff(e))) {
+      return { error: "El que asiste ya salió del partido." }
+    }
     const { data: player } = await getPlayer(input.playerId)
     if (!player || player.teamId !== input.teamId) return { error: "El jugador no es de ese equipo." }
     // Whoever scores or gets a card played: put them on the lineup (if allowed to play)
@@ -62,12 +80,17 @@ export async function addEventAction(
   const period = match.livePeriod === "2T" ? "2T" : match.livePeriod === "1T" ? "1T" : null
   const result = await addMatchEvent({ matchId, teamId: input.teamId, playerId: input.playerId, assistPlayerId, type: input.type, period })
   if (result.error) return { error: result.error }
+  if (secondYellow) {
+    const red = await addMatchEvent({ matchId, teamId: input.teamId, playerId: input.playerId, assistPlayerId: null, type: "red", period })
+    if (red.error) return { error: red.error }
+  }
 
-  // First event of a scheduled match: it's being played
-  if (match.status === "scheduled") await setMatchLiveState(matchId, "ongoing", "1T")
+  // First event of a match being played today: it's live. Loaded afterwards
+  // (referee with a watch), it stays as is until they close it.
+  if (match.status === "scheduled" && match.date === todayIso()) await setMatchLiveState(matchId, "ongoing", "1T")
 
   refresh(matchId)
-  return {}
+  return secondYellow ? { notice: "Segunda amarilla: se le cargó también la roja." } : {}
 }
 
 export async function deleteEventAction(matchId: string, eventId: string): Promise<{ error?: string }> {
@@ -141,6 +164,45 @@ export async function setLineupAction(
   }
   refresh(matchId)
   return {}
+}
+
+/**
+ * "Marcar todos": the whole list (or the active squad) plays, except the
+ * suspended ones; "desmarcar todos" leaves out those with goals or cards.
+ */
+export async function setLineupAllAction(
+  matchId: string,
+  teamId: string,
+  played: boolean
+): Promise<{ error?: string; notice?: string }> {
+  const { match, error } = await editableMatch(matchId, teamId)
+  if (!match) return { error }
+
+  if (played) {
+    const { data: players } = await getPlayersByTeam(teamId)
+    const lineup = await getLineup(matchId)
+    const marked = new Set(lineup.map((l) => l.playerId))
+    const candidates = (players ?? []).filter((p) => !marked.has(p.id))
+    const result = await regularsEligible(match, teamId, candidates)
+    if (result.error) return { error: result.error }
+    const saved = await addManyToLineup(matchId, teamId, result.eligible.map((p) => p.id))
+    if (saved.error) return saved
+    refresh(matchId)
+    return result.skipped.length
+      ? { notice: `No se marcaron: ${result.skipped.map((s) => `${s.player.name} (${s.reason})`).join(", ")}.` }
+      : {}
+  }
+
+  const [lineup, events] = await Promise.all([getLineup(matchId), getMatchEvents(matchId)])
+  const withEvents = new Set(events.flatMap((e) => [e.playerId, e.assistPlayerId]).filter(Boolean))
+  const toRemove = lineup.filter((l) => l.teamId === teamId && !withEvents.has(l.playerId))
+  for (const l of toRemove) {
+    const result = await removeFromLineup(matchId, l.playerId)
+    if (result.error) return result
+  }
+  refresh(matchId)
+  const kept = lineup.filter((l) => l.teamId === teamId && withEvents.has(l.playerId)).length
+  return kept ? { notice: `Quedaron marcados ${kept} con goles o tarjetas cargados.` } : {}
 }
 
 /**

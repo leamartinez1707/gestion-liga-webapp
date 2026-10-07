@@ -46,7 +46,7 @@ export function DivisionDialog({ children, action, division }: DivisionDialogPro
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar División" : "Nueva División"}

@@ -101,7 +101,7 @@ export default async function EquipoDetailPage({
             <p className="text-sm text-muted-foreground">Hasta 2 por equipo. Gestionan el plantel y la lista de buena fe.</p>
           </div>
           {delegates.length < 2 && (
-            <CreateUserDialog teams={[{ id: team.id, name: team.name }]} canManageAdmins={false} defaultRole="delegate" defaultTeamId={team.id}>
+            <CreateUserDialog teams={[{ id: team.id, name: team.name }]} canManageAdmins={false} defaultRole="delegate" defaultTeamId={team.id} fixedRole>
               <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Crear delegado</Button>
             </CreateUserDialog>
           )}

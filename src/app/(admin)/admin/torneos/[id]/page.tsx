@@ -2,7 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ListChecks, Trash2, UserMinus, Pencil, Plus, ClipboardList } from "lucide-react"
 
-import { getTournament } from "@/lib/db/tournaments"
+import { getTournament, getTournaments } from "@/lib/db/tournaments"
 import { getTeams } from "@/lib/db/teams"
 import { getPlayersByTeams } from "@/lib/db/players"
 import { getSeriesOptions } from "@/lib/db/series"
@@ -51,11 +51,12 @@ export default async function TorneoInscripcionesPage({
   const { data: tournament } = await getTournament(id)
   if (!tournament) notFound()
 
-  const [{ data: teams }, { data: registrations }, series, { data: matches }] = await Promise.all([
+  const [{ data: teams }, { data: registrations }, series, { data: matches }, { data: allTournaments }] = await Promise.all([
     getTeams(),
     getRegistrations({ tournamentId: id }),
     getSeriesOptions(),
     getMatches(id),
+    getTournaments(),
   ])
   const matchdays = [...new Set((matches ?? []).map((m) => m.matchday))].sort((a, b) => a - b)
   const [goalsByMatch, { data: sanctions }, referees, withSheet, { data: players }] = await Promise.all([
@@ -80,6 +81,14 @@ export default async function TorneoInscripcionesPage({
   const available = (teams ?? [])
     .filter((t) => !registeredIds.has(t.id))
     .sort((a, b) => a.name.localeCompare(b.name))
+  // Clubs that already played this series and division (the usual candidates)
+  const previousTournamentIds = new Set(
+    (allTournaments ?? [])
+      .filter((t) => t.id !== id && t.seriesId === tournament.seriesId && t.divisionId === tournament.divisionId)
+      .map((t) => t.id)
+  )
+  const { data: previousRegistrations } = await getRegistrations({ tournamentIds: [...previousTournamentIds] })
+  const previousIds = [...new Set((previousRegistrations ?? []).map((r) => r.teamId))].filter((teamId) => !registeredIds.has(teamId))
   const rows = registrationList
     .flatMap((registration) => {
       const team = teamMap.get(registration.teamId)
@@ -115,11 +124,11 @@ export default async function TorneoInscripcionesPage({
       </div>
 
       <div className="rounded-xl border border-border p-6 flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Inscribir equipo</h2>
+        <h2 className="text-lg font-semibold">Inscribir equipos</h2>
         <p className="text-sm text-muted-foreground">
           Un equipo puede jugar en varias series, pero no en dos divisiones de la misma serie en una temporada.
         </p>
-        <RegisterForm teams={available} action={registerTeamAction.bind(null, id)} />
+        <RegisterForm teams={available} previousIds={previousIds} action={registerTeamAction.bind(null, id)} />
       </div>
 
       <div className="rounded-xl border border-border">

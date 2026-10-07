@@ -24,6 +24,10 @@ interface LiveSheetProps {
   suspendedPlayerIds: string[]
   lineup: LineupEntry[]
   guestRules: { allowed: boolean; maxMatches: number }
+  /** Futsal blue card (league setting) */
+  blueCards: boolean
+  /** playerId → cédula, to check IDs */
+  documents: Record<string, string>
 }
 
 const EVENT_LABEL: Record<MatchEvent["type"], string> = {
@@ -31,36 +35,44 @@ const EVENT_LABEL: Record<MatchEvent["type"], string> = {
   own_goal: "Gol en contra",
   yellow: "Amarilla",
   red: "Roja",
+  blue: "Azul",
 }
-const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: "⚽", yellow: "🟨", red: "🟥" }
+const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: "⚽", yellow: "🟨", red: "🟥", blue: "🟦" }
 
 // For a goal, a second step asks who assisted (scorerId set)
 type Picking = { team: SheetTeam; type: MatchEvent["type"]; scorerId?: string } | null
 
-export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineup, guestRules }: LiveSheetProps) {
+export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineup, guestRules, blueCards, documents }: LiveSheetProps) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [picking, setPicking] = useState<Picking>(null)
   const [confirmFinish, setConfirmFinish] = useState(false)
   const suspended = new Set(suspendedPlayerIds)
   // Before kick-off the referee starts with the lineup; then with the events
   const [tab, setTab] = useState<"jugadores" | "partido">(match.status === "scheduled" ? "jugadores" : "partido")
   const lineupIds = new Set(lineup.map((l) => l.playerId))
+  // Players sent off (red or blue) can't get more cards or goals
+  const expelled = new Set(events.flatMap((e) => ((e.type === "red" || e.type === "blue") && e.playerId ? [e.playerId] : [])))
 
   // Event picker: who's playing first (refuerzos included), then the rest of the list
   const pickable = (team: SheetTeam): Player[] => {
-    const all = [...team.players, ...team.others]
+    const all = [...team.players, ...team.others].filter((p) => !expelled.has(p.id))
     const playing = all.filter((p) => lineupIds.has(p.id))
-    const rest = team.players.filter((p) => !lineupIds.has(p.id))
-    return playing.length ? [...playing, ...rest] : team.players
+    const rest = team.players.filter((p) => !lineupIds.has(p.id) && !expelled.has(p.id))
+    return playing.length ? [...playing, ...rest] : rest
   }
 
-  const run = (fn: () => Promise<{ error?: string }>, after?: () => void) =>
+  const run = (fn: () => Promise<{ error?: string; notice?: string }>, after?: () => void) =>
     startTransition(async () => {
       setError(null)
+      setNotice(null)
       const result = await fn()
       if (result.error) setError(result.error)
-      else after?.()
+      else {
+        if (result.notice) setNotice(result.notice)
+        after?.()
+      }
     })
 
   const addEvent = (team: SheetTeam, type: MatchEvent["type"], playerId: string | null, assistPlayerId: string | null = null) =>
@@ -116,6 +128,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
       </div>
 
       {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>}
+      {notice && <p className="rounded-lg bg-amber-100 p-3 text-sm font-medium text-amber-900">{notice}</p>}
 
       {tab === "jugadores" ? (
         blocked ? (
@@ -127,6 +140,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
             lineup={lineup}
             suspended={suspended}
             guestRules={guestRules}
+            documents={documents}
             pending={pending}
             run={run}
           />
@@ -148,6 +162,12 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
           {match.status === "ongoing" && match.livePeriod === "2T" && (
             <BigButton onClick={() => setConfirmFinish(true)} disabled={pending} tone="dark">🏁 Terminar partido</BigButton>
           )}
+          {/* Referees who keep time on their watch load everything and close the match in one go */}
+          {!finished && !(match.status === "ongoing" && match.livePeriod === "2T") && (
+            <Button variant="outline" className="mt-2 min-h-11" onClick={() => setConfirmFinish(true)} disabled={pending}>
+              🏁 Terminar partido ya (sin usar el reloj)
+            </Button>
+          )}
           {finished && (
             <Button variant="outline" onClick={() => setState("ongoing", "2T")} disabled={pending}>
               Reabrir partido para corregir
@@ -165,6 +185,9 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
               <BigButton onClick={() => setPicking({ team, type: "goal" })} disabled={pending}>⚽ Gol</BigButton>
               <BigButton onClick={() => setPicking({ team, type: "yellow" })} disabled={pending} tone="yellow">🟨 Amarilla</BigButton>
               <BigButton onClick={() => setPicking({ team, type: "red" })} disabled={pending} tone="red">🟥 Roja</BigButton>
+              {blueCards && (
+                <BigButton onClick={() => setPicking({ team, type: "blue" })} disabled={pending} tone="blue">🟦 Azul</BigButton>
+              )}
               <button
                 type="button"
                 onClick={() => setPicking({ team, type: "own_goal" })}
@@ -344,7 +367,7 @@ function BigButton({
   children: React.ReactNode
   onClick: () => void
   disabled?: boolean
-  tone?: "primary" | "yellow" | "red" | "dark"
+  tone?: "primary" | "yellow" | "red" | "blue" | "dark"
 }) {
   return (
     <button
@@ -356,6 +379,7 @@ function BigButton({
         tone === "primary" && "bg-primary text-white",
         tone === "yellow" && "bg-amber-300 text-amber-950",
         tone === "red" && "bg-red-600 text-white",
+        tone === "blue" && "bg-blue-600 text-white",
         tone === "dark" && "bg-foreground text-background"
       )}
     >

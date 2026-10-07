@@ -41,6 +41,7 @@ function RoleFields({
   setTeamId,
   teams,
   canManageAdmins,
+  fixed = false,
 }: {
   role: Role
   setRole: (r: Role) => void
@@ -48,11 +49,26 @@ function RoleFields({
   setTeamId: (t: string) => void
   teams: TeamOption[]
   canManageAdmins: boolean
+  /** Opened from a team ("Crear delegado"): role and team can't be changed */
+  fixed?: boolean
 }) {
   const roleItems = (Object.keys(ROLE_LABELS) as Role[])
     .filter((r) => canManageAdmins || (r !== "superadmin" && r !== "editor"))
     .map((r) => ({ value: r, label: ROLE_LABELS[r] }))
   const teamItems = teams.map((t) => ({ value: t.id, label: t.name }))
+
+  if (fixed) {
+    return (
+      <>
+        <input type="hidden" name="role" value={role} />
+        {role === "delegate" && <input type="hidden" name="teamId" value={teamId} />}
+        <p className="rounded-md bg-muted p-3 text-sm">
+          {ROLE_LABELS[role]}
+          {role === "delegate" && teams.find((t) => t.id === teamId) && ` de ${teams.find((t) => t.id === teamId)!.name}`}
+        </p>
+      </>
+    )
+  }
 
   return (
     <>
@@ -129,12 +145,15 @@ export function CreateUserDialog({
   canManageAdmins,
   defaultRole = "delegate",
   defaultTeamId = "",
+  fixedRole = false,
 }: {
   children: React.ReactElement
   teams: TeamOption[]
   canManageAdmins: boolean
   defaultRole?: Role
   defaultTeamId?: string
+  /** Only accounts of defaultRole (and defaultTeamId) can be created */
+  fixedRole?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [role, setRole] = useState<Role>(defaultRole)
@@ -158,7 +177,7 @@ export function CreateUserDialog({
       <DialogTrigger render={children} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nueva cuenta</DialogTitle>
+          <DialogTitle>{fixedRole ? `Nuevo ${ROLE_LABELS[defaultRole].toLowerCase()}` : "Nueva cuenta"}</DialogTitle>
           <DialogDescription>La persona entra con este email y contraseña; después la puede cambiar.</DialogDescription>
         </DialogHeader>
         {created ? (
@@ -180,7 +199,7 @@ export function CreateUserDialog({
                 <Button type="button" variant="outline" onClick={() => setPassword(generatePassword())}>Otra</Button>
               </div>
             </div>
-            <RoleFields role={role} setRole={setRole} teamId={teamId} setTeamId={setTeamId} teams={teams} canManageAdmins={canManageAdmins} />
+            <RoleFields role={role} setRole={setRole} teamId={teamId} setTeamId={setTeamId} teams={teams} canManageAdmins={canManageAdmins} fixed={fixedRole} />
             {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
             <div className="flex justify-end pt-2">
               <SubmitButton label="Crear cuenta" pendingLabel="Creando…" />

@@ -78,7 +78,7 @@ export function ArticleDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
-      <DialogContent className="max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar Noticia" : "Nueva Noticia"}

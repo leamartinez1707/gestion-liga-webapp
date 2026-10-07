@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Check, UserPlus } from "lucide-react"
+import { Check, CheckCheck, UserPlus } from "lucide-react"
 
 import type { Player } from "@/lib/types"
 import type { LineupEntry } from "@/lib/db/lineups"
-import { addNewGuestAction, setLineupAction } from "@/lib/actions/live"
+import { addNewGuestAction, setLineupAction, setLineupAllAction } from "@/lib/actions/live"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,7 +31,7 @@ interface Props {
   suspended: Set<string>
   guestRules: { allowed: boolean; maxMatches: number }
   pending: boolean
-  run: (fn: () => Promise<{ error?: string }>, after?: () => void) => void
+  run: (fn: () => Promise<{ error?: string; notice?: string }>, after?: () => void) => void
 }
 
 /**
@@ -45,12 +45,13 @@ export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pen
   return (
     <div className="flex flex-col gap-4">
       <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-        Pedí la cédula y tocá a cada jugador que juega. Los goles y tarjetas solo se pueden cargar a jugadores habilitados.
+        Pedí la cédula y tocá a cada jugador que juega, o marcá todos de una y destildá a los que faltan. Los suspendidos no se marcan.
       </p>
 
       {teams.map((team) => {
         const guests = team.others.filter((p) => playing.get(p.id)?.isGuest)
         const count = [...playing.values()].filter((l) => l.teamId === team.id).length
+        const allMarked = team.players.length > 0 && team.players.every((p) => playing.has(p.id) || suspended.has(p.id))
         return (
           <section key={team.id} className="overflow-hidden rounded-xl border border-border bg-background">
             <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2">
@@ -58,6 +59,19 @@ export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pen
               <h2 className="flex-1 truncate font-bold">{team.shortName}</h2>
               <span className="text-sm font-semibold tabular-nums text-muted-foreground">{count} juegan</span>
             </div>
+            {team.players.length > 0 && (
+              <div className="border-b border-border p-2">
+                <Button
+                  variant="outline"
+                  className="min-h-11 w-full gap-2"
+                  disabled={pending}
+                  onClick={() => run(() => setLineupAllAction(matchId, team.id, !allMarked))}
+                >
+                  <CheckCheck className="size-4" />
+                  {allMarked ? "Desmarcar todos" : team.hasList ? "Marcar toda la lista" : "Marcar todos"}
+                </Button>
+              </div>
+            )}
 
             <ul className="divide-y divide-border">
               {[...team.players, ...guests].map((p) => {

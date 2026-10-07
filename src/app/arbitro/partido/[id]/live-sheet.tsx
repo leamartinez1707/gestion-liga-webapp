@@ -40,27 +40,34 @@ type Picking = { team: SheetTeam; type: MatchEvent["type"]; scorerId?: string } 
 export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineup, guestRules }: LiveSheetProps) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [picking, setPicking] = useState<Picking>(null)
   const [confirmFinish, setConfirmFinish] = useState(false)
   const suspended = new Set(suspendedPlayerIds)
   // Before kick-off the referee starts with the lineup; then with the events
   const [tab, setTab] = useState<"jugadores" | "partido">(match.status === "scheduled" ? "jugadores" : "partido")
   const lineupIds = new Set(lineup.map((l) => l.playerId))
+  // Expelled players can't get more cards or goals
+  const expelled = new Set(events.flatMap((e) => (e.type === "red" && e.playerId ? [e.playerId] : [])))
 
   // Event picker: who's playing first (refuerzos included), then the rest of the list
   const pickable = (team: SheetTeam): Player[] => {
-    const all = [...team.players, ...team.others]
+    const all = [...team.players, ...team.others].filter((p) => !expelled.has(p.id))
     const playing = all.filter((p) => lineupIds.has(p.id))
-    const rest = team.players.filter((p) => !lineupIds.has(p.id))
-    return playing.length ? [...playing, ...rest] : team.players
+    const rest = team.players.filter((p) => !lineupIds.has(p.id) && !expelled.has(p.id))
+    return playing.length ? [...playing, ...rest] : rest
   }
 
-  const run = (fn: () => Promise<{ error?: string }>, after?: () => void) =>
+  const run = (fn: () => Promise<{ error?: string; notice?: string }>, after?: () => void) =>
     startTransition(async () => {
       setError(null)
+      setNotice(null)
       const result = await fn()
       if (result.error) setError(result.error)
-      else after?.()
+      else {
+        if (result.notice) setNotice(result.notice)
+        after?.()
+      }
     })
 
   const addEvent = (team: SheetTeam, type: MatchEvent["type"], playerId: string | null, assistPlayerId: string | null = null) =>
@@ -116,6 +123,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
       </div>
 
       {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>}
+      {notice && <p className="rounded-lg bg-amber-100 p-3 text-sm font-medium text-amber-900">{notice}</p>}
 
       {tab === "jugadores" ? (
         blocked ? (
@@ -147,6 +155,12 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
           )}
           {match.status === "ongoing" && match.livePeriod === "2T" && (
             <BigButton onClick={() => setConfirmFinish(true)} disabled={pending} tone="dark">🏁 Terminar partido</BigButton>
+          )}
+          {/* Referees who keep time on their watch load everything and close the match in one go */}
+          {!finished && !(match.status === "ongoing" && match.livePeriod === "2T") && (
+            <Button variant="outline" className="mt-2 min-h-11" onClick={() => setConfirmFinish(true)} disabled={pending}>
+              🏁 Terminar partido ya (sin usar el reloj)
+            </Button>
           )}
           {finished && (
             <Button variant="outline" onClick={() => setState("ongoing", "2T")} disabled={pending}>

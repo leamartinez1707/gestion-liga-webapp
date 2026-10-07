@@ -84,7 +84,7 @@ export function FixtureDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Generar Fixture</DialogTitle>
         </DialogHeader>

@@ -47,7 +47,7 @@ export function SeriesDialog({ children, action, series }: SeriesDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar Serie" : "Nueva Serie"}

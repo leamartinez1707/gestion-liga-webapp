@@ -57,7 +57,7 @@ export function AlbumDialog({ children, action, album, series, matches }: AlbumD
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
-      <DialogContent className="max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{album ? "Editar álbum" : "Nuevo álbum"}</DialogTitle>
         </DialogHeader>

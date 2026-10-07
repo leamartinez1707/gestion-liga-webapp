@@ -128,7 +128,7 @@ export function MatchDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={children} />
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar Partido" : "Nuevo Partido"}
@@ -169,7 +169,8 @@ export function MatchDialog({
             </div>
           )}
 
-          {/* Home Team */}
+          <div className="grid gap-4 sm:grid-cols-2">
+{/* Home Team */}
           <div className="flex flex-col gap-1.5">
             <Label>Equipo Local</Label>
             <Select
@@ -211,6 +212,8 @@ export function MatchDialog({
             </Select>
           </div>
 
+          </div>
+
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
@@ -239,7 +242,8 @@ export function MatchDialog({
             </div>
           </div>
 
-          {/* Matchday */}
+          <div className="grid gap-4 sm:grid-cols-2">
+{/* Matchday */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="matchday">Jornada</Label>
             <Input
@@ -272,9 +276,12 @@ export function MatchDialog({
             />
           </div>
 
+          </div>
+
           {/* Score & Status (edit mode) */}
           {isEditing && (
             <>
+              <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label>Estado</Label>
                 <Select
@@ -316,6 +323,8 @@ export function MatchDialog({
                     Se carga 3-0 y el partido queda finalizado. No se registran goleadores.
                   </p>
                 )}
+              </div>
+
               </div>
 
               {result === "normal" && (
@@ -393,27 +402,33 @@ export function MatchDialog({
             <div className="flex flex-col gap-1.5 border-t pt-4">
               <Label>Tarjetas Rojas</Label>
               <p className="text-xs text-muted-foreground">
-                Seleccioná los jugadores que recibieron tarjeta roja
+                Marcá los jugadores que recibieron tarjeta roja
               </p>
               <input type="hidden" name="redCardsField" value="1" />
-              <select
-                multiple
-                name="redCards"
-                defaultValue={redCardPlayerIds}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[80px]"
-              >
+              <div className="grid gap-3 sm:grid-cols-2">
                 {matchTeams.map((team) => (
-                  <optgroup key={team.id} label={team.name}>
-                    {players.filter((p) => p.teamId === team.id).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}{p.number > 0 ? ` (#${p.number})` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
+                  <fieldset key={team.id} className="rounded-md border border-border p-2">
+                    <legend className="px-1 text-xs font-semibold">{team.name}</legend>
+                    <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto">
+                      {players.filter((p) => p.teamId === team.id).map((p) => (
+                        <label key={p.id} className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted">
+                          <input
+                            type="checkbox"
+                            name="redCards"
+                            value={p.id}
+                            defaultChecked={redCardPlayerIds.includes(p.id)}
+                            className="size-4 accent-destructive"
+                          />
+                          <span className="w-6 text-right text-xs tabular-nums text-muted-foreground">{p.number > 0 ? p.number : "–"}</span>
+                          <span className="truncate">{p.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
                 ))}
-              </select>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Ctrl/Cmd + clic para elegir varios. Cada roja suma 1 fecha de suspensión; para cambiarla, editala en Sanciones.
+                Cada roja suma las fechas de suspensión de Configuración; para cambiarlas, editá la sanción en Sanciones.
               </p>
             </div>
           )}
@@ -425,13 +440,13 @@ export function MatchDialog({
               <p className="text-xs text-muted-foreground">
                 Registrar quiénes hicieron los goles y cuántos
               </p>
-              <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {goalRows.map((row, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <select
                       name="goalPlayer"
                       defaultValue={row.playerId}
-                      className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                      className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
                     >
                       <option value="none">— Sin jugador —</option>
                       {matchTeams.map((team) => (

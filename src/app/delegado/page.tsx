@@ -1,5 +1,6 @@
 import { getDelegateTeam } from "@/lib/db/delegates"
 import { getPlayersByTeam } from "@/lib/db/players"
+import { getPlayerPrivate } from "@/lib/db/player-private"
 import { getRegistrations, getRosters } from "@/lib/db/registrations"
 import { getTournaments } from "@/lib/db/tournaments"
 import { getSeriesOptions } from "@/lib/db/series"
@@ -60,6 +61,7 @@ export default async function DelegadoDashboard() {
     getNextMatchdays(sanctionTournamentIds(sanctions ?? [])),
   ])
   const suspended = activeSuspensions(sanctions ?? [], nextMatchdays)
+  const privateData = await getPlayerPrivate(playersList.map((p) => p.id))
   const tournamentMap = new Map((tournaments ?? []).map((t) => [t.id, t]))
   const entries = (registrations ?? [])
     .flatMap((registration) => {
@@ -155,7 +157,7 @@ export default async function DelegadoDashboard() {
           ) : (
             <div className="divide-y divide-border">
               {playersList.map((p) => (
-                <PlayerRow key={p.id} player={p} suspendedUntil={suspended.get(p.id)?.untilMatchday} />
+                <PlayerRow key={p.id} player={p} suspendedUntil={suspended.get(p.id)?.untilMatchday} privateData={privateData.get(p.id)} />
               ))}
             </div>
           )}

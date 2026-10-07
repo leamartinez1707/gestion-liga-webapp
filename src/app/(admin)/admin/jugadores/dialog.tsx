@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { PlayerPrivateFields } from "@/components/player-private-fields"
 import { ImageUpload } from "@/components/ui/image-upload"
 
 const positions = [
@@ -47,6 +48,8 @@ interface PlayerDialogProps {
   ) => Promise<{ error?: string; success?: boolean }>
   player?: Player
   teams: Team[]
+  /** Cédula and phone (edit) */
+  privateData?: { document: string; phone: string }
 }
 
 export function PlayerDialog({
@@ -54,6 +57,7 @@ export function PlayerDialog({
   action,
   player,
   teams,
+  privateData,
 }: PlayerDialogProps) {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState(player?.position ?? "delantero")
@@ -98,6 +102,8 @@ export function PlayerDialog({
               placeholder="Ej: 10"
             />
           </div>
+
+          <PlayerPrivateFields document={privateData?.document} phone={privateData?.phone} idPrefix={player?.id ?? "new"} />
 
           {/* Position */}
           <div className="flex flex-col gap-1.5">

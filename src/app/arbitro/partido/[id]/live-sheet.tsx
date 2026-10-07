@@ -24,6 +24,10 @@ interface LiveSheetProps {
   suspendedPlayerIds: string[]
   lineup: LineupEntry[]
   guestRules: { allowed: boolean; maxMatches: number }
+  /** Futsal blue card (league setting) */
+  blueCards: boolean
+  /** playerId → cédula, to check IDs */
+  documents: Record<string, string>
 }
 
 const EVENT_LABEL: Record<MatchEvent["type"], string> = {
@@ -31,13 +35,14 @@ const EVENT_LABEL: Record<MatchEvent["type"], string> = {
   own_goal: "Gol en contra",
   yellow: "Amarilla",
   red: "Roja",
+  blue: "Azul",
 }
-const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: "⚽", yellow: "🟨", red: "🟥" }
+const EVENT_ICON: Record<MatchEvent["type"], string> = { goal: "⚽", own_goal: "⚽", yellow: "🟨", red: "🟥", blue: "🟦" }
 
 // For a goal, a second step asks who assisted (scorerId set)
 type Picking = { team: SheetTeam; type: MatchEvent["type"]; scorerId?: string } | null
 
-export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineup, guestRules }: LiveSheetProps) {
+export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineup, guestRules, blueCards, documents }: LiveSheetProps) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -47,8 +52,8 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
   // Before kick-off the referee starts with the lineup; then with the events
   const [tab, setTab] = useState<"jugadores" | "partido">(match.status === "scheduled" ? "jugadores" : "partido")
   const lineupIds = new Set(lineup.map((l) => l.playerId))
-  // Expelled players can't get more cards or goals
-  const expelled = new Set(events.flatMap((e) => (e.type === "red" && e.playerId ? [e.playerId] : [])))
+  // Players sent off (red or blue) can't get more cards or goals
+  const expelled = new Set(events.flatMap((e) => ((e.type === "red" || e.type === "blue") && e.playerId ? [e.playerId] : [])))
 
   // Event picker: who's playing first (refuerzos included), then the rest of the list
   const pickable = (team: SheetTeam): Player[] => {
@@ -135,6 +140,7 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
             lineup={lineup}
             suspended={suspended}
             guestRules={guestRules}
+            documents={documents}
             pending={pending}
             run={run}
           />
@@ -179,6 +185,9 @@ export function LiveSheet({ match, home, away, events, suspendedPlayerIds, lineu
               <BigButton onClick={() => setPicking({ team, type: "goal" })} disabled={pending}>⚽ Gol</BigButton>
               <BigButton onClick={() => setPicking({ team, type: "yellow" })} disabled={pending} tone="yellow">🟨 Amarilla</BigButton>
               <BigButton onClick={() => setPicking({ team, type: "red" })} disabled={pending} tone="red">🟥 Roja</BigButton>
+              {blueCards && (
+                <BigButton onClick={() => setPicking({ team, type: "blue" })} disabled={pending} tone="blue">🟦 Azul</BigButton>
+              )}
               <button
                 type="button"
                 onClick={() => setPicking({ team, type: "own_goal" })}
@@ -358,7 +367,7 @@ function BigButton({
   children: React.ReactNode
   onClick: () => void
   disabled?: boolean
-  tone?: "primary" | "yellow" | "red" | "dark"
+  tone?: "primary" | "yellow" | "red" | "blue" | "dark"
 }) {
   return (
     <button
@@ -370,6 +379,7 @@ function BigButton({
         tone === "primary" && "bg-primary text-white",
         tone === "yellow" && "bg-amber-300 text-amber-950",
         tone === "red" && "bg-red-600 text-white",
+        tone === "blue" && "bg-blue-600 text-white",
         tone === "dark" && "bg-foreground text-background"
       )}
     >

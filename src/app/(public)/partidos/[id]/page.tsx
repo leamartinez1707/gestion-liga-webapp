@@ -99,8 +99,8 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
         key: e.id,
         // An own goal counts for the rival: show it on the side it scored for
         teamId: e.type === "own_goal" ? (e.teamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId) : e.teamId,
-        icon: e.type === "yellow" ? "🟨" : e.type === "red" ? "🟥" : "⚽",
-        label: e.type === "own_goal" ? "Gol en contra" : e.type === "goal" ? "Gol" : e.type === "yellow" ? "Amarilla" : "Roja",
+        icon: e.type === "yellow" ? "🟨" : e.type === "red" ? "🟥" : e.type === "blue" ? "🟦" : "⚽",
+        label: e.type === "own_goal" ? "Gol en contra" : e.type === "goal" ? "Gol" : e.type === "yellow" ? "Amarilla" : e.type === "blue" ? "Azul" : "Roja",
         playerId: e.playerId,
         assistId: e.assistPlayerId,
         period: e.period,
@@ -150,6 +150,8 @@ export default async function PartidoPage({ params }: { params: Promise<{ id: st
     { label: "Asistencias", home: countOf(home?.id, (i) => !!i.assistId), away: countOf(away?.id, (i) => !!i.assistId) },
     { label: "Amarillas", home: cardsOf(home?.id, "Amarilla"), away: cardsOf(away?.id, "Amarilla") },
     { label: "Rojas", home: cardsOf(home?.id, "Roja"), away: cardsOf(away?.id, "Roja") },
+    // Futsal: only when there was one
+    ...(incidents.some((i) => i.label === "Azul") ? [{ label: "Azules", home: cardsOf(home?.id, "Azul"), away: cardsOf(away?.id, "Azul") }] : []),
   ]
 
   const news = articles ?? []

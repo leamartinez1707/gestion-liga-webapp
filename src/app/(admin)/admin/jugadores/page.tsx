@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { PlayerDialog } from "./dialog"
+import { getPlayerPrivate } from "@/lib/db/player-private"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { Pagination } from "@/components/ui/pagination"
 
@@ -42,6 +43,7 @@ export default async function JugadoresPage({ searchParams }: Props) {
 
   if (error) return <div className="py-20 text-center"><p className="text-destructive text-sm">{error}</p></div>
   const teamMap = new Map(teamsList.map((t) => [t.id, t]))
+  const privateData = await getPlayerPrivate((players ?? []).map((p) => p.id))
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,7 +77,7 @@ export default async function JugadoresPage({ searchParams }: Props) {
                 <TableCell className="text-muted-foreground">{p.number || "—"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <PlayerDialog action={updatePlayerAction.bind(null, p.id)} player={p} teams={teamsList}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></PlayerDialog>
+                    <PlayerDialog action={updatePlayerAction.bind(null, p.id)} player={p} teams={teamsList} privateData={privateData.get(p.id)}><Button variant="ghost" size="icon-sm"><Pencil className="h-4 w-4" /></Button></PlayerDialog>
                     <DeleteConfirmDialog itemName={p.name} onConfirm={deletePlayerAction.bind(null, p.id)}><Button variant="ghost" size="icon-sm" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></DeleteConfirmDialog>
                   </div>
                 </TableCell>

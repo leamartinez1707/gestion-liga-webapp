@@ -34,9 +34,9 @@ export type Database = {
         ]
       }
       league_settings: {
-        Row: { guest_player_max_matches: number; referee_edit_days: number | null; guest_players_allowed: boolean; id: boolean; red_card_matches: number; updated_at: string | null; yellow_cards_for_suspension: number; yellow_suspension_matches: number }
-        Insert: { guest_player_max_matches?: number; referee_edit_days?: number | null; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
-        Update: { guest_player_max_matches?: number; referee_edit_days?: number | null; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
+        Row: { blue_cards_enabled: boolean; guest_player_max_matches: number; referee_edit_days: number | null; guest_players_allowed: boolean; id: boolean; red_card_matches: number; updated_at: string | null; yellow_cards_for_suspension: number; yellow_suspension_matches: number }
+        Insert: { blue_cards_enabled?: boolean; guest_player_max_matches?: number; referee_edit_days?: number | null; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
+        Update: { blue_cards_enabled?: boolean; guest_player_max_matches?: number; referee_edit_days?: number | null; guest_players_allowed?: boolean; id?: boolean; red_card_matches?: number; updated_at?: string | null; yellow_cards_for_suspension?: number; yellow_suspension_matches?: number }
         Relationships: []
       }
       match_lineups: {
@@ -130,6 +130,14 @@ export type Database = {
         Update: { album_id?: string; caption?: string | null; created_at?: string | null; display_order?: number; id?: string; thumb_url?: string | null; url?: string }
         Relationships: [
           { foreignKeyName: "photos_album_id_fkey"; columns: ["album_id"]; isOneToOne: false; referencedRelation: "photo_albums"; referencedColumns: ["id"] },
+        ]
+      }
+      player_private: {
+        Row: { player_id: string; document: string | null; phone: string | null; updated_at: string }
+        Insert: { player_id: string; document?: string | null; phone?: string | null; updated_at?: string }
+        Update: { player_id?: string; document?: string | null; phone?: string | null; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "player_private_player_id_fkey"; columns: ["player_id"]; isOneToOne: true; referencedRelation: "players"; referencedColumns: ["id"] },
         ]
       }
       players: {

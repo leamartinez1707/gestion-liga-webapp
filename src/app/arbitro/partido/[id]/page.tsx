@@ -13,6 +13,7 @@ import { getSanctions } from "@/lib/db/sanctions"
 import { activeSuspensions } from "@/lib/suspensions"
 import { getLineup } from "@/lib/db/lineups"
 import { getLeagueSettings } from "@/lib/db/settings"
+import { getPlayerPrivate } from "@/lib/db/player-private"
 import { LiveSheet } from "./live-sheet"
 
 export default async function PlanillaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -69,6 +70,9 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
   }
 
   const suspended = activeSuspensions(sanctions ?? [], nextMatchdays)
+  // Cédulas to check IDs against (private: RLS lets referees and staff read them)
+  const privateData = await getPlayerPrivate([...(homePlayers ?? []), ...(awayPlayers ?? [])].map((p) => p.id))
+  const documents = Object.fromEntries([...privateData].flatMap(([id, d]) => (d.document ? [[id, d.document]] : [])))
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,6 +86,8 @@ export default async function PlanillaPage({ params }: { params: Promise<{ id: s
         away={sheetTeam(away, awayPlayers ?? [])}
         lineup={lineup}
         guestRules={{ allowed: settings.guestPlayersAllowed, maxMatches: settings.guestPlayerMaxMatches }}
+        blueCards={settings.blueCardsEnabled}
+        documents={documents}
         events={events}
         suspendedPlayerIds={[...suspended.keys()]}
       />

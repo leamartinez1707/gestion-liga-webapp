@@ -9,12 +9,16 @@ import { getPlayer, getPlayersByTeam } from "@/lib/db/players"
 import { addMatchEvent, deleteMatchEvent, getMatchEvents, setMatchLiveState } from "@/lib/db/match-events"
 import { addManyToLineup, addToLineup, checkEligibility, getLineup, regularsEligible, removeFromLineup } from "@/lib/db/lineups"
 import { createServiceClient } from "@/lib/supabase/admin"
+import { getLeagueSettings } from "@/lib/db/settings"
 import { todayIso } from "@/lib/scope"
 
 // Live sheet (planilla): the assigned referee or staff. Each action is saved
 // right away and the DB recomputes score, scorers and cards.
 
-const EVENT_TYPES: MatchEvent["type"][] = ["goal", "own_goal", "yellow", "red"]
+const EVENT_TYPES: MatchEvent["type"][] = ["goal", "own_goal", "yellow", "red", "blue"]
+const CARDS: MatchEvent["type"][] = ["yellow", "red", "blue"]
+/** Red or blue: the player leaves the match */
+const sentOff = (e: MatchEvent) => e.type === "red" || e.type === "blue"
 
 function refresh(matchId: string) {
   // Public pages show the live score
@@ -25,11 +29,14 @@ function refresh(matchId: string) {
 export async function addEventAction(
   matchId: string,
   input: { teamId: string; playerId: string | null; assistPlayerId?: string | null; type: MatchEvent["type"] }
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; notice?: string }> {
   const auth = await requireMatchEditor(matchId)
   if (auth.error) return { error: auth.error }
 
   if (!EVENT_TYPES.includes(input.type)) return { error: "Dato inválido." }
+  if (input.type === "blue" && !(await getLeagueSettings()).blueCardsEnabled) {
+    return { error: "La liga no usa tarjeta azul." }
+  }
   const { data: match } = await getMatch(matchId)
   if (!match) return { error: "El partido no existe." }
   if (input.teamId !== match.homeTeamId && input.teamId !== match.awayTeamId) {
@@ -39,19 +46,19 @@ export async function addEventAction(
     return { error: "El partido está suspendido o cancelado." }
   }
   // Cards need a player; a goal can be "sin identificar"
-  if ((input.type === "yellow" || input.type === "red") && !input.playerId) {
+  if (CARDS.includes(input.type) && !input.playerId) {
     return { error: "Elegí el jugador." }
   }
+  // Second yellow of the match: it comes with the red
+  let secondYellow = false
   if (input.playerId) {
-    // An expelled player is off the pitch: no second red, no more cards or goals
+    // A player sent off (red or blue) is off the pitch: no more cards or goals
     const events = await getMatchEvents(matchId)
     const own = events.filter((e) => e.playerId === input.playerId)
-    if (own.some((e) => e.type === "red")) return { error: "Ese jugador ya fue expulsado (tiene roja en este partido)." }
-    if (input.type === "yellow" && own.filter((e) => e.type === "yellow").length >= 2) {
-      return { error: "Ese jugador ya tiene 2 amarillas en este partido: cargale la roja." }
-    }
-    if (input.assistPlayerId && events.some((e) => e.playerId === input.assistPlayerId && e.type === "red")) {
-      return { error: "El que asiste ya fue expulsado." }
+    if (own.some(sentOff)) return { error: "Ese jugador ya salió del partido (tiene roja o azul)." }
+    secondYellow = input.type === "yellow" && own.some((e) => e.type === "yellow")
+    if (input.assistPlayerId && events.some((e) => e.playerId === input.assistPlayerId && sentOff(e))) {
+      return { error: "El que asiste ya salió del partido." }
     }
     const { data: player } = await getPlayer(input.playerId)
     if (!player || player.teamId !== input.teamId) return { error: "El jugador no es de ese equipo." }
@@ -73,13 +80,17 @@ export async function addEventAction(
   const period = match.livePeriod === "2T" ? "2T" : match.livePeriod === "1T" ? "1T" : null
   const result = await addMatchEvent({ matchId, teamId: input.teamId, playerId: input.playerId, assistPlayerId, type: input.type, period })
   if (result.error) return { error: result.error }
+  if (secondYellow) {
+    const red = await addMatchEvent({ matchId, teamId: input.teamId, playerId: input.playerId, assistPlayerId: null, type: "red", period })
+    if (red.error) return { error: red.error }
+  }
 
   // First event of a match being played today: it's live. Loaded afterwards
   // (referee with a watch), it stays as is until they close it.
   if (match.status === "scheduled" && match.date === todayIso()) await setMatchLiveState(matchId, "ongoing", "1T")
 
   refresh(matchId)
-  return {}
+  return secondYellow ? { notice: "Segunda amarilla: se le cargó también la roja." } : {}
 }
 
 export async function deleteEventAction(matchId: string, eventId: string): Promise<{ error?: string }> {

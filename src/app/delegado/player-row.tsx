@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PlayerPrivateFields } from "@/components/player-private-fields"
 import {
   Select,
   SelectContent,
@@ -52,7 +53,16 @@ function SubmitButton() {
   )
 }
 
-export function PlayerRow({ player, suspendedUntil }: { player: Player; suspendedUntil?: number }) {
+export function PlayerRow({
+  player,
+  suspendedUntil,
+  privateData,
+}: {
+  player: Player
+  suspendedUntil?: number
+  /** Cédula and phone */
+  privateData?: { document: string; phone: string }
+}) {
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState(player.position)
   const action = delegateUpdatePlayerAction.bind(null, player.id)
@@ -118,6 +128,7 @@ export function PlayerRow({ player, suspendedUntil }: { player: Player; suspende
                   </Select>
                 </div>
               </div>
+              <PlayerPrivateFields document={privateData?.document} phone={privateData?.phone} idPrefix={player.id} />
               <div className="flex flex-col gap-1.5">
                 <Label>Foto</Label>
                 <ImageUpload maxSize={512} name="photo" currentUrl={player.photo} />

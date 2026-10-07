@@ -50,6 +50,19 @@ export function SettingsForm({ settings }: { settings: LeagueSettings }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
+        <legend className="px-1 text-sm font-semibold">🟦 Azules (fútbol sala)</legend>
+        <label className="flex items-start gap-2.5 text-sm">
+          <input type="checkbox" name="blueCardsEnabled" defaultChecked={settings.blueCardsEnabled} className="mt-0.5 size-4 accent-primary" />
+          <span>
+            <span className="font-medium">Usar tarjeta azul</span>
+            <span className="block text-xs text-muted-foreground">
+              El árbitro la ve en la planilla. El jugador sale del partido, pero no queda suspendido para la fecha siguiente.
+            </span>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
         <legend className="px-1 text-sm font-semibold">👕 Refuerzos</legend>
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" name="guestPlayersAllowed" defaultChecked={settings.guestPlayersAllowed} className="mt-0.5 size-4 accent-primary" />

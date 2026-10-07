@@ -30,6 +30,8 @@ interface Props {
   lineup: LineupEntry[]
   suspended: Set<string>
   guestRules: { allowed: boolean; maxMatches: number }
+  /** playerId → cédula */
+  documents: Record<string, string>
   pending: boolean
   run: (fn: () => Promise<{ error?: string; notice?: string }>, after?: () => void) => void
 }
@@ -38,7 +40,7 @@ interface Props {
  * Who plays: the referee checks each ID against this list and taps the player.
  * Refuerzos (not on the list) only when the league allows them.
  */
-export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pending, run }: Props) {
+export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, documents, pending, run }: Props) {
   const [guestTeam, setGuestTeam] = useState<LineupTeam | null>(null)
   const playing = new Map(lineup.map((l) => [l.playerId, l]))
 
@@ -98,6 +100,7 @@ export function LineupPanel({ matchId, teams, lineup, suspended, guestRules, pen
                       <PhotoAvatar src={p.photo} name={p.name} className="size-10" fallbackClassName="text-xs" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{p.name}</span>
+                        {documents[p.id] && <span className="block text-xs tabular-nums text-muted-foreground">CI {documents[p.id]}</span>}
                         {(entry?.isGuest || suspended.has(p.id)) && (
                           <span className="flex gap-2 text-[11px] font-semibold uppercase">
                             {entry?.isGuest && <span className="text-amber-700">Refuerzo</span>}
